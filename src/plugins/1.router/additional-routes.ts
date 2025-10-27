@@ -10,6 +10,13 @@ export const redirects: RouteRecordRaw[] = [
     path: '/',
     name: 'index',
     redirect: to => {
+      const hasShopifyContext = typeof to.query?.host === 'string'
+        || typeof to.query?.shop === 'string'
+        || to.query?.embedded === '1'
+
+      if (hasShopifyContext)
+        return { path: '/shopify/embedded', query: to.query }
+
       const userData = useCookie<Record<string, unknown> | null | undefined>('userData')
       const role = userData.value?.role as string | undefined
 
