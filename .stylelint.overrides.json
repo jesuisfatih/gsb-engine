@@ -1,0 +1,10 @@
+{
+  "overrides": [
+    {
+      "files": ["src/modules/editor/**/*.vue", "src/pages/editor/**/*.vue"],
+      "rules": {
+        "liberty/use-logical-spec": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+/* Global layout helpers to ensure the editor gets full viewport height */
+html,
+body,
+#app,
+.v-application,
+.v-application__wrap {
+  height: 100%;
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+}
+
+.v-application__wrap {
+  display: flex;
+  flex-direction: column;
+}

@@ -1,0 +1,57 @@
+{%- comment -%}
+  Gang Sheet Builder - Theme App Embed snippet
+  Renders a responsive shortcode button placeholder and loads the public script loader.
+  Expects:
+    button_label      - text for the button (default "Edit design")
+    button_color      - background colour (hex)
+    button_text_color - text colour (hex)
+    button_variant    - pill | rounded | square
+    button_size       - sm | md | lg
+    button_icon       - optional icon glyph/text
+    shortcode_handle  - fallback handle when no metafield is present
+    open_mode         - navigate | popup
+    return_to         - optional URL to return to after editing
+{%- endcomment -%}
+
+{%- assign handle = shortcode_handle | default: product.metafields.gsb.shortcode -%}
+{%- unless handle -%}
+  {%- comment -%}No shortcode available; do not render a button{%- endcomment -%}
+  {% return %}
+{%- endunless -%}
+
+{%- assign embed_button_label = button_label | default: 'Edit design' -%}
+{%- assign embed_button_bg = button_color | default: '#4c1d95' -%}
+{%- assign embed_button_text = button_text_color | default: '#ffffff' -%}
+{%- assign embed_button_variant = button_variant | default: 'pill' -%}
+{%- assign embed_button_size = button_size | default: 'md' -%}
+{%- assign embed_button_icon = button_icon | default: '' -%}
+{%- assign embed_open_mode = open_mode | default: 'navigate' -%}
+{%- assign embed_return_to = return_to | default: '' -%}
+
+<div class="gsb-app-embed">
+  <div
+    class="gsb-app-embed__placeholder"
+    data-gsb-shortcode="{{ handle }}"
+    data-editor-url="{{ editor_url | default: '/editor' }}"
+    data-api-url="{{ api_url | default: '/api/embed/shortcodes' }}"
+    data-button-label="{{ embed_button_label }}"
+    data-button-bg="{{ embed_button_bg }}"
+    data-button-color="{{ embed_button_text }}"
+    data-button-variant="{{ embed_button_variant }}"
+    data-button-size="{{ embed_button_size }}"
+    data-button-icon="{{ embed_button_icon }}"
+    data-open-mode="{{ embed_open_mode }}"
+    data-return-url="{{ embed_return_to }}"
+  ></div>
+</div>
+
+{%- comment -%}Load the public shortcode loader once per page{%- endcomment -%}
+{%- unless gsb_short_code_loader_included -%}
+  {%- assign gsb_short_code_loader_included = true -%}
+  <script
+    src="{{ editor_script_url | default: '/gsb-shortcode.js' }}"
+    data-api-url="{{ api_url | default: '/api/embed/shortcodes' }}"
+    data-editor-url="{{ editor_url | default: '/editor' }}"
+    defer
+  ></script>
+{%- endunless -%}

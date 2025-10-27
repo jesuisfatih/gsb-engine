@@ -1,0 +1,119 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "vendor": {
+          "type": "text",
+          "settings": {
+            "text": "{{ product.vendor }}",
+            "text_style": "uppercase"
+          }
+        },
+        "title": {
+          "type": "title",
+          "settings": {}
+        },
+        "price": {
+          "type": "price",
+          "settings": {}
+        },
+        "variant_picker": {
+          "type": "variant_picker",
+          "settings": {
+            "picker_type": "button",
+            "swatch_shape": "circle"
+          }
+        },
+        "quantity_selector": {
+          "type": "quantity_selector",
+          "settings": {}
+        },
+        "buy_buttons": {
+          "type": "buy_buttons",
+          "settings": {
+            "show_dynamic_checkout": true,
+            "show_gift_card_recipient": true
+          }
+        },
+        "description": {
+          "type": "description",
+          "settings": {}
+        },
+        "share": {
+          "type": "share",
+          "settings": {
+            "share_label": "Share"
+          }
+        }
+      },
+      "block_order": [
+        "vendor",
+        "title",
+        "price",
+        "variant_picker",
+        "quantity_selector",
+        "buy_buttons",
+        "description",
+        "share"
+      ],
+      "settings": {
+        "enable_sticky_info": true,
+        "color_scheme": "scheme-1",
+        "media_size": "large",
+        "constrain_to_viewport": true,
+        "media_fit": "contain",
+        "gallery_layout": "stacked",
+        "media_position": "left",
+        "image_zoom": "lightbox",
+        "mobile_thumbnails": "hide",
+        "hide_variants": true,
+        "enable_video_looping": false,
+        "padding_top": 36,
+        "padding_bottom": 12
+      }
+    },
+    "related-products": {
+      "type": "related-products",
+      "settings": {
+        "heading": "You may also like",
+        "heading_size": "h2",
+        "products_to_show": 4,
+        "columns_desktop": 4,
+        "color_scheme": "scheme-1",
+        "image_ratio": "square",
+        "image_shape": "default",
+        "show_secondary_image": true,
+        "show_vendor": false,
+        "show_rating": false,
+        "columns_mobile": "2",
+        "padding_top": 36,
+        "padding_bottom": 28
+      }
+    },
+    "custom_liquid_bfnKHd": {
+      "type": "custom-liquid",
+      "name": "t:sections.custom-liquid.presets.name",
+      "settings": {
+        "custom_liquid": "{%- comment -%}\n  Gang Sheet Builder - Legacy product button snippet\n  Injects the responsive edit button or falls back to the default add-to-cart form.\n\n  Usage: {% render 'gsb-product-button', product: product %}\n{%- endcomment -%}\n\n{%- assign gsb_handle = product.metafields.gsb.shortcode -%}\n\n{%- if gsb_handle -%}\n  <div class=\"product-form__item gsb-product-button\">\n    <div\n      data-gsb-shortcode=\"{{ gsb_handle }}\"\n      data-button-label=\"{{ section.settings.gsb_button_label | default: 'Customize & Add to cart' }}\"\n      data-button-bg=\"{{ section.settings.gsb_button_color | default: '#4c1d95' }}\"\n      data-button-color=\"{{ section.settings.gsb_button_text | default: '#ffffff' }}\"\n      data-open-mode=\"{{ section.settings.gsb_open_mode | default: 'navigate' }}\"\n      data-editor-url=\"{{ section.settings.gsb_editor_url | default: '/editor' }}\"\n      data-api-url=\"{{ section.settings.gsb_api_url | default: '/api/embed/shortcodes' }}\"\n      data-mobile-full-width=\"true\"\n    ></div>\n  </div>\n\n  {%- unless gsb_short_code_loader_included -%}\n    {%- assign gsb_short_code_loader_included = true -%}\n    <script\n      src=\"{{ section.settings.gsb_script_url | default: '/gsb-shortcode.js' }}\"\n      data-api-url=\"{{ section.settings.gsb_api_url | default: '/api/embed/shortcodes' }}\"\n      data-editor-url=\"{{ section.settings.gsb_editor_url | default: '/editor' }}\"\n      defer\n    ></script>\n  {%- endunless -%}\n{%- else -%}\n  {%- comment -%}No shortcode mapped; render original add-to-cart form snippet instead{%- endcomment -%}\n  {% render 'buy-buttons', product: product, form: form, show_dynamic_checkout: section.settings.enable_dynamic_checkout %}\n{%- endif -%}",
+        "color_scheme": "",
+        "padding_top": 40,
+        "padding_bottom": 52
+      }
+    }
+  },
+  "order": [
+    "main",
+    "related-products",
+    "custom_liquid_bfnKHd"
+  ]
+}

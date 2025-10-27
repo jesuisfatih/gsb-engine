@@ -1,0 +1,26 @@
+*** Begin Patch
+*** Update File: prisma/schema.prisma
+@@
+-  outputs          Json?
+-  attachments      Json?
+-  notes            String?
++  outputs          Json?
++  attachments      Json?
++  notes            String?
++  metadata         Json?
++  assignedUserId   String?
++  deletedAt        DateTime?
+   createdAt        DateTime        @default(now())
+ 
+   tenant           Tenant          @relation(fields: [tenantId], references: [id])
+   design           DesignDocument? @relation(fields: [designId], references: [id])
+   printTechnique   PrintTechnique? @relation(fields: [printTechniqueId], references: [id])
+   supplier         SupplierProfile? @relation(fields: [supplierId], references: [id])
++  assignedUser     User?           @relation(fields: [assignedUserId], references: [id])
+   tasks            BackgroundTask[]
+ 
+-  @@index([tenantId, status])
++  @@index([tenantId, status])
++  @@index([tenantId, deletedAt])
+*** End Patch
+

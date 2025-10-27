@@ -1,0 +1,36 @@
+{%- comment -%}
+  Gang Sheet Builder - Legacy product button snippet
+  Injects the responsive edit button or falls back to the default add-to-cart form.
+
+  Usage: {% render 'gsb-product-button', product: product %}
+{%- endcomment -%}
+
+{%- assign gsb_handle = product.metafields.gsb.shortcode -%}
+
+{%- if gsb_handle -%}
+  <div class="product-form__item gsb-product-button">
+    <div
+      data-gsb-shortcode="{{ gsb_handle }}"
+      data-button-label="{{ section.settings.gsb_button_label | default: 'Customize & Add to cart' }}"
+      data-button-bg="{{ section.settings.gsb_button_color | default: '#4c1d95' }}"
+      data-button-color="{{ section.settings.gsb_button_text | default: '#ffffff' }}"
+      data-open-mode="{{ section.settings.gsb_open_mode | default: 'navigate' }}"
+      data-editor-url="{{ section.settings.gsb_editor_url | default: '/editor' }}"
+      data-api-url="{{ section.settings.gsb_api_url | default: '/api/embed/shortcodes' }}"
+      data-mobile-full-width="true"
+    ></div>
+  </div>
+
+  {%- unless gsb_short_code_loader_included -%}
+    {%- assign gsb_short_code_loader_included = true -%}
+    <script
+      src="{{ section.settings.gsb_script_url | default: '/gsb-shortcode.js' }}"
+      data-api-url="{{ section.settings.gsb_api_url | default: '/api/embed/shortcodes' }}"
+      data-editor-url="{{ section.settings.gsb_editor_url | default: '/editor' }}"
+      defer
+    ></script>
+  {%- endunless -%}
+{%- else -%}
+  {%- comment -%}No shortcode mapped; render original add-to-cart form snippet instead{%- endcomment -%}
+  {% render 'buy-buttons', product: product, form: form, show_dynamic_checkout: section.settings.enable_dynamic_checkout %}
+{%- endif -%}

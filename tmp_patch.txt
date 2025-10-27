@@ -1,0 +1,16 @@
+*** Begin Patch
+*** Update File: prisma/schema.prisma
+@@
+-  autosaveSnapshot  Json?
+-  autosaveAt        DateTime?
+-  previewUrl        String?
++  autosaveSnapshot  Json?
++  autosaveAt        DateTime?
++  previewUrl        String?
++  submittedAt       DateTime?
++  sourceShortcodeHandle String?
+   sheetWidthMm      Float?
+   sheetHeightMm     Float?
+   metrics           Json?
+*** End Patch
+

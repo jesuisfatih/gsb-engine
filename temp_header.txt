@@ -1,0 +1,144 @@
+<script setup lang="ts">
+import { computed, watch } from "vue";
+import { storeToRefs } from "pinia";
+import "../styles/fonts.css";
+import CostPanel from "./CostPanel.vue";
+import EditorToolbar from "./EditorToolbar.vue";
+import LayersPanel from "./LayersPanel.vue";
+import MockupPreview from "./MockupPreview.vue";
+import ProductPanel from "./ProductPanel.vue";
+import PropertiesPanel from "./PropertiesPanel.vue";
+import StageCanvas from "./StageCanvas.vue";
+import AssetPanel from "./AssetPanel.vue";
+import GangSheetSidebar from "./GangSheetSidebar.vue";
+import AutoBuildPanel from "./AutoBuildPanel.vue";
+import { useEditorModeStore } from "../store/editorModeStore";
+import { useEditorStore } from "../store/editorStore";
+import { useGangSheetStore } from "../store/gangSheetStore";
+
+const modeStore = useEditorModeStore();
+const editorStore = useEditorStore();
+const gangStore = useGangSheetStore();
+const { activeMode } = storeToRefs(modeStore);
+
+const isGangMode = computed(() => activeMode.value === "gang");
+const isDtfMode = computed(() => activeMode.value === "dtf");
+
+function changeMode(mode: "dtf" | "gang") {
+  modeStore.switchTo(mode);
+}
+
+function syncToGang() {
+  modeStore.switchTo("gang");
+}
+
+function syncToDtf() {
+  modeStore.switchTo("dtf");
+}
+
+async function createCombinedOrder() {
+  try {
+    await gangStore.submitGangSheetPlan();
+    await editorStore.addToCart();
+    window.alert("Gang sheet and DTF transfer orders submitted (stub).");
+  } catch (err) {
+    console.warn(err);
+    window.alert("Order submission failed (stub).");
+  }
+}
+
+watch(
+  () => editorStore.productSlug,
+  slug => {
+    modeStore.lastProduct[activeMode.value] = slug;
+  }
+);
+</script>
+
+<template>
+  <div class="editor-root">
+    <div class="area-toolbar">
+      <div class="mode-switch">
+        <button :class="{ active: isGangMode }" @click="changeMode('gang')">Gang Sheet Builder</button>
+        <button :class="{ active: isDtfMode }" @click="changeMode('dtf')">DTF Transfer</button>
+      </div>
+      <div class="mode-title">
+        {{ isGangMode ? "Gang Sheet Builder" : "DTF Transfer" }}
+      </div>
+      <div class="mode-actions">
+        <button v-if="isDtfMode" class="ghost" @click="syncToGang">Send to Gang Sheet</button>
+        <button v-else class="ghost" @click="syncToDtf">Import from DTF</button>
+        <button class="primary" @click="createCombinedOrder">Create Combined Order</button>
+      </div>
+    </div>
+
+    <div class="left-pane">
+      <details class="accordion" open>
+        <summary>Product & Surface</summary>
+        <ProductPanel />
+      </details>
+      <details class="accordion" open>
+        <summary>Assets</summary>
+        <AssetPanel />
+      </details>
+      <details class="accordion" open>
+        <summary>Layers</summary>
+        <LayersPanel />
+      </details>
+      <details class="accordion" open>
+        <summary>Product & Surface</summary>
+        <ProductPanel />
+      </details>
+      <details class="accordion" open>
+        <summary>Assets</summary>
+        <AssetPanel />
+      </details>
+      <details class="accordion" open>
+        <summary>Layers</summary>
+        <LayersPanel />
+      </details>
+    </div>
+
+    <div class="center-pane">
+      <div class="tool-strip">
+        <EditorToolbar />
+      </div>
+      <div class="stage-region" :class="{ 'gang-scene': isGangMode }">
+        <StageCanvas />
+      </div>
+    </div>
+
+    <div class="right-pane">
+      <template v-if="isDtfMode">
+        <details class="accordion" open>
+          <summary>Selection</summary>
+          <PropertiesPanel />
+        </details>
+        <details class="accordion" open>
+          <summary>Mockup Preview</summary>
+          <MockupPreview />
+        </details>
+        <details class="accordion" open>
+          <summary>Pricing</summary>
+          <CostPanel />
+        </details>
+      </template>
+      <template v-else>
+        <details class="accordion" open>
+          <summary>Gang Sheets</summary>
+          <GangSheetSidebar />
+        </details>
+        <details class="accordion" open>
+          <summary>Auto Build</summary>
+          <AutoBuildPanel />
+        </details>
+        <details class="accordion" open>
+          <summary>Pricing</summary>
+          <CostPanel />
+        </details>
+      </template>
+    </div>
+  </div>
+</template>
+
+
