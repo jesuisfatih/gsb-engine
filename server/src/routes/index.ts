@@ -11,6 +11,8 @@ import { proxyRouter } from "./proxy";
 import { supplierRoutingRouter } from "./supplier-routing";
 import { templatesRouter } from "./templates";
 import { billingRouter } from "./billing";
+import { merchantConfigRouter } from "./merchant-config";
+import { ordersRouter } from "./orders";
 
 export function createApiRouter() {
   const router = Router();
@@ -22,10 +24,12 @@ export function createApiRouter() {
   router.use("/notifications", notificationsRouter);
   router.use("/audit", auditRouter);
   router.use("/pricing", pricingRouter);
+  router.use("/orders", ordersRouter);
   router.use("/suppliers/routing", supplierRoutingRouter);
   router.use("/templates", templatesRouter);
   router.use("/shortcodes", shortcodesRouter);
   router.use("/billing", billingRouter);
+  router.use("/merchant/config", merchantConfigRouter);
   router.use("/proxy", proxyRouter);
 
   return router;

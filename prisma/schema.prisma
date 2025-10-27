@@ -95,6 +95,9 @@ model Tenant {
   supplierProfiles SupplierProfile[]
   templates        Template[]
   assets           AssetLibraryItem[]
+  builderConfigs   ProductBuilderConfig[]
+  builderSettings  BuilderSettings?
+  gallerySettings  GallerySettings?
   designs          DesignDocument[]
   gangSheets       GangSheet[]
   shortcodes       Shortcode[]
@@ -178,6 +181,7 @@ model Product {
   designs        DesignDocument[]
   templates      Template[]
   shortcodes     Shortcode[]
+  builderConfigs ProductBuilderConfig[]
 
   @@unique([tenantId, slug])
 }
@@ -221,6 +225,45 @@ model Variant {
   product Product @relation(fields: [productId], references: [id])
 
   @@index([productId])
+}
+
+model ProductBuilderConfig {
+  id                   String   @id @default(uuid())
+  tenantId             String
+  productId            String
+  sizeOption           String?  @default("Size")
+  sizeUnit             String?  @default("in")
+  productType          String?  @default("Gang Sheet")
+  printFileNameTokens  Json?
+  useCustomButtonLabel Boolean  @default(false)
+  customButtonLabel    String?
+  settings             Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  sizes   ProductSizePreset[]
+
+  @@unique([tenantId, productId])
+}
+
+model ProductSizePreset {
+  id        String   @id @default(uuid())
+  configId  String
+  label     String
+  widthIn   Decimal? @db.Decimal(10, 2)
+  heightIn  Decimal? @db.Decimal(10, 2)
+  price     Decimal? @db.Decimal(10, 2)
+  maxFiles  Int?
+  sortOrder Int      @default(0)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  config ProductBuilderConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@index([configId, sortOrder])
 }
 
 model PrintTechnique {
@@ -312,6 +355,27 @@ model AssetLibraryItem {
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, type])
+}
+
+model BuilderSettings {
+  id        String   @id @default(uuid())
+  tenantId  String   @unique
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model GallerySettings {
+  id             String   @id @default(uuid())
+  tenantId       String   @unique
+  builderOptions Json?
+  watermark      Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 }
 
 model DesignDocument {

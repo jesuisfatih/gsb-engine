@@ -1,0 +1,479 @@
+import { Router } from "express";
+import { Prisma } from "../../../src/generated/prisma/client";
+import { z } from "zod";
+
+const decimalOrNull = (value: number | null | undefined) =>
+  value === null || value === undefined ? null : new Prisma.Decimal(value);
+
+const productSizeSchema = z.object({
+  id: z.string().uuid().optional(),
+  label: z.string().min(1),
+  widthIn: z.number().positive().optional().nullable(),
+  heightIn: z.number().positive().optional().nullable(),
+  price: z.number().nonnegative().optional().nullable(),
+  maxFiles: z.number().int().min(0).optional().nullable(),
+  sortOrder: z.number().int().min(0).optional(),
+});
+
+const productConfigSchema = z.object({
+  sizeOption: z.string().min(1),
+  sizeUnit: z.string().min(1),
+  productType: z.string().min(1),
+  printFileNameTokens: z.array(z.string()).default([]),
+  useCustomButtonLabel: z.boolean(),
+  customButtonLabel: z.string().nullable(),
+  settings: z.record(z.any()).default({}),
+  sizes: z.array(productSizeSchema).default([]),
+});
+
+const builderSettingsSchema = z
+  .object({
+    spacing: z.object({
+      duplicate: z.number(),
+      artboard: z.number(),
+      image: z.number(),
+    }),
+    toggles: z.record(z.boolean()),
+    resolution: z.object({
+      optimal: z.number(),
+      good: z.number(),
+      bad: z.number(),
+      hideTerrible: z.boolean().optional().default(false),
+      minimum: z.number(),
+    }),
+    other: z
+      .object({
+        allowReorder: z.boolean().optional().default(false),
+        enableCustomerAccount: z.boolean().optional().default(false),
+        defaultLanguage: z.string().optional().default("English"),
+        enableLiveChat: z.boolean().optional().default(false),
+        useStoreLogoSpinner: z.boolean().optional().default(false),
+        requireLogin: z.boolean().optional().default(false),
+      })
+      .optional(),
+  })
+  .strict();
+
+const gallerySettingsSchema = z
+  .object({
+    builder: z.object({
+      showImageGallery: z.boolean(),
+      enableSort: z.boolean(),
+      enableColorOverlay: z.boolean(),
+      categoryViewMode: z.string().min(1),
+    }),
+    watermark: z
+      .object({
+        useShopLogo: z.boolean(),
+        opacity: z.number().min(0).max(1),
+      })
+      .optional(),
+  })
+  .strict();
+
+const listAssetsQuery = z.object({
+  type: z.string().optional().default("gallery.image"),
+});
+
+const defaultProductConfig = {
+  sizeOption: "Size",
+  sizeUnit: "in",
+  productType: "Gang Sheet",
+  printFileNameTokens: [] as string[],
+  useCustomButtonLabel: false,
+  customButtonLabel: null as string | null,
+  settings: {} as Record<string, unknown>,
+  sizes: [] as unknown[],
+};
+
+const defaultBuilderSettings = {
+  spacing: {
+    duplicate: 0.5,
+    artboard: 0.125,
+    image: 0.125,
+  },
+  toggles: {
+    disableBackgroundRemove: false,
+    enableHalftone: false,
+    disableText: false,
+    useCustomTextColors: false,
+    useCustomImageOverlayColors: false,
+    autoBuild: true,
+    openAutoBuildDefault: true,
+    alwaysDisplayVariants: false,
+    enableFlipOver: true,
+    showGangSheetPrice: false,
+    enableFolderOrganisation: false,
+    enableNotesPerSheet: false,
+    requireBackgroundRemovalConfirmation: false,
+  },
+  resolution: {
+    optimal: 300,
+    good: 250,
+    bad: 200,
+    hideTerrible: false,
+    minimum: 72,
+  },
+  other: {
+    allowReorder: true,
+    enableCustomerAccount: true,
+    defaultLanguage: "English",
+    enableLiveChat: false,
+    useStoreLogoSpinner: false,
+    requireLogin: false,
+  },
+};
+
+const defaultGallerySettings = {
+  builder: {
+    showImageGallery: true,
+    enableSort: false,
+    enableColorOverlay: false,
+    categoryViewMode: "Dropdown",
+  },
+  watermark: {
+    useShopLogo: false,
+    opacity: 0.4,
+  },
+};
+
+export const merchantConfigRouter = Router();
+
+function requireTenant(res: Parameters<typeof merchantConfigRouter.get>[1]["res"], tenantId?: string): tenantId is string {
+  if (!tenantId) {
+    res.status(400).json({ error: "Missing tenant context" });
+    return false;
+  }
+  return true;
+}
+
+merchantConfigRouter.get("/products/:productId/builder", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const productId = req.params.productId;
+    const product = await prisma.product.findFirst({
+      where: {
+        id: productId,
+        OR: [{ tenantId }, { tenantId: null }],
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+      },
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const config = await prisma.productBuilderConfig.findUnique({
+      where: {
+        tenantId_productId: {
+          tenantId,
+          productId,
+        },
+      },
+      include: {
+        sizes: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        },
+      },
+    });
+
+    const payload = {
+      ...defaultProductConfig,
+      ...config,
+      printFileNameTokens: (config?.printFileNameTokens as string[] | null) ?? [],
+      settings: (config?.settings as Record<string, unknown> | undefined) ?? {},
+      sizes:
+        config?.sizes.map(size => ({
+          id: size.id,
+          label: size.label,
+          widthIn: size.widthIn?.toNumber() ?? null,
+          heightIn: size.heightIn?.toNumber() ?? null,
+          price: size.price?.toNumber() ?? null,
+          maxFiles: size.maxFiles ?? null,
+          sortOrder: size.sortOrder,
+        })) ?? [],
+    };
+
+    res.json({
+      data: {
+        product,
+        config: payload,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.put("/products/:productId/builder", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const productId = req.params.productId;
+
+    const product = await prisma.product.findFirst({
+      where: {
+        id: productId,
+        OR: [{ tenantId }, { tenantId: null }],
+      },
+      select: { id: true },
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const payload = productConfigSchema.parse(req.body);
+
+    const config = await prisma.$transaction(async tx => {
+      const upserted = await tx.productBuilderConfig.upsert({
+        where: {
+          tenantId_productId: {
+            tenantId,
+            productId,
+          },
+        },
+        create: {
+          tenantId,
+          productId,
+          sizeOption: payload.sizeOption,
+          sizeUnit: payload.sizeUnit,
+          productType: payload.productType,
+          printFileNameTokens: payload.printFileNameTokens,
+          useCustomButtonLabel: payload.useCustomButtonLabel,
+          customButtonLabel: payload.customButtonLabel,
+          settings: payload.settings,
+        },
+        update: {
+          sizeOption: payload.sizeOption,
+          sizeUnit: payload.sizeUnit,
+          productType: payload.productType,
+          printFileNameTokens: payload.printFileNameTokens,
+          useCustomButtonLabel: payload.useCustomButtonLabel,
+          customButtonLabel: payload.customButtonLabel,
+          settings: payload.settings,
+        },
+      });
+
+      if (payload.sizes) {
+        await tx.productSizePreset.deleteMany({ where: { configId: upserted.id } });
+
+        if (payload.sizes.length > 0) {
+          await tx.productSizePreset.createMany({
+            data: payload.sizes.map((size, index) => ({
+              id: size.id,
+              configId: upserted.id,
+              label: size.label,
+              widthIn: decimalOrNull(size.widthIn ?? null),
+              heightIn: decimalOrNull(size.heightIn ?? null),
+              price: decimalOrNull(size.price ?? null),
+              maxFiles: size.maxFiles ?? null,
+              sortOrder: size.sortOrder ?? index,
+              metadata: Prisma.JsonNull,
+            })),
+          });
+        }
+      }
+
+      return upserted;
+    });
+
+    const fresh = await prisma.productBuilderConfig.findUnique({
+      where: { id: config.id },
+      include: { sizes: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
+    });
+
+    res.json({
+      data: {
+        ...defaultProductConfig,
+        ...fresh,
+        printFileNameTokens: (fresh?.printFileNameTokens as string[] | null) ?? [],
+        settings: (fresh?.settings as Record<string, unknown> | undefined) ?? {},
+        sizes:
+          fresh?.sizes.map(size => ({
+            id: size.id,
+            label: size.label,
+            widthIn: size.widthIn?.toNumber() ?? null,
+            heightIn: size.heightIn?.toNumber() ?? null,
+            price: size.price?.toNumber() ?? null,
+            maxFiles: size.maxFiles ?? null,
+            sortOrder: size.sortOrder,
+          })) ?? [],
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.get("/builder/settings", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const record = await prisma.builderSettings.findUnique({
+      where: { tenantId },
+    });
+
+    const config = record?.config as Record<string, unknown> | undefined;
+    const payload = config
+      ? {
+          ...defaultBuilderSettings,
+          ...config,
+          spacing: { ...defaultBuilderSettings.spacing, ...(config.spacing as Record<string, unknown> ?? {}) },
+          toggles: { ...defaultBuilderSettings.toggles, ...(config.toggles as Record<string, boolean> ?? {}) },
+          resolution: {
+            ...defaultBuilderSettings.resolution,
+            ...(config.resolution as Record<string, unknown> ?? {}),
+          },
+          other: { ...defaultBuilderSettings.other, ...(config.other as Record<string, unknown> ?? {}) },
+        }
+      : defaultBuilderSettings;
+
+    res.json({ data: payload });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.put("/builder/settings", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const payload = builderSettingsSchema.parse(req.body);
+
+    const settings = await prisma.builderSettings.upsert({
+      where: { tenantId },
+      create: {
+        tenantId,
+        config: payload,
+      },
+      update: {
+        config: payload,
+      },
+    });
+
+    res.json({ data: settings.config });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.get("/gallery/settings", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const record = await prisma.gallerySettings.findUnique({
+      where: { tenantId },
+    });
+
+    const config = record?.builderOptions as Record<string, unknown> | undefined;
+    const watermark = record?.watermark as Record<string, unknown> | undefined;
+
+    res.json({
+      data: {
+        builder: { ...defaultGallerySettings.builder, ...(config ?? {}) },
+        watermark: { ...defaultGallerySettings.watermark, ...(watermark ?? {}) },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.put("/gallery/settings", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const payload = gallerySettingsSchema.parse(req.body);
+
+    const updated = await prisma.gallerySettings.upsert({
+      where: { tenantId },
+      create: {
+        tenantId,
+        builderOptions: payload.builder,
+        watermark: payload.watermark ?? defaultGallerySettings.watermark,
+      },
+      update: {
+        builderOptions: payload.builder,
+        watermark: payload.watermark ?? defaultGallerySettings.watermark,
+      },
+    });
+
+    res.json({
+      data: {
+        builder: updated.builderOptions,
+        watermark: updated.watermark,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.get("/gallery/assets", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const query = listAssetsQuery.parse(req.query);
+
+    const assets = await prisma.assetLibraryItem.findMany({
+      where: {
+        tenantId,
+        type: query.type,
+        deletedAt: null,
+      },
+      orderBy: [{ createdAt: "desc" }],
+      select: {
+        id: true,
+        label: true,
+        url: true,
+        metadata: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({ data: assets });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.get("/print-providers", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const providers = await prisma.supplierProfile.findMany({
+      where: {
+        OR: [{ tenantId }, { tenantId: null }],
+      },
+      orderBy: [{ tenantId: "desc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        contactEmail: true,
+        regions: true,
+        techniques: true,
+        leadTimeDays: true,
+        metadata: true,
+      },
+    });
+
+    res.json({ data: providers });
+  } catch (error) {
+    next(error);
+  }
+});
