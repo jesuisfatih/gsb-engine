@@ -48,7 +48,7 @@ const statusBadge = computed(() => {
   if (!apiKey) return { tone: "critical", text: "API key missing" };
   if (!hostParam.value) return { tone: "warning", text: "Waiting for host" };
   if (sessionToken.value) return { tone: "success", text: "Connected" };
-  if (lastError.value) return { tone: "critical", text: "Session token error" };
+  if (lastError.value) return { tone: "critical", text: "Session error" };
   return { tone: "info", text: "Authorising…" };
 });
 
@@ -56,7 +56,7 @@ const navSections: NavSection[] = [
   {
     title: "Get Started",
     items: [
-      { icon: "mdi-home", label: "Welcome", name: "shopify-embedded-welcome" },
+      { icon: "mdi-home-outline", label: "Welcome", name: "shopify-embedded-welcome" },
       { icon: "mdi-rocket-launch", label: "Set up", name: "shopify-embedded-setup" },
     ],
   },
@@ -64,21 +64,21 @@ const navSections: NavSection[] = [
     title: "Commerce",
     items: [
       { icon: "mdi-package-variant", label: "Products", name: "shopify-embedded-products" },
-      { icon: "mdi-receipt-text", label: "Orders", name: "shopify-embedded-orders" },
-      { icon: "mdi-brush-variant", label: "Designs", name: "shopify-embedded-designs" },
+      { icon: "mdi-receipt-text-outline", label: "Orders", name: "shopify-embedded-orders" },
+      { icon: "mdi-image-edit-outline", label: "Designs", name: "shopify-embedded-designs" },
       { icon: "mdi-layers-triple", label: "Templates", name: "shopify-embedded-templates" },
     ],
   },
   {
     title: "Configuration",
     items: [
-      { icon: "mdi-cog", label: "General", name: "shopify-embedded-general" },
-      { icon: "mdi-shape-square-plus", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
+      { icon: "mdi-cog-outline", label: "General", name: "shopify-embedded-general" },
+      { icon: "mdi-shape-square-rounded-plus", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
       { icon: "mdi-tools", label: "Builder", name: "shopify-embedded-builder" },
-      { icon: "mdi-file-image", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
+      { icon: "mdi-file-image-outline", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
       { icon: "mdi-palette-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
-      { icon: "mdi-view-gallery", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
-      { icon: "mdi-truck-delivery", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
+      { icon: "mdi-view-gallery-outline", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
+      { icon: "mdi-truck-delivery-outline", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
     ],
   },
   {
@@ -133,7 +133,7 @@ provide("shopifyShopDomain", shopDomain);
     <header class="topbar">
       <div class="topbar-left">
         <button type="button" class="icon-button" aria-label="Back">
-          ‹
+          <VIcon icon="mdi-arrow-left" size="18" />
         </button>
         <div class="brand">
           <span class="brand-title">Build a Gang Sheet</span>
@@ -148,13 +148,14 @@ provide("shopifyShopDomain", shopDomain);
       </div>
       <div class="topbar-right">
         <span class="status-chip" :data-tone="statusBadge.tone">
+          <VIcon icon="mdi-shield-check" size="16" />
           {{ statusBadge.text }}
         </span>
         <div class="topbar-search">
           <VTextField
             density="comfortable"
             placeholder="Search"
-            variant="outlined"
+            variant="solo"
             hide-details
             prepend-inner-icon="mdi-magnify"
           />
@@ -179,7 +180,7 @@ provide("shopifyShopDomain", shopDomain);
                   :class="{ 'is-active': activeNavName === item.name }"
                 >
                   <span class="nav-icon">
-                    <i :class="item.icon" aria-hidden="true"></i>
+                    <VIcon :icon="item.icon" size="18" />
                   </span>
                   <span class="nav-text">{{ item.label }}</span>
                 </RouterLink>
@@ -205,8 +206,8 @@ provide("shopifyShopDomain", shopDomain);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f3f4f6;
-  color: #111217;
+  background: linear-gradient(155deg, #f4f5ff 0%, #eef1ff 45%, #f3f0ff 100%);
+  color: #101227;
 }
 
 .topbar {
@@ -214,28 +215,37 @@ provide("shopifyShopDomain", shopDomain);
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 20px;
-  background: #111217;
+  padding: 16px 28px;
+  background: linear-gradient(100deg, #1d1745 0%, #3d2caa 45%, #6951ff 100%);
   color: #ffffff;
+  box-shadow: 0 18px 40px -22px rgba(59, 43, 174, 0.8);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .icon-button {
   border: none;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   color: inherit;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 1rem;
   cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
 }
 
 .brand {
@@ -246,12 +256,12 @@ provide("shopifyShopDomain", shopDomain);
 
 .brand-title {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
 }
 
 .brand-subtle {
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .topbar-center {
@@ -267,68 +277,73 @@ provide("shopifyShopDomain", shopDomain);
 
 .page-subtitle {
   margin: 4px 0 0;
-  font-size: 0.86rem;
-  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
 }
 
 .status-chip {
-  padding: 4px 12px;
+  padding: 6px 16px;
   border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.76rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(125, 176, 255, 0.2);
-  color: #7db0ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(138, 200, 255, 0.2);
+  color: #d9ecff;
+  border: 1px solid rgba(217, 236, 255, 0.3);
 }
 
 .status-chip[data-tone="success"] {
-  background: rgba(38, 189, 110, 0.2);
-  color: #2adb6e;
+  background: rgba(34, 197, 127, 0.2);
+  color: #befae2;
+  border-color: rgba(190, 250, 226, 0.3);
 }
 
 .status-chip[data-tone="warning"] {
-  background: rgba(245, 183, 49, 0.2);
-  color: #f7c045;
+  background: rgba(250, 204, 97, 0.22);
+  color: #ffeab7;
 }
 
 .status-chip[data-tone="critical"] {
-  background: rgba(252, 92, 101, 0.22);
-  color: #ff6b6b;
+  background: rgba(252, 129, 135, 0.22);
+  color: #ffd7db;
 }
 
 .topbar-search {
-  min-width: 220px;
+  min-width: 240px;
 }
 
 .profile-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 6px 12px;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.16);
+  padding: 8px 16px;
   border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
 .profile-avatar {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
-  color: #111217;
+  background: rgba(255, 255, 255, 0.82);
+  color: #1d1745;
   display: grid;
   place-items: center;
   font-weight: 600;
 }
 
 .profile-name {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
 }
 
 .content-shell {
@@ -339,26 +354,27 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .sidebar {
-  border-right: 1px solid rgba(17, 18, 23, 0.08);
-  background: #ffffff;
-  padding: 20px 16px;
+  border-right: 1px solid rgba(37, 33, 88, 0.35);
+  background: linear-gradient(200deg, #181736 0%, #1f2042 55%, #262a54 100%);
+  padding: 28px 18px;
   overflow-y: auto;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 26px;
 }
 
 .nav-section {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 600;
-  color: rgba(17, 18, 23, 0.45);
-  padding-inline: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  padding-inline: 10px;
 }
 
 .nav-list {
@@ -366,41 +382,44 @@ provide("shopifyShopDomain", shopDomain);
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: 10px;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
   text-decoration: none;
-  color: #12141a;
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.95rem;
   font-weight: 500;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .nav-link:hover {
-  background: rgba(17, 18, 23, 0.08);
+  background: rgba(96, 92, 220, 0.35);
+  color: #ffffff;
+  transform: translateX(4px);
 }
 
 .nav-link.is-active {
-  background: #111217;
+  background: linear-gradient(120deg, #5d5af1 0%, #a855f7 100%);
   color: #ffffff;
+  box-shadow: 0 18px 32px -18px rgba(93, 90, 241, 0.9);
 }
 
 .nav-icon {
-  width: 20px;
-  text-align: center;
-  font-size: 1rem;
+  width: 22px;
+  display: grid;
+  place-items: center;
 }
 
 .workspace {
-  padding: 32px;
+  padding: 40px;
   overflow-y: auto;
-  background: #f3f4f6;
+  background: transparent;
 }
 
 @media (max-width: 1080px) {
