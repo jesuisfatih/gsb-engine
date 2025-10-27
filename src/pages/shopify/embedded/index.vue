@@ -11,6 +11,7 @@ import {
 definePage({
   meta: {
     layout: "shopify-embedded",
+    public: true,
   },
 });
 

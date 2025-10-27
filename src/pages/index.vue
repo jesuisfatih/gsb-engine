@@ -1,15 +1,27 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { definePage } from 'unplugin-vue-router/runtime'
 
 definePage({
   meta: {
     layout: 'default',
+    public: true,
   },
 })
 
 const router = useRouter()
-router.replace({ path: '/merchant/overview' })
+const route = useRoute()
+
+const hasShopifyContext =
+  typeof route.query.host === 'string' ||
+  typeof route.query.shop === 'string' ||
+  route.query.embedded === '1'
+
+if (hasShopifyContext) {
+  router.replace({ path: '/shopify/embedded', query: route.query })
+} else {
+  router.replace({ path: '/merchant/overview' })
+}
 </script>
 
 <template>
