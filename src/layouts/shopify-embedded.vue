@@ -56,37 +56,37 @@ const navSections: NavSection[] = [
   {
     title: "Get Started",
     items: [
-      { icon: "mdi-home-outline", label: "Welcome", name: "shopify-embedded-welcome" },
-      { icon: "mdi-rocket-launch", label: "Set up", name: "shopify-embedded-setup" },
+      { icon: "tabler-layout-dashboard", label: "Welcome", name: "shopify-embedded-welcome" },
+      { icon: "tabler-rocket", label: "Set up", name: "shopify-embedded-setup" },
     ],
   },
   {
     title: "Commerce",
     items: [
-      { icon: "mdi-package-variant", label: "Products", name: "shopify-embedded-products" },
-      { icon: "mdi-receipt-text-outline", label: "Orders", name: "shopify-embedded-orders" },
-      { icon: "mdi-image-edit-outline", label: "Designs", name: "shopify-embedded-designs" },
-      { icon: "mdi-layers-triple", label: "Templates", name: "shopify-embedded-templates" },
+      { icon: "tabler-package", label: "Products", name: "shopify-embedded-products" },
+      { icon: "tabler-receipt-2", label: "Orders", name: "shopify-embedded-orders" },
+      { icon: "tabler-brush", label: "Designs", name: "shopify-embedded-designs" },
+      { icon: "tabler-stack-2", label: "Templates", name: "shopify-embedded-templates" },
     ],
   },
   {
     title: "Configuration",
     items: [
-      { icon: "mdi-cog-outline", label: "General", name: "shopify-embedded-general" },
-      { icon: "mdi-shape-square-rounded-plus", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
-      { icon: "mdi-tools", label: "Builder", name: "shopify-embedded-builder" },
-      { icon: "mdi-file-image-outline", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
-      { icon: "mdi-palette-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
-      { icon: "mdi-view-gallery-outline", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
-      { icon: "mdi-truck-delivery-outline", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
+      { icon: "tabler-settings", label: "General", name: "shopify-embedded-general" },
+      { icon: "tabler-layout-collage", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
+      { icon: "tabler-tools", label: "Builder", name: "shopify-embedded-builder" },
+      { icon: "tabler-photo", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
+      { icon: "tabler-color-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
+      { icon: "tabler-photo-scan", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
+      { icon: "tabler-truck-delivery", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
     ],
   },
   {
     title: "Operations",
     items: [
-      { icon: "mdi-finance", label: "Transactions", name: "shopify-embedded-transactions" },
-      { icon: "mdi-format-font", label: "Fonts", name: "shopify-embedded-fonts" },
-      { icon: "mdi-lifebuoy", label: "Support Ticket", name: "shopify-embedded-support" },
+      { icon: "tabler-chart-line", label: "Transactions", name: "shopify-embedded-transactions" },
+      { icon: "tabler-typography", label: "Fonts", name: "shopify-embedded-fonts" },
+      { icon: "tabler-life-buoy", label: "Support Ticket", name: "shopify-embedded-support" },
     ],
   },
 ];
@@ -133,7 +133,7 @@ provide("shopifyShopDomain", shopDomain);
     <header class="topbar">
       <div class="topbar-left">
         <button type="button" class="icon-button" aria-label="Back">
-          <VIcon icon="mdi-arrow-left" size="18" />
+          <VIcon icon="tabler-arrow-left" size="18" />
         </button>
         <div class="brand">
           <span class="brand-title">Build a Gang Sheet</span>
@@ -148,7 +148,7 @@ provide("shopifyShopDomain", shopDomain);
       </div>
       <div class="topbar-right">
         <span class="status-chip" :data-tone="statusBadge.tone">
-          <VIcon icon="mdi-shield-check" size="16" />
+          <VIcon icon="tabler-shield-check" size="16" />
           {{ statusBadge.text }}
         </span>
         <div class="topbar-search">
@@ -157,7 +157,7 @@ provide("shopifyShopDomain", shopDomain);
             placeholder="Search"
             variant="solo"
             hide-details
-            prepend-inner-icon="mdi-magnify"
+            prepend-inner-icon="tabler-search"
           />
         </div>
         <div class="profile-chip">
@@ -412,8 +412,30 @@ provide("shopifyShopDomain", shopDomain);
 
 .nav-icon {
   width: 22px;
+  height: 22px;
   display: grid;
   place-items: center;
+  color: #1f1f2b;
+}
+
+.nav-icon :deep(.v-icon) {
+  width: 100%;
+  height: 100%;
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+  color: inherit;
+}
+
+.nav-icon :deep(.v-icon > i),
+.nav-icon :deep(.v-icon > span),
+.nav-icon :deep(.v-icon > svg) {
+  width: 100%;
+  height: 100%;
+}
+
+.nav-link.is-active .nav-icon {
+  color: #ffffff;
 }
 
 .workspace {

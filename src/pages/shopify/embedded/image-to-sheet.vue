@@ -46,22 +46,22 @@ const units = ["in", "cm", "mm"];
       <div class="size-table">
         <header>
           <span>Sizes</span>
-          <VBtn prepend-icon="mdi-plus" variant="text">Add size</VBtn>
+          <VBtn prepend-icon="tabler-plus" variant="text">Add size</VBtn>
         </header>
         <div class="size-row">
           <VTextField label="Title" model-value="S" />
           <VTextField label="Width" suffix="in" model-value="2" />
-          <VBtn icon="mdi-delete" variant="text" />
+          <VBtn icon="tabler-trash" variant="text" />
         </div>
         <div class="size-row">
           <VTextField label="Title" model-value="M" />
           <VTextField label="Width" suffix="in" model-value="3" />
-          <VBtn icon="mdi-delete" variant="text" />
+          <VBtn icon="tabler-trash" variant="text" />
         </div>
         <div class="size-row">
           <VTextField label="Title" model-value="L" />
           <VTextField label="Width" suffix="in" model-value="4" />
-          <VBtn icon="mdi-delete" variant="text" />
+          <VBtn icon="tabler-trash" variant="text" />
         </div>
       </div>
       <div class="actions">

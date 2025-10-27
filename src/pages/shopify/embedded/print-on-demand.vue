@@ -16,7 +16,7 @@ definePage({
     <section class="card">
       <header class="card-header">
         <h2>Partner integrations</h2>
-        <VBtn color="primary" prepend-icon="mdi-link">Discover partners</VBtn>
+        <VBtn color="primary" prepend-icon="tabler-link">Discover partners</VBtn>
       </header>
 
       <div class="partner-list">
@@ -56,7 +56,7 @@ definePage({
     <section class="card">
       <header class="card-header">
         <h2>Routing rules</h2>
-        <VBtn variant="text" prepend-icon="mdi-plus">Add rule</VBtn>
+        <VBtn variant="text" prepend-icon="tabler-plus">Add rule</VBtn>
       </header>
       <div class="rule-row">
         <VSelect :items="['DTF', 'Gang sheet', 'Embroidery']" label="Technique" model-value="DTF" />
@@ -64,7 +64,7 @@ definePage({
         <VTextField label="Min qty" model-value="1" type="number" />
         <VTextField label="Max qty" model-value="50" type="number" />
         <VSelect :items="['Printful', 'Supacolor', 'Local supplier']" label="Supplier" model-value="Local supplier" />
-        <VBtn icon="mdi-delete-outline" variant="text" />
+        <VBtn icon="tabler-trash" variant="text" />
       </div>
       <div class="rule-row">
         <VSelect :items="['DTF', 'Gang sheet', 'Embroidery']" label="Technique" model-value="Gang sheet" />
@@ -72,7 +72,7 @@ definePage({
         <VTextField label="Min qty" model-value="10" type="number" />
         <VTextField label="Max qty" model-value="500" type="number" />
         <VSelect :items="['Printful', 'Supacolor', 'Local supplier']" label="Supplier" model-value="Supacolor" />
-        <VBtn icon="mdi-delete-outline" variant="text" />
+        <VBtn icon="tabler-trash" variant="text" />
       </div>
       <div class="actions">
         <VBtn color="primary">Save</VBtn>

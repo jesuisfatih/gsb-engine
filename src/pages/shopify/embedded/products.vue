@@ -26,7 +26,7 @@ const products = [
           <h2>Products</h2>
           <p>Assign builders or image-to-sheet workflows to your Shopify products.</p>
         </div>
-        <VBtn prepend-icon="mdi-database-import" color="primary">Import products</VBtn>
+        <VBtn prepend-icon="tabler-database-import" color="primary">Import products</VBtn>
       </header>
 
       <div class="table-tabs">
@@ -62,9 +62,9 @@ const products = [
             </td>
             <td>{{ product.sizes }}</td>
             <td class="actions">
-              <VBtn icon="mdi-open-in-new" variant="text" size="small" />
-              <VBtn icon="mdi-link" variant="text" size="small" />
-              <VBtn icon="mdi-pencil" variant="text" size="small" />
+              <VBtn icon="tabler-external-link" variant="text" size="small" />
+              <VBtn icon="tabler-link" variant="text" size="small" />
+              <VBtn icon="tabler-pencil" variant="text" size="small" />
             </td>
           </tr>
         </tbody>
@@ -82,10 +82,10 @@ const products = [
           />
         </div>
         <div class="pagination-controls">
-          <VBtn icon="mdi-chevron-double-left" variant="text" size="small" />
-          <VBtn icon="mdi-chevron-left" variant="text" size="small" />
-          <VBtn icon="mdi-chevron-right" variant="text" size="small" />
-          <VBtn icon="mdi-chevron-double-right" variant="text" size="small" />
+          <VBtn icon="tabler-chevrons-left" variant="text" size="small" />
+          <VBtn icon="tabler-chevron-left" variant="text" size="small" />
+          <VBtn icon="tabler-chevron-right" variant="text" size="small" />
+          <VBtn icon="tabler-chevrons-right" variant="text" size="small" />
         </div>
       </footer>
     </section>

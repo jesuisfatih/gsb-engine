@@ -65,7 +65,7 @@ export const iconify = {
         ...props,
 
         // As we are using class based icons
-        class: [props.icon],
+        class: [props.class, props.icon],
 
         // Remove used props from DOM rendering
         tag: undefined,

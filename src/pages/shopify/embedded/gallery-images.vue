@@ -25,8 +25,8 @@ const gallery = Array.from({ length: 9 }).map((_, index) => ({
           <p>Upload background images or textures for customers to use in the builder.</p>
         </div>
         <div class="toolbar">
-          <VBtn prepend-icon="mdi-folder" variant="text">Create folder</VBtn>
-          <VBtn prepend-icon="mdi-upload" color="primary">Upload images</VBtn>
+          <VBtn prepend-icon="tabler-folder-plus" variant="text">Create folder</VBtn>
+          <VBtn prepend-icon="tabler-upload" color="primary">Upload images</VBtn>
         </div>
       </header>
 
@@ -38,8 +38,8 @@ const gallery = Array.from({ length: 9 }).map((_, index) => ({
             <span class="size">{{ item.size }}</span>
           </div>
           <div class="actions">
-            <VBtn icon="mdi-eye-outline" variant="text" />
-            <VBtn icon="mdi-delete-outline" variant="text" />
+            <VBtn icon="tabler-eye" variant="text" />
+            <VBtn icon="tabler-trash" variant="text" />
           </div>
         </div>
       </div>

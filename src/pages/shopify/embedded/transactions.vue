@@ -26,7 +26,7 @@ const transactions = Array.from({ length: 12 }).map((_, index) => ({
           <button class="tab is-active" type="button">Daily</button>
           <button class="tab" type="button">Monthly</button>
         </div>
-        <VBtn prepend-icon="mdi-download" variant="outlined">Export annual (2024)</VBtn>
+        <VBtn prepend-icon="tabler-download" variant="outlined">Export annual (2024)</VBtn>
       </header>
       <div class="chart-placeholder">
         <span>Transactions chart placeholder</span>
@@ -48,7 +48,7 @@ const transactions = Array.from({ length: 12 }).map((_, index) => ({
           hide-details
           density="comfortable"
           placeholder="Order name"
-          prepend-inner-icon="mdi-magnify"
+          prepend-inner-icon="tabler-search"
           variant="outlined"
         />
       </header>

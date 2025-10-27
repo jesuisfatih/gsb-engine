@@ -43,7 +43,7 @@ const activeFonts = [
     <section class="card">
       <header class="card-header">
         <h2>Text fonts</h2>
-        <VBtn color="primary" prepend-icon="mdi-upload">Upload fonts</VBtn>
+        <VBtn color="primary" prepend-icon="tabler-upload">Upload fonts</VBtn>
       </header>
       <div class="font-columns">
         <div class="column">
@@ -53,7 +53,7 @@ const activeFonts = [
               placeholder="Search"
               density="comfortable"
               hide-details
-              prepend-inner-icon="mdi-magnify"
+              prepend-inner-icon="tabler-search"
               variant="outlined"
             />
           </header>

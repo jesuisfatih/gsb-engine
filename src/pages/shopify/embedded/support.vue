@@ -16,7 +16,7 @@ definePage({
     <section class="card">
       <header class="card-header">
         <h2>Contact support</h2>
-        <VBtn color="primary" prepend-icon="mdi-lifebuoy">Open ticket</VBtn>
+        <VBtn color="primary" prepend-icon="tabler-life-buoy">Open ticket</VBtn>
       </header>
       <div class="contact-grid">
         <div class="contact-card">

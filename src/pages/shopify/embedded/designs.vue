@@ -35,7 +35,7 @@ const designs = Array.from({ length: 8 }).map((_, index) => ({
             hide-details
             variant="outlined"
           />
-          <VBtn prepend-icon="mdi-filter-outline" variant="text">Filters</VBtn>
+          <VBtn prepend-icon="tabler-filter" variant="text">Filters</VBtn>
         </div>
       </header>
 
@@ -72,9 +72,9 @@ const designs = Array.from({ length: 8 }).map((_, index) => ({
             <td>{{ design.surface }}</td>
             <td>{{ design.updated }}</td>
             <td class="actions">
-              <VBtn icon="mdi-open-in-new" variant="text" size="small" />
-              <VBtn icon="mdi-content-copy" variant="text" size="small" />
-              <VBtn icon="mdi-dots-horizontal" variant="text" size="small" />
+              <VBtn icon="tabler-external-link" variant="text" size="small" />
+              <VBtn icon="tabler-copy" variant="text" size="small" />
+              <VBtn icon="tabler-dots" variant="text" size="small" />
             </td>
           </tr>
         </tbody>

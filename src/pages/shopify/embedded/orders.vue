@@ -33,7 +33,7 @@ const orders = Array.from({ length: 15 }).map((_, index) => ({
             hide-details
             density="comfortable"
             placeholder="Search orders"
-            prepend-inner-icon="mdi-magnify"
+            prepend-inner-icon="tabler-search"
             variant="outlined"
             class="search"
           />
@@ -64,7 +64,7 @@ const orders = Array.from({ length: 15 }).map((_, index) => ({
         <tbody>
           <tr v-for="order in orders" :key="order.name">
             <td class="toggle">
-              <VBtn icon="mdi-chevron-right" variant="text" density="compact" />
+              <VBtn icon="tabler-chevron-right" variant="text" density="compact" />
             </td>
             <td><a href="#" class="link">{{ order.name }}</a></td>
             <td>{{ order.customer }}</td>
@@ -76,9 +76,9 @@ const orders = Array.from({ length: 15 }).map((_, index) => ({
               <a href="#" class="link">{{ order.downloads }}</a>
             </td>
             <td class="actions">
-              <VBtn icon="mdi-download" variant="text" size="small" />
-              <VBtn icon="mdi-eye-outline" variant="text" size="small" />
-              <VBtn icon="mdi-dots-horizontal" variant="text" size="small" />
+              <VBtn icon="tabler-download" variant="text" size="small" />
+              <VBtn icon="tabler-eye" variant="text" size="small" />
+              <VBtn icon="tabler-dots" variant="text" size="small" />
             </td>
           </tr>
         </tbody>
@@ -89,10 +89,10 @@ const orders = Array.from({ length: 15 }).map((_, index) => ({
           Showing 1–15 of 329 orders
         </div>
         <div class="pagination-controls">
-          <VBtn icon="mdi-chevron-double-left" variant="text" size="small" />
-          <VBtn icon="mdi-chevron-left" variant="text" size="small" />
-          <VBtn icon="mdi-chevron-right" variant="text" size="small" />
-          <VBtn icon="mdi-chevron-double-right" variant="text" size="small" />
+          <VBtn icon="tabler-chevrons-left" variant="text" size="small" />
+          <VBtn icon="tabler-chevron-left" variant="text" size="small" />
+          <VBtn icon="tabler-chevron-right" variant="text" size="small" />
+          <VBtn icon="tabler-chevrons-right" variant="text" size="small" />
         </div>
       </footer>
     </section>

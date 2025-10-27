@@ -33,8 +33,8 @@ const items = Array.from({ length: 8 }).map((_, index) => ({
           <p>Drag templates into your gang sheet builder or publish them to customers.</p>
         </div>
         <div class="toolbar">
-          <VBtn prepend-icon="mdi-cloud-upload-outline" variant="outlined">Import JSON</VBtn>
-          <VBtn color="primary" prepend-icon="mdi-plus">New template</VBtn>
+          <VBtn prepend-icon="tabler-cloud-upload" variant="outlined">Import JSON</VBtn>
+          <VBtn color="primary" prepend-icon="tabler-plus">New template</VBtn>
         </div>
       </header>
 
@@ -53,7 +53,7 @@ const items = Array.from({ length: 8 }).map((_, index) => ({
           hide-details
           density="comfortable"
           placeholder="Search templates"
-          prepend-inner-icon="mdi-magnify"
+          prepend-inner-icon="tabler-search"
           variant="outlined"
           class="search"
         />
@@ -78,9 +78,9 @@ const items = Array.from({ length: 8 }).map((_, index) => ({
             </div>
           </div>
           <div class="template-actions">
-            <VBtn icon="mdi-eye-outline" variant="text" />
-            <VBtn icon="mdi-content-copy" variant="text" />
-            <VBtn icon="mdi-dots-horizontal" variant="text" />
+            <VBtn icon="tabler-eye" variant="text" />
+            <VBtn icon="tabler-copy" variant="text" />
+            <VBtn icon="tabler-dots" variant="text" />
           </div>
         </article>
       </div>
