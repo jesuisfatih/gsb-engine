@@ -4,11 +4,11 @@ import { useRoute } from "vue-router";
 import createApp from "@shopify/app-bridge";
 import { getSessionToken } from "@shopify/app-bridge-utils";
 
-type NavGroup = {
-  heading: string;
+type NavSection = {
+  title: string;
   items: Array<{
+    icon: string;
     label: string;
-    description?: string;
     name: string;
   }>;
 };
@@ -46,49 +46,60 @@ const shopDomain = computed<string | undefined>(() => {
 
 const statusBadge = computed(() => {
   if (!apiKey) return { tone: "critical", text: "API key missing" };
-  if (!hostParam.value) return { tone: "warning", text: "Host param yok" };
+  if (!hostParam.value) return { tone: "warning", text: "Waiting for host" };
   if (sessionToken.value) return { tone: "success", text: "Connected" };
-  if (lastError.value) return { tone: "critical", text: "Token alinamadi" };
-  return { tone: "info", text: "Hazirlaniyor" };
+  if (lastError.value) return { tone: "critical", text: "Session token error" };
+  return { tone: "info", text: "Authorising…" };
 });
 
-const navGroups: NavGroup[] = [
+const navSections: NavSection[] = [
   {
-    heading: "Launch",
+    title: "Get Started",
     items: [
-      { label: "App Bootstrap", description: "URL & redirects", name: "shopify-embedded-bootstrap" },
-      { label: "Catalog & Surfaces", description: "Products, surfaces", name: "shopify-embedded-catalog" },
-      { label: "Templates & Assets", description: "Libraries, uploads", name: "shopify-embedded-templates" },
-      { label: "Editor Settings", description: "Branding, defaults", name: "shopify-embedded-editor-settings" },
-      { label: "Pricing", description: "DTF & gang sheet rates", name: "shopify-embedded-pricing" },
+      { icon: "mdi-home", label: "Welcome", name: "shopify-embedded-welcome" },
+      { icon: "mdi-rocket-launch", label: "Set up", name: "shopify-embedded-setup" },
     ],
   },
   {
-    heading: "Operations",
+    title: "Commerce",
     items: [
-      { label: "Orders & Proofing", description: "Live queue", name: "shopify-embedded-orders" },
-      { label: "Production Ops", description: "Gang sheets, suppliers", name: "shopify-embedded-operations" },
-      { label: "Analytics", description: "Performance dashboards", name: "shopify-embedded-analytics" },
+      { icon: "mdi-package-variant", label: "Products", name: "shopify-embedded-products" },
+      { icon: "mdi-receipt-text", label: "Orders", name: "shopify-embedded-orders" },
+      { icon: "mdi-brush-variant", label: "Designs", name: "shopify-embedded-designs" },
+      { icon: "mdi-layers-triple", label: "Templates", name: "shopify-embedded-templates" },
     ],
   },
   {
-    heading: "Team",
+    title: "Configuration",
     items: [
-      { label: "Team & Security", description: "Staff access, audit", name: "shopify-embedded-team" },
-      { label: "Support & Docs", description: "Guides, contacts", name: "shopify-embedded-support" },
+      { icon: "mdi-cog", label: "General", name: "shopify-embedded-general" },
+      { icon: "mdi-shape-square-plus", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
+      { icon: "mdi-tools", label: "Builder", name: "shopify-embedded-builder" },
+      { icon: "mdi-file-image", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
+      { icon: "mdi-palette-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
+      { icon: "mdi-view-gallery", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
+      { icon: "mdi-truck-delivery", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { icon: "mdi-finance", label: "Transactions", name: "shopify-embedded-transactions" },
+      { icon: "mdi-format-font", label: "Fonts", name: "shopify-embedded-fonts" },
+      { icon: "mdi-lifebuoy", label: "Support Ticket", name: "shopify-embedded-support" },
     ],
   },
 ];
 
 const activeNavName = computed(() => (typeof route.name === "string" ? route.name : ""));
-const currentTitle = computed(() => (route.meta?.embeddedTitle as string | undefined) ?? (route.meta?.title as string | undefined) ?? "Merchant Workspace");
+const currentTitle = computed(() => (route.meta?.embeddedTitle as string | undefined) ?? (route.meta?.title as string | undefined) ?? "Workspace");
 const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | undefined);
 
 async function bootstrapAppBridge() {
   if (!apiKey || !hostParam.value) {
     lastError.value = !apiKey
-      ? "VITE_SHOPIFY_APP_API_KEY tanimli degil"
-      : "host query param yok";
+      ? "Missing Shopify API key"
+      : "Missing host query parameter";
     return;
   }
 
@@ -104,8 +115,7 @@ async function bootstrapAppBridge() {
     sessionToken.value = await getSessionToken(app);
   } catch (error) {
     console.error("[shopify-layout] App Bridge init failed", error);
-    lastError.value =
-      error instanceof Error ? error.message : "Bilinmeyen App Bridge hatasi";
+    lastError.value = error instanceof Error ? error.message : "Unknown App Bridge error";
   }
 }
 
@@ -119,48 +129,59 @@ provide("shopifyShopDomain", shopDomain);
 </script>
 
 <template>
-  <div class="shopify-embedded-frame">
-    <header class="embedded-topbar">
+  <div class="embedded-frame">
+    <header class="topbar">
       <div class="topbar-left">
-        <div class="brand-step">
-          <span class="brand-title">Gang Sheet Builder</span>
-          <span v-if="shopDomain" class="brand-subtle">· {{ shopDomain }}</span>
-        </div>
-        <div class="status-chip" :data-tone="statusBadge.tone">
-          {{ statusBadge.text }}
+        <button type="button" class="icon-button" aria-label="Back">
+          ‹
+        </button>
+        <div class="brand">
+          <span class="brand-title">Build a Gang Sheet</span>
+          <span v-if="shopDomain" class="brand-subtle">{{ shopDomain }}</span>
         </div>
       </div>
-
       <div class="topbar-center">
-        <h1 class="page-title">
-          {{ currentTitle }}
-        </h1>
+        <h1 class="page-title">{{ currentTitle }}</h1>
         <p v-if="currentSubtitle" class="page-subtitle">
           {{ currentSubtitle }}
         </p>
       </div>
-
       <div class="topbar-right">
-        <slot name="topbar-actions" />
+        <span class="status-chip" :data-tone="statusBadge.tone">
+          {{ statusBadge.text }}
+        </span>
+        <div class="topbar-search">
+          <VTextField
+            density="comfortable"
+            placeholder="Search"
+            variant="outlined"
+            hide-details
+            prepend-inner-icon="mdi-magnify"
+          />
+        </div>
+        <div class="profile-chip">
+          <span class="profile-avatar">GS</span>
+          <span class="profile-name">Gang Sheet</span>
+        </div>
       </div>
     </header>
 
-    <div class="embedded-body">
-      <aside class="embedded-sidebar">
+    <div class="content-shell">
+      <aside class="sidebar">
         <nav class="sidebar-nav">
-          <template v-for="group in navGroups" :key="group.heading">
-            <h2 class="nav-heading">
-              {{ group.heading }}
-            </h2>
+          <template v-for="section in navSections" :key="section.title">
+            <p class="nav-section">{{ section.title }}</p>
             <ul class="nav-list">
-              <li v-for="item in group.items" :key="item.name">
+              <li v-for="item in section.items" :key="item.name">
                 <RouterLink
                   :to="{ name: item.name, query: route.query }"
                   class="nav-link"
                   :class="{ 'is-active': activeNavName === item.name }"
                 >
-                  <span class="nav-label">{{ item.label }}</span>
-                  <span v-if="item.description" class="nav-description">{{ item.description }}</span>
+                  <span class="nav-icon">
+                    <i :class="item.icon" aria-hidden="true"></i>
+                  </span>
+                  <span class="nav-text">{{ item.label }}</span>
                 </RouterLink>
               </li>
             </ul>
@@ -168,7 +189,7 @@ provide("shopifyShopDomain", shopDomain);
         </nav>
       </aside>
 
-      <main class="embedded-main">
+      <main class="workspace">
         <RouterView v-slot="{ Component }">
           <Suspense>
             <Component :is="Component" />
@@ -180,24 +201,22 @@ provide("shopifyShopDomain", shopDomain);
 </template>
 
 <style scoped>
-.shopify-embedded-frame {
+.embedded-frame {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f6f6f7;
-  color: #1a1a1a;
+  background: #f3f4f6;
+  color: #111217;
 }
 
-.embedded-topbar {
+.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: 12px 20px;
-  border-bottom: 1px solid rgba(26, 26, 26, 0.08);
-  background: #ffffff;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  background: #111217;
+  color: #ffffff;
 }
 
 .topbar-left {
@@ -206,162 +225,195 @@ provide("shopifyShopDomain", shopDomain);
   gap: 12px;
 }
 
-.brand-step {
+.icon-button {
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.brand {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 0.95rem;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .brand-title {
   font-weight: 600;
-  color: #202223;
+  font-size: 0.95rem;
 }
 
 .brand-subtle {
-  color: rgba(32, 34, 35, 0.64);
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .topbar-center {
   flex: 1 1 auto;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .page-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.12rem;
   font-weight: 600;
-  color: #111213;
 }
 
 .page-subtitle {
-  margin: 0;
-  font-size: 0.85rem;
-  color: rgba(32, 34, 35, 0.65);
+  margin: 4px 0 0;
+  font-size: 0.86rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .status-chip {
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 0.75rem;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
   font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  background: rgba(125, 176, 255, 0.2);
+  color: #7db0ff;
 }
 
 .status-chip[data-tone="success"] {
-  background: rgba(0, 128, 96, 0.08);
-  color: #006c4f;
+  background: rgba(38, 189, 110, 0.2);
+  color: #2adb6e;
 }
 
 .status-chip[data-tone="warning"] {
-  background: rgba(185, 137, 0, 0.12);
-  color: #8a6116;
+  background: rgba(245, 183, 49, 0.2);
+  color: #f7c045;
 }
 
 .status-chip[data-tone="critical"] {
-  background: rgba(216, 31, 38, 0.12);
-  color: #c72c2e;
+  background: rgba(252, 92, 101, 0.22);
+  color: #ff6b6b;
 }
 
-.status-chip[data-tone="info"] {
-  background: rgba(62, 85, 229, 0.1);
-  color: #3f4af0;
+.topbar-search {
+  min-width: 220px;
 }
 
-.embedded-body {
+.profile-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.profile-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  color: #111217;
   display: grid;
-  grid-template-columns: 268px 1fr;
+  place-items: center;
+  font-weight: 600;
+}
+
+.profile-name {
+  font-size: 0.82rem;
+}
+
+.content-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.embedded-sidebar {
-  border-right: 1px solid rgba(32, 34, 35, 0.08);
+.sidebar {
+  border-right: 1px solid rgba(17, 18, 23, 0.08);
   background: #ffffff;
-  padding: 18px 20px 24px;
+  padding: 20px 16px;
   overflow-y: auto;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
 }
 
-.nav-heading {
-  font-size: 0.75rem;
-  text-transform: uppercase;
+.nav-section {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
   letter-spacing: 0.08em;
-  margin: 0 0 12px;
-  color: rgba(32, 34, 35, 0.55);
-  font-weight: 700;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(17, 18, 23, 0.45);
+  padding-inline: 8px;
 }
 
 .nav-list {
   list-style: none;
-  padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
 }
 
 .nav-link {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  color: #1a1c1d;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
   text-decoration: none;
+  color: #12141a;
+  font-size: 0.95rem;
+  font-weight: 500;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .nav-link:hover {
-  background: rgba(92, 106, 196, 0.08);
+  background: rgba(17, 18, 23, 0.08);
 }
 
 .nav-link.is-active {
-  background: rgba(92, 106, 196, 0.16);
-  color: #3f4af0;
-  box-shadow: inset 0 0 0 1px rgba(92, 106, 196, 0.45);
+  background: #111217;
+  color: #ffffff;
 }
 
-.nav-label {
-  font-weight: 600;
-  font-size: 0.92rem;
+.nav-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 1rem;
 }
 
-.nav-description {
-  font-size: 0.78rem;
-  color: rgba(26, 28, 29, 0.6);
-}
-
-.embedded-main {
-  padding: clamp(18px, 3vw, 32px);
+.workspace {
+  padding: 32px;
   overflow-y: auto;
-  background: #f9fafb;
+  background: #f3f4f6;
 }
 
 @media (max-width: 1080px) {
-  .embedded-body {
+  .content-shell {
     grid-template-columns: 1fr;
   }
 
-  .embedded-sidebar {
+  .sidebar {
     display: none;
   }
 
-  .embedded-main {
-    padding: 20px;
-  }
-
-  .topbar-center {
-    align-items: flex-start;
-    text-align: left;
+  .topbar {
+    flex-wrap: wrap;
   }
 }
 </style>

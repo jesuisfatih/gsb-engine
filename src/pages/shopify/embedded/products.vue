@@ -5,80 +5,66 @@ definePage({
   meta: {
     layout: "shopify-embedded",
     public: true,
-    embeddedTitle: "Orders",
-    embeddedSubtitle: "Track new submissions, fulfil gang sheets, and download print-ready files.",
+    embeddedTitle: "Products",
+    embeddedSubtitle: "Sync products from Shopify and map them to gang sheet builders.",
   },
 });
 
-const orders = Array.from({ length: 15 }).map((_, index) => ({
-  name: `#${1962 - index}`,
-  customer: index % 2 === 0 ? "Joanna Feehan" : "Erick Lara",
-  status: "Created",
-  date: "Jul 9, 2025",
-  downloads: index % 4 === 0 ? "1 / 1" : "0 / 0",
-}));
+const products = [
+  { name: "Custom Printing - Gang Sheet", artboard: "N/A", sizes: 41 },
+  { name: "Build Your Own UV DTF Gang Sheets", artboard: "Gang Sheet", sizes: 7 },
+  { name: "Free DTF Gang Sheet Builder", artboard: "Gang Sheet", sizes: 14 },
+  { name: "Glitter DTF Gang Sheet Builder", artboard: "Gang Sheet", sizes: 17 },
+];
 </script>
 
 <template>
   <div class="page-section">
     <section class="card">
       <header class="card-header">
-        <div class="tabs">
-          <button class="tab is-active" type="button">Unfulfilled</button>
-          <button class="tab" type="button">Fulfilled</button>
-          <button class="tab" type="button">All</button>
+        <div>
+          <h2>Products</h2>
+          <p>Assign builders or image-to-sheet workflows to your Shopify products.</p>
         </div>
-        <div class="toolbar">
-          <VTextField
-            hide-details
-            density="comfortable"
-            placeholder="Search orders"
-            prepend-inner-icon="mdi-magnify"
-            variant="outlined"
-            class="search"
-          />
-          <VSelect
-            :items="['Any', 'Created', 'Approved', 'In production']"
-            hide-details
-            density="comfortable"
-            label="Status"
-            variant="outlined"
-            class="status-filter"
-            model-value="Any"
-          />
-        </div>
+        <VBtn prepend-icon="mdi-database-import" color="primary">Import products</VBtn>
       </header>
+
+      <div class="table-tabs">
+        <button class="tab is-active" type="button">Builders</button>
+        <button class="tab" type="button">Images to Sheet</button>
+      </div>
 
       <table class="data-table">
         <thead>
           <tr>
-            <th />
-            <th>Name</th>
-            <th>Customer</th>
-            <th>Status</th>
-            <th>Order date</th>
-            <th>Downloaded</th>
+            <th class="checkbox-cell">
+              <VCheckbox hide-details density="compact" />
+            </th>
+            <th>Product name</th>
+            <th>Artboard</th>
+            <th>Sizes</th>
             <th />
           </tr>
         </thead>
         <tbody>
-          <tr v-for="order in orders" :key="order.name">
-            <td class="toggle">
-              <VBtn icon="mdi-chevron-right" variant="text" density="compact" />
+          <tr v-for="product in products" :key="product.name">
+            <td class="checkbox-cell">
+              <VCheckbox hide-details density="compact" />
             </td>
-            <td><a href="#" class="link">{{ order.name }}</a></td>
-            <td>{{ order.customer }}</td>
             <td>
-              <VChip size="small" color="primary" variant="tonal">{{ order.status }}</VChip>
+              <span class="product-name">{{ product.name }}</span>
             </td>
-            <td>{{ order.date }}</td>
             <td>
-              <a href="#" class="link">{{ order.downloads }}</a>
+              <VChip v-if="product.artboard !== 'N/A'" color="primary" variant="tonal" size="small">
+                {{ product.artboard }}
+              </VChip>
+              <span v-else class="placeholder">N/A</span>
             </td>
+            <td>{{ product.sizes }}</td>
             <td class="actions">
-              <VBtn icon="mdi-download" variant="text" size="small" />
-              <VBtn icon="mdi-eye-outline" variant="text" size="small" />
-              <VBtn icon="mdi-dots-horizontal" variant="text" size="small" />
+              <VBtn icon="mdi-open-in-new" variant="text" size="small" />
+              <VBtn icon="mdi-link" variant="text" size="small" />
+              <VBtn icon="mdi-pencil" variant="text" size="small" />
             </td>
           </tr>
         </tbody>
@@ -86,7 +72,14 @@ const orders = Array.from({ length: 15 }).map((_, index) => ({
 
       <footer class="table-footer">
         <div class="pagination-info">
-          Showing 1–15 of 329 orders
+          Per page
+          <VSelect
+            :items="[10, 20, 50]"
+            model-value="20"
+            hide-details
+            density="compact"
+            class="per-page"
+          />
         </div>
         <div class="pagination-controls">
           <VBtn icon="mdi-chevron-double-left" variant="text" size="small" />
@@ -120,10 +113,21 @@ const orders = Array.from({ length: 15 }).map((_, index) => ({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px;
 }
 
-.tabs {
+.card-header h2 {
+  margin: 0;
+  font-weight: 600;
+  color: #111217;
+}
+
+.card-header p {
+  margin: 4px 0 0;
+  color: rgba(17, 18, 23, 0.65);
+}
+
+.table-tabs {
   display: inline-flex;
   background: rgba(17, 18, 23, 0.06);
   border-radius: 12px;
@@ -134,8 +138,8 @@ const orders = Array.from({ length: 15 }).map((_, index) => ({
 .tab {
   border: none;
   background: transparent;
-  padding: 8px 18px;
   border-radius: 10px;
+  padding: 8px 16px;
   font-weight: 600;
   color: rgba(17, 18, 23, 0.6);
   cursor: pointer;
@@ -146,21 +150,6 @@ const orders = Array.from({ length: 15 }).map((_, index) => ({
   color: #ffffff;
 }
 
-.toolbar {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.search {
-  min-width: 220px;
-}
-
-.status-filter {
-  min-width: 160px;
-}
-
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -169,7 +158,7 @@ const orders = Array.from({ length: 15 }).map((_, index) => ({
   overflow: hidden;
 }
 
-thead {
+.data-table thead {
   background: rgba(17, 18, 23, 0.04);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -177,25 +166,27 @@ thead {
   color: rgba(17, 18, 23, 0.6);
 }
 
-th,
-td {
+.data-table th,
+.data-table td {
   padding: 12px 16px;
   border-bottom: 1px solid rgba(17, 18, 23, 0.06);
-  vertical-align: middle;
 }
 
-tbody tr:hover {
+.data-table tbody tr:hover {
   background: rgba(17, 18, 23, 0.03);
 }
 
-.toggle {
-  width: 40px;
+.checkbox-cell {
+  width: 48px;
 }
 
-.link {
-  color: #407afc;
-  text-decoration: none;
+.product-name {
   font-weight: 600;
+  color: #111217;
+}
+
+.placeholder {
+  color: rgba(17, 18, 23, 0.4);
 }
 
 .actions {
@@ -208,7 +199,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
+  padding: 8px 0 0;
   color: rgba(17, 18, 23, 0.6);
   font-size: 0.85rem;
 }
@@ -216,5 +207,9 @@ tbody tr:hover {
 .pagination-controls {
   display: inline-flex;
   gap: 4px;
+}
+
+.per-page {
+  max-width: 72px;
 }
 </style>

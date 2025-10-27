@@ -7,8 +7,8 @@ definePage({
   meta: {
     layout: "shopify-embedded",
     public: true,
-    embeddedTitle: "Merchant Workspace",
-    embeddedSubtitle: "Select a section from the navigation to get started.",
+    embeddedTitle: "Merchant workspace",
+    embeddedSubtitle: "Loading…",
   },
 });
 
@@ -17,7 +17,7 @@ const route = useRoute();
 
 onMounted(() => {
   router.replace({
-    name: "shopify-embedded-bootstrap",
+    name: "shopify-embedded-welcome",
     query: route.query,
   });
 });

@@ -5,113 +5,160 @@ definePage({
   meta: {
     layout: "shopify-embedded",
     public: true,
-    embeddedTitle: "Support & Docs",
-    embeddedSubtitle: "Give merchants the resources they need to run production smoothly.",
+    embeddedTitle: "Support ticket",
+    embeddedSubtitle: "Reach our support team or browse troubleshooting guides.",
   },
 });
 </script>
 
 <template>
-  <div class="section-shell">
-    <section class="section-card">
-      <header class="section-header">
-        <h2>Onboarding Guides</h2>
-        <span class="section-tag">Enablement</span>
+  <div class="page-section">
+    <section class="card">
+      <header class="card-header">
+        <h2>Contact support</h2>
+        <VBtn color="primary" prepend-icon="mdi-lifebuoy">Open ticket</VBtn>
       </header>
-      <p>
-        Host quick-start videos, printable SOPs, and walkthroughs tailored to gang sheet workflows.
-      </p>
-      <div class="placeholder-block">
-        Markdown renderer + video embed support gets added once content service is connected.
+      <div class="contact-grid">
+        <div class="contact-card">
+          <span class="icon">💬</span>
+          <h3>Live chat</h3>
+          <p>Reach us Monday–Friday 9am–6pm EST for quick questions.</p>
+          <VBtn variant="outlined">Start chat</VBtn>
+        </div>
+        <div class="contact-card">
+          <span class="icon">📧</span>
+          <h3>Email</h3>
+          <p>support@gangsheets.example — average response in under 12 hours.</p>
+          <VBtn variant="outlined">Send email</VBtn>
+        </div>
+        <div class="contact-card">
+          <span class="icon">📞</span>
+          <h3>Success call</h3>
+          <p>Schedule an onboarding call with our success team.</p>
+          <VBtn variant="outlined">Book now</VBtn>
+        </div>
       </div>
     </section>
 
-    <section class="section-card">
-      <header class="section-header">
-        <h2>Troubleshooter</h2>
-        <span class="section-tag">Self-Serve</span>
+    <section class="card">
+      <header class="card-header">
+        <h2>Troubleshooting</h2>
       </header>
-      <p>
-        Common issues (mockup not loading, DPI warnings, Shopify sync errors) will be surfaced here with step-by-step fixes.
-      </p>
-      <ul class="section-list">
-        <li>Interactive decision tree</li>
-        <li>Error code search</li>
-        <li>Escalation to support team</li>
+      <ul class="faq-list">
+        <li>
+          <div>
+            <h4>Editor not loading in Shopify storefront</h4>
+            <p>Confirm the theme app embed is enabled and your product mapping is complete.</p>
+          </div>
+          <VBtn variant="text">View guide</VBtn>
+        </li>
+        <li>
+          <div>
+            <h4>Uploaded artwork is blurry</h4>
+            <p>Check the auto-resize setting and remind customers to upload 300 DPI files.</p>
+          </div>
+          <VBtn variant="text">View guide</VBtn>
+        </li>
+        <li>
+          <div>
+            <h4>Dropbox or Google Drive not syncing</h4>
+            <p>Re-authenticate the integration and verify storage permissions.</p>
+          </div>
+          <VBtn variant="text">View guide</VBtn>
+        </li>
       </ul>
-    </section>
-
-    <section class="section-card">
-      <header class="section-header">
-        <h2>Contact & SLA</h2>
-        <span class="section-tag">Operations</span>
-      </header>
-      <p>
-        Keep merchants aligned on response times, escalation channels, and maintenance calendars.
-      </p>
-      <div class="placeholder-block">
-        SLA tracker pulls from operations metrics; contact cards integrate with helpdesk in Day 3 delivery.
-      </div>
     </section>
   </div>
 </template>
 
 <style scoped>
-.section-shell {
+.page-section {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.section-card {
+.card {
   background: #ffffff;
   border-radius: 16px;
-  border: 1px solid rgba(32, 34, 35, 0.08);
-  padding: 20px 24px;
+  border: 1px solid rgba(17, 18, 23, 0.08);
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
 }
 
-.section-header {
+.card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
 }
 
-.section-header h2 {
+.card-header h2 {
   margin: 0;
-  font-size: 1.08rem;
   font-weight: 600;
-  color: #111213;
+  color: #111217;
 }
 
-.section-tag {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(255, 214, 102, 0.18);
-  color: #a15c00;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.section-list {
-  margin: 0;
-  padding-left: 20px;
-  color: rgba(32, 34, 35, 0.7);
+.contact-grid {
   display: grid;
-  gap: 6px;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
-.placeholder-block {
-  border: 1px dashed rgba(32, 34, 35, 0.15);
-  border-radius: 12px;
+.contact-card {
+  border: 1px solid rgba(17, 18, 23, 0.08);
+  border-radius: 14px;
+  background: rgba(17, 18, 23, 0.02);
   padding: 16px;
-  font-size: 0.85rem;
-  color: rgba(32, 34, 35, 0.65);
-  background: rgba(246, 246, 247, 0.6);
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+
+.icon {
+  font-size: 1.5rem;
+}
+
+.contact-card h3 {
+  margin: 0;
+  font-weight: 600;
+  color: #111217;
+}
+
+.contact-card p {
+  margin: 0;
+  color: rgba(17, 18, 23, 0.65);
+}
+
+.faq-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.faq-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 18, 23, 0.08);
+  background: rgba(17, 18, 23, 0.02);
+}
+
+.faq-list h4 {
+  margin: 0;
+  font-weight: 600;
+  color: #111217;
+}
+
+.faq-list p {
+  margin: 4px 0 0;
+  color: rgba(17, 18, 23, 0.6);
+  font-size: 0.9rem;
 }
 </style>
