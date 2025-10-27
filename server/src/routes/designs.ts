@@ -34,6 +34,11 @@ const updateDesignSchema = baseDesignPayload.partial().extend({
   status: z.enum(DESIGN_STATUS_VALUES).optional(),
 });
 
+const listDesignsQuery = z.object({
+  status: z.enum(DESIGN_STATUS_VALUES).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 export const designsRouter = Router();
 
 function mapDesignCreate(tenantId: string, userId: string | undefined, payload: z.infer<typeof createDesignSchema>): Prisma.DesignDocumentCreateInput {
@@ -90,6 +95,62 @@ function mapDesignUpdate(payload: z.infer<typeof updateDesignSchema>): Prisma.De
 
   return data;
 }
+
+designsRouter.get("/", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!tenantId)
+      return res.status(400).json({ error: "Missing tenant context" });
+
+    const query = listDesignsQuery.parse(req.query);
+
+    const where: Prisma.DesignDocumentWhereInput = {
+      tenantId,
+      status: query.status ?? undefined,
+    };
+
+    const [designs, total] = await Promise.all([
+      prisma.designDocument.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        take: query.limit,
+        include: {
+          orders: {
+            select: {
+              id: true,
+              shopifyOrderId: true,
+              customerName: true,
+              customerEmail: true,
+            },
+            take: 1,
+          },
+          surface: {
+            select: { name: true },
+          },
+        },
+      }),
+      prisma.designDocument.count({ where }),
+    ]);
+
+    const items = designs.map(design => {
+      const order = design.orders?.[0];
+      return {
+        id: design.id,
+        title: design.name ?? "Untitled design",
+        status: design.status,
+        updatedAt: design.updatedAt.toISOString(),
+        orderNumber: order?.shopifyOrderId ?? order?.id ?? null,
+        customer: order?.customerName ?? order?.customerEmail ?? null,
+        surface: design.surface?.name ?? null,
+        previewUrl: design.previewUrl ?? null,
+      };
+    });
+
+    res.json({ data: { items, total } });
+  } catch (error) {
+    next(error);
+  }
+});
 
 designsRouter.post("/", async (req, res, next) => {
   try {

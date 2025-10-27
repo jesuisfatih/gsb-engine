@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { computed, onMounted } from "vue";
 import { definePage } from "unplugin-vue-router/runtime";
+import { formatDate } from "@/@core/utils/formatters";
+import { useNotificationStore } from "@/modules/core/stores/notificationStore";
+import { useMerchantBillingStore } from "@/modules/merchant/store/billingStore";
 
 definePage({
   meta: {
@@ -10,12 +14,47 @@ definePage({
   },
 });
 
-const transactions = Array.from({ length: 12 }).map((_, index) => ({
-  order: `#${1962 - index}`,
-  amount: `$ ${(4.5 - Math.floor(index / 4)).toFixed(2)}`,
-  status: "Charged",
-  date: "Jul 9, 2025",
-}));
+const notification = useNotificationStore();
+const billingStore = useMerchantBillingStore();
+
+const isLoading = computed(() => billingStore.chargesLoading);
+const charges = computed(() => billingStore.charges);
+const summary = computed(() => billingStore.summary);
+
+const statusChips: Record<string, { label: string; color: string }> = {
+  pending: { label: "Pending", color: "warning" },
+  charged: { label: "Charged", color: "info" },
+  invoiced: { label: "Invoiced", color: "primary" },
+  paid: { label: "Paid", color: "success" },
+  waived: { label: "Waived", color: "info" },
+  refunded: { label: "Refunded", color: "error" },
+};
+
+function formatStatus(status: string) {
+  const key = status?.toLowerCase() ?? "";
+  return statusChips[key] ?? { label: status, color: "default" };
+}
+
+function formatChargeDate(value: string) {
+  return formatDate(value, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatAmount(value: string, currency: string) {
+  return `${currency} ${value}`.trim();
+}
+
+async function loadData() {
+  try {
+    await Promise.all([billingStore.fetchSummary(), billingStore.fetchCharges(100)]);
+  } catch (error) {
+    console.error(error);
+    notification.error("Islem listesi yuklenemedi.");
+  }
+}
+
+onMounted(() => {
+  void loadData();
+});
 </script>
 
 <template>
@@ -28,7 +67,25 @@ const transactions = Array.from({ length: 12 }).map((_, index) => ({
         </div>
         <VBtn prepend-icon="tabler-download" variant="outlined">Export annual (2024)</VBtn>
       </header>
-      <div class="chart-placeholder">
+      <div class="summary-grid" v-if="summary">
+        <div class="summary-card">
+          <h3>{{ summary.monthToDateOrders }}</h3>
+          <p>Orders this month</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ summary.monthToDateCharges }}</h3>
+          <p>Charges this month</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ summary.pendingCharges }}</h3>
+          <p>Pending charges</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ summary.paidCharges }}</h3>
+          <p>Paid charges</p>
+        </div>
+      </div>
+      <div v-else class="chart-placeholder">
         <span>Transactions chart placeholder</span>
       </div>
     </section>
@@ -63,14 +120,26 @@ const transactions = Array.from({ length: 12 }).map((_, index) => ({
             <th />
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="item in transactions" :key="item.order">
-            <td><a href="#" class="link">{{ item.order }}</a></td>
-            <td>{{ item.amount }}</td>
-            <td>
-              <VChip size="small" color="success" variant="tonal">{{ item.status }}</VChip>
+        <tbody v-if="isLoading">
+          <tr v-for="n in 6" :key="n">
+            <td colspan="5">
+              <VSkeletonLoader type="list-item-two-line" />
             </td>
-            <td>{{ item.date }}</td>
+          </tr>
+        </tbody>
+        <tbody v-else>
+          <tr v-if="!charges.length" class="empty-row">
+            <td colspan="5">No transactions found.</td>
+          </tr>
+          <tr v-for="charge in charges" :key="charge.id">
+            <td><a href="#" class="link">{{ charge.description ?? charge.orderId ?? 'Unlinked order' }}</a></td>
+            <td>{{ formatAmount(charge.totalAmount, charge.currency) }}</td>
+            <td>
+              <VChip size="small" :color="formatStatus(charge.status).color" variant="tonal">
+                {{ formatStatus(charge.status).label }}
+              </VChip>
+            </td>
+            <td>{{ charge.occurredAt ? formatChargeDate(charge.occurredAt) : '—' }}</td>
             <td class="actions">
               <VBtn variant="text" size="small">View order</VBtn>
             </td>
@@ -128,6 +197,34 @@ const transactions = Array.from({ length: 12 }).map((_, index) => ({
   color: #ffffff;
 }
 
+.summary-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.summary-card {
+  border: 1px solid rgba(17, 18, 23, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  background: rgba(17, 18, 23, 0.02);
+  display: grid;
+  gap: 4px;
+}
+
+.summary-card h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #111217;
+}
+
+.summary-card p {
+  margin: 0;
+  color: rgba(17, 18, 23, 0.6);
+  font-size: 0.9rem;
+}
+
 .chart-placeholder {
   height: 220px;
   border-radius: 12px;
@@ -169,6 +266,11 @@ tbody tr:hover {
   background: rgba(17, 18, 23, 0.03);
 }
 
+.empty-row td {
+  text-align: center;
+  color: rgba(17, 18, 23, 0.6);
+}
+
 .link {
   color: #407afc;
   text-decoration: none;
@@ -179,3 +281,4 @@ tbody tr:hover {
   text-align: right;
 }
 </style>
+

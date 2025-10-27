@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from "vue";
 import { definePage } from "unplugin-vue-router/runtime";
+import { formatDate } from "@/@core/utils/formatters";
+import { useNotificationStore } from "@/modules/core/stores/notificationStore";
+import { useMerchantDesignsStore } from "@/modules/merchant/store/designsStore";
 
 definePage({
   meta: {
@@ -10,13 +14,76 @@ definePage({
   },
 });
 
-const designs = Array.from({ length: 8 }).map((_, index) => ({
-  name: `Design ${1250 + index}`,
-  customer: index % 2 === 0 ? "Alex Harper" : "Mayra Valverde",
-  status: index % 3 === 0 ? "Awaiting approval" : "Ready",
-  updated: "Jul 8, 2025 Â· 14:21",
-  surface: index % 2 === 0 ? "Gang Sheet" : "Image to Sheet",
-}));
+const notification = useNotificationStore();
+const designsStore = useMerchantDesignsStore();
+
+const statusOptions = [
+  { label: "All statuses", value: "ALL" },
+  { label: "Draft", value: "DRAFT" },
+  { label: "Submitted", value: "SUBMITTED" },
+  { label: "Approved", value: "APPROVED" },
+  { label: "Rejected", value: "REJECTED" },
+  { label: "Archived", value: "ARCHIVED" },
+];
+
+const statusChips: Record<string, { label: string; color: string }> = {
+  DRAFT: { label: "Draft", color: "info" },
+  SUBMITTED: { label: "Awaiting approval", color: "warning" },
+  APPROVED: { label: "Ready", color: "success" },
+  REJECTED: { label: "Rejected", color: "error" },
+  ARCHIVED: { label: "Archived", color: "info" },
+};
+
+const selectedStatus = ref(statusOptions[0]);
+const searchTerm = ref("");
+
+const isLoading = computed(() => designsStore.loading);
+
+const filteredDesigns = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase();
+  return designsStore.items.filter(design => {
+    const customer = design.customer ? design.customer.toLowerCase() : "";
+    const orderNumber = design.orderNumber ? design.orderNumber.toLowerCase() : "";
+    const matchesSearch =
+      !term ||
+      design.title.toLowerCase().includes(term) ||
+      customer.includes(term) ||
+      orderNumber.includes(term);
+    return matchesSearch;
+  });
+});
+
+function formatStatus(designStatus: string) {
+  return statusChips[designStatus] ?? { label: designStatus, color: "info" };
+}
+
+function formatUpdated(value: string) {
+  return formatDate(value, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+async function loadDesigns() {
+  try {
+    const status = selectedStatus.value.value === "ALL" ? undefined : selectedStatus.value.value;
+    await designsStore.fetchDesigns({ status, limit: 50 });
+  } catch (error) {
+    console.error(error);
+    notification.error("Design listesi yuklenemedi.");
+  }
+}
+
+watch(selectedStatus, () => {
+  void loadDesigns();
+});
+
+onMounted(() => {
+  void loadDesigns();
+});
 </script>
 
 <template>
@@ -29,10 +96,21 @@ const designs = Array.from({ length: 8 }).map((_, index) => ({
         </div>
         <div class="toolbar">
           <VSelect
-            :items="['All statuses', 'Awaiting approval', 'Approved', 'Archived']"
-            model-value="All statuses"
+            v-model="selectedStatus"
+            :items="statusOptions"
+            item-title="label"
+            return-object
             density="comfortable"
             hide-details
+            variant="outlined"
+            class="status-select"
+          />
+          <VTextField
+            v-model="searchTerm"
+            hide-details
+            density="comfortable"
+            placeholder="Search designs"
+            prepend-inner-icon="tabler-search"
             variant="outlined"
           />
           <VBtn prepend-icon="tabler-filter" variant="text">Filters</VBtn>
@@ -50,27 +128,39 @@ const designs = Array.from({ length: 8 }).map((_, index) => ({
             <th />
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="design in designs" :key="design.name">
+        <tbody v-if="isLoading">
+          <tr v-for="n in 6" :key="n">
+            <td colspan="6">
+              <VSkeletonLoader type="list-item-two-line" />
+            </td>
+          </tr>
+        </tbody>
+        <tbody v-else>
+          <tr v-if="!filteredDesigns.length" class="empty-row">
+            <td colspan="6">No designs found.</td>
+          </tr>
+          <tr v-for="design in filteredDesigns" :key="design.id">
             <td class="design-cell">
-              <div class="thumbnail">GS</div>
+              <div class="thumbnail">{{ design.title.slice(0, 2).toUpperCase() }}</div>
               <div>
-                <p class="title">{{ design.name }}</p>
-                <p class="caption">Linked to order #195{{ design.name.slice(-1) }}</p>
+                <p class="title">{{ design.title }}</p>
+                <p class="caption">
+                  {{ design.orderNumber ? 'Linked to order ' + design.orderNumber : 'No linked order' }}
+                </p>
               </div>
             </td>
-            <td>{{ design.customer }}</td>
+            <td>{{ design.customer ?? '—' }}</td>
             <td>
               <VChip
                 size="small"
-                :color="design.status === 'Awaiting approval' ? 'warning' : 'success'"
+                :color="formatStatus(design.status).color"
                 variant="tonal"
               >
-                {{ design.status }}
+                {{ formatStatus(design.status).label }}
               </VChip>
             </td>
-            <td>{{ design.surface }}</td>
-            <td>{{ design.updated }}</td>
+            <td>{{ design.surface ?? '—' }}</td>
+            <td>{{ formatUpdated(design.updatedAt) }}</td>
             <td class="actions">
               <VBtn icon="tabler-external-link" variant="text" size="small" />
               <VBtn icon="tabler-copy" variant="text" size="small" />
@@ -121,7 +211,12 @@ const designs = Array.from({ length: 8 }).map((_, index) => ({
 .toolbar {
   display: flex;
   gap: 12px;
+  align-items: center;
   flex-wrap: wrap;
+}
+
+.status-select {
+  min-width: 200px;
 }
 
 .data-table {
@@ -144,10 +239,16 @@ th,
 td {
   padding: 12px 16px;
   border-bottom: 1px solid rgba(17, 18, 23, 0.06);
+  vertical-align: middle;
 }
 
 tbody tr:hover {
   background: rgba(17, 18, 23, 0.03);
+}
+
+.empty-row td {
+  text-align: center;
+  color: rgba(17, 18, 23, 0.6);
 }
 
 .design-cell {
@@ -185,3 +286,4 @@ tbody tr:hover {
   gap: 4px;
 }
 </style>
+

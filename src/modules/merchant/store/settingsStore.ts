@@ -59,7 +59,7 @@ type GeneralResponse = { data: GeneralSettings };
 type AppearanceResponse = { data: AppearanceSettings };
 
 const defaultGeneral: GeneralSettings = {
-  merchantName: "",
+  merchantName: "Merchant",
   supportEmail: null,
   replyToEmail: null,
   defaultLanguage: "English",
@@ -146,6 +146,17 @@ export const useMerchantSettingsStore = defineStore("merchant-settings", {
           storefrontUrl: payload.storefrontUrl ?? defaultGeneral.storefrontUrl,
         };
         return this.general;
+      }
+      catch (error: any) {
+        console.warn("[merchant-settings] fetchGeneral failed", error);
+        const status = error?.response?.status ?? error?.statusCode;
+        if (!this.general) {
+          this.general = { ...defaultGeneral };
+        }
+        if (status === 400 || status === 404) {
+          return this.general;
+        }
+        throw error;
       }
       finally {
         this.loading.general = false;

@@ -152,7 +152,7 @@ const generalSettingsSchema = z.object({
 });
 
 const defaultGeneralSettings = {
-  merchantName: "",
+  merchantName: "Merchant",
   supportEmail: null as string | null,
   replyToEmail: null as string | null,
   defaultLanguage: "English",
@@ -164,6 +164,119 @@ const defaultGeneralSettings = {
     weeklySummary: false,
   },
 };
+
+const filenameTokenLibrary = [
+  "Order Name",
+  "Customer Name",
+  "Order Id",
+  "Variant Title",
+  "Quantity",
+  "Product Title",
+  "Design Name",
+  "Shipping Method",
+  "Sku",
+  "Actual Height",
+  "Variant Width",
+  "YYYY",
+  "MM",
+  "DD",
+] as const;
+
+const supportedPrintFileTypes = ["PNG", "JPG", "PDF"] as const;
+const supportedDownloadBehaviours = ["browser", "download"] as const;
+const supportedUploadFileTypes = ["PNG", "WEBP", "JPG", "SVG", "PSD", "AI", "EPS", "PDF"] as const;
+
+const gangSheetSettingsSchema = z.object({
+  filenameTokens: z.array(z.string().min(1)).max(16),
+  preferredFileType: z.enum(supportedPrintFileTypes),
+  downloadBehavior: z.enum(supportedDownloadBehaviours),
+  autoTrim: z.boolean().default(true),
+  includeFileName: z.boolean().default(true),
+  includeBranding: z.boolean().default(false),
+  allowedUploadTypes: z.array(z.enum(supportedUploadFileTypes)).default(["PNG", "SVG", "PDF"]),
+  connectors: z
+    .object({
+      dropbox: z.boolean().default(false),
+      googleDrive: z.boolean().default(false),
+    })
+    .default({ dropbox: false, googleDrive: false }),
+});
+
+const defaultGangSheetSettings: z.infer<typeof gangSheetSettingsSchema> = {
+  filenameTokens: ["Order Name", "Customer Name", "Order Id", "Variant Title", "Quantity"],
+  preferredFileType: "PNG",
+  downloadBehavior: "download",
+  autoTrim: true,
+  includeFileName: true,
+  includeBranding: false,
+  allowedUploadTypes: ["PNG", "SVG", "PDF"],
+  connectors: {
+    dropbox: false,
+    googleDrive: false,
+  },
+};
+
+const setupStatusValues = ["todo", "in_progress", "done"] as const;
+type SetupStatus = typeof setupStatusValues[number];
+
+const defaultSetupSteps = [
+  {
+    id: "connect-shopify",
+    title: "Connect Shopify store",
+    description: "App installed and OAuth completed.",
+    cta: { label: "View store" },
+  },
+  {
+    id: "enable-theme-embed",
+    title: "Enable theme app embed",
+    description: "Editor button visible on product detail pages.",
+    cta: { label: "Theme app embeds" },
+  },
+  {
+    id: "import-products",
+    title: "Import Shopify products",
+    description: "Select products to map to gang sheet builders.",
+    cta: { label: "Open products", route: "/shopify/embedded/products" },
+  },
+  {
+    id: "configure-gang-sheet",
+    title: "Configure gang sheet output",
+    description: "File name templates, auto trim, and download options.",
+    cta: { label: "Open settings", route: "/shopify/embedded/gang-sheet" },
+  },
+  {
+    id: "customise-appearance",
+    title: "Customise appearance",
+    description: "Choose colours, font, and welcome popup content.",
+    cta: { label: "Theme options", route: "/shopify/embedded/appearance" },
+  },
+  {
+    id: "upload-assets",
+    title: "Upload fonts & gallery assets",
+    description: "Add brand-specific fonts and background images.",
+    cta: { label: "Manage assets", route: "/shopify/embedded/gallery-images" },
+  },
+  {
+    id: "review-billing",
+    title: "Review billing & transactions",
+    description: "Understand per-order fees and export transaction data.",
+    cta: { label: "Transactions", route: "/shopify/embedded/transactions" },
+  },
+] as const;
+
+const defaultSetupStatuses: Record<string, SetupStatus> = {
+  "connect-shopify": "done",
+  "enable-theme-embed": "done",
+  "import-products": "in_progress",
+  "configure-gang-sheet": "todo",
+  "customise-appearance": "todo",
+  "upload-assets": "todo",
+  "review-billing": "todo",
+};
+
+const setupSettingsSchema = z.object({
+  statuses: z.record(z.enum(setupStatusValues)).optional(),
+});
 
 const appearanceSchema = z.object({
   logoUrl: z.string().url().nullable().optional(),
@@ -918,6 +1031,198 @@ merchantConfigRouter.put("/general", async (req, res, next) => {
     };
 
     res.json({ data: responsePayload });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.get("/gang-sheet", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+
+    const settings = (tenant?.settings as Record<string, unknown> | undefined) ?? {};
+    const stored = settings.gangSheet as Record<string, unknown> | undefined;
+
+    let parsed = defaultGangSheetSettings;
+    if (stored) {
+      const candidate = {
+        ...defaultGangSheetSettings,
+        ...(stored ?? {}),
+      };
+      const result = gangSheetSettingsSchema.safeParse(candidate);
+      if (result.success) {
+        parsed = {
+          ...result.data,
+          filenameTokens: Array.from(new Set(result.data.filenameTokens)),
+          allowedUploadTypes: Array.from(new Set(result.data.allowedUploadTypes)),
+        };
+      }
+    }
+
+    res.json({
+      data: {
+        settings: parsed,
+        tokens: filenameTokenLibrary,
+        fileTypes: supportedPrintFileTypes,
+        downloadBehaviours: supportedDownloadBehaviours,
+        uploadTypes: supportedUploadFileTypes,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.put("/gang-sheet", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const payload = gangSheetSettingsSchema.parse(req.body ?? {});
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+
+    const settings = (tenant?.settings as Record<string, unknown> | undefined) ?? {};
+    const merged = {
+      ...payload,
+      filenameTokens: Array.from(new Set(payload.filenameTokens)),
+      allowedUploadTypes: Array.from(new Set(payload.allowedUploadTypes)),
+    };
+
+    const nextSettings = {
+      ...settings,
+      gangSheet: merged,
+    };
+
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        settings: nextSettings,
+      },
+    });
+
+    res.json({
+      data: {
+        settings: merged,
+        tokens: filenameTokenLibrary,
+        fileTypes: supportedPrintFileTypes,
+        downloadBehaviours: supportedDownloadBehaviours,
+        uploadTypes: supportedUploadFileTypes,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+function normalizeSetupStatuses(stored?: Record<string, unknown> | null): Record<string, SetupStatus> {
+  const normalized: Record<string, SetupStatus> = { ...defaultSetupStatuses };
+  if (!stored) return normalized;
+  const candidate = stored.statuses as Record<string, unknown> | undefined;
+  if (!candidate) return normalized;
+  for (const [key, value] of Object.entries(candidate)) {
+    if (typeof value === "string" && setupStatusValues.includes(value as SetupStatus)) {
+      normalized[key] = value as SetupStatus;
+    }
+  }
+  return normalized;
+}
+
+merchantConfigRouter.get("/setup", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+
+    const settings = (tenant?.settings as Record<string, unknown> | undefined) ?? {};
+    const stored = settings.setup as Record<string, unknown> | undefined;
+    const statuses = normalizeSetupStatuses(stored);
+
+    const steps = defaultSetupSteps.map(step => ({
+      ...step,
+      status: statuses[step.id] ?? "todo",
+    }));
+
+    const completed = steps.filter(step => step.status === "done").length;
+
+    res.json({
+      data: {
+        steps,
+        stats: {
+          completed,
+          total: steps.length,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.put("/setup", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const payload = setupSettingsSchema.parse(req.body ?? {});
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+
+    const settings = (tenant?.settings as Record<string, unknown> | undefined) ?? {};
+    const existingStatuses = normalizeSetupStatuses(settings.setup as Record<string, unknown> | undefined);
+    const incoming = payload.statuses ?? {};
+
+    const merged: Record<string, SetupStatus> = { ...existingStatuses };
+    for (const [key, value] of Object.entries(incoming)) {
+      merged[key] = value;
+    }
+
+    const nextSettings = {
+      ...settings,
+      setup: {
+        statuses: merged,
+        updatedAt: new Date().toISOString(),
+      },
+    };
+
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        settings: nextSettings,
+      },
+    });
+
+    const steps = defaultSetupSteps.map(step => ({
+      ...step,
+      status: merged[step.id] ?? "todo",
+    }));
+    const completed = steps.filter(step => step.status === "done").length;
+
+    res.json({
+      data: {
+        steps,
+        stats: {
+          completed,
+          total: steps.length,
+        },
+      },
+    });
   } catch (error) {
     next(error);
   }

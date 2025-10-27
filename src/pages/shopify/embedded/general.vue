@@ -41,7 +41,8 @@ const isBusy = computed(() => isLoading.value || isSaving.value);
 const storefrontUrl = computed(() => settingsStore.general?.storefrontUrl ?? null);
 
 function applyGeneral(data: GeneralSettings) {
-  generalForm.merchantName = data.merchantName ?? "";
+  const fallbackName = data.merchantName?.trim() || settingsStore.general?.merchantName || "Merchant";
+  generalForm.merchantName = fallbackName;
   generalForm.supportEmail = data.supportEmail ?? "";
   generalForm.replyToEmail = data.replyToEmail ?? "";
   generalForm.defaultLanguage = data.defaultLanguage ?? generalForm.defaultLanguage;
@@ -57,16 +58,21 @@ async function loadGeneral() {
     const loaded = await settingsStore.fetchGeneral();
     if (loaded)
       applyGeneral(loaded);
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    notification.error("Genel ayarlar yüklenemedi.");
+    const status = error?.response?.status ?? error?.statusCode;
+    if (status === 400 || status === 404) {
+      notification.info("Genel ayarlar varsayilan degerlerle acildi.");
+    } else {
+      notification.error("Genel ayarlar yuklenemedi.");
+    }
   }
 }
 
 async function handleSave() {
   try {
     const payload: GeneralSettings = {
-      merchantName: generalForm.merchantName.trim(),
+      merchantName: generalForm.merchantName.trim() || "Merchant",
       supportEmail: generalForm.supportEmail.trim() ? generalForm.supportEmail.trim() : null,
       replyToEmail: generalForm.replyToEmail.trim() ? generalForm.replyToEmail.trim() : null,
       defaultLanguage: generalForm.defaultLanguage,

@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { computed, onMounted } from "vue";
 import { definePage } from "unplugin-vue-router/runtime";
+import { useNotificationStore } from "@/modules/core/stores/notificationStore";
+import { useMerchantSetupStore, type SetupStep, type SetupStatus } from "@/modules/merchant/store/setupStore";
 
 definePage({
   meta: {
@@ -9,6 +12,50 @@ definePage({
     embeddedSubtitle: "Complete the essential configuration to launch your gang sheet builder.",
   },
 });
+
+const notification = useNotificationStore();
+const setupStore = useMerchantSetupStore();
+
+const steps = computed(() => setupStore.steps);
+const stats = computed(() => setupStore.stats);
+const isLoading = computed(() => setupStore.loading);
+const isSaving = computed(() => setupStore.saving);
+
+function statusClass(step: SetupStep) {
+  return {
+    done: step.status === "done",
+    active: step.status === "in_progress",
+  };
+}
+
+function nextStatus(status: SetupStatus): SetupStatus {
+  if (status === "todo") return "in_progress";
+  if (status === "in_progress") return "done";
+  return "done";
+}
+
+async function handleAdvance(step: SetupStep) {
+  if (isSaving.value) return;
+  try {
+    await setupStore.setStepStatus(step.id, nextStatus(step.status));
+  } catch (error) {
+    console.error(error);
+    notification.error("Setup durumu guncellenemedi.");
+  }
+}
+
+async function loadSetup() {
+  try {
+    await setupStore.fetchSetup();
+  } catch (error) {
+    console.error(error);
+    notification.error("Setup bilgileri yuklenemedi.");
+  }
+}
+
+onMounted(() => {
+  void loadSetup();
+});
 </script>
 
 <template>
@@ -16,64 +63,28 @@ definePage({
     <section class="card">
       <header class="card-header">
         <h2>Configuration steps</h2>
-        <span class="tag in-progress">4 / 7 complete</span>
+        <span class="tag in-progress">{{ stats.completed }} / {{ stats.total }} complete</span>
       </header>
-      <div class="steps">
-        <div class="step done">
-          <div class="step-index">1</div>
+      <div v-if="isLoading" class="steps">
+        <VSkeletonLoader v-for="n in 4" :key="n" type="list-item-two-line" />
+      </div>
+      <div v-else class="steps">
+        <div v-for="step in steps" :key="step.id" class="step" :class="statusClass(step)">
+          <div class="step-index">{{ steps.indexOf(step) + 1 }}</div>
           <div class="step-content">
-            <h3>Connect Shopify store</h3>
-            <p>App installed and OAuth completed.</p>
+            <h3>{{ step.title }}</h3>
+            <p>{{ step.description }}</p>
           </div>
-          <VBtn variant="text" disabled>Completed</VBtn>
-        </div>
-        <div class="step done">
-          <div class="step-index">2</div>
-          <div class="step-content">
-            <h3>Enable theme app embed</h3>
-            <p>Editor button visible on product detail pages.</p>
-          </div>
-          <VBtn variant="text" disabled>Completed</VBtn>
-        </div>
-        <div class="step active">
-          <div class="step-index">3</div>
-          <div class="step-content">
-            <h3>Import Shopify products</h3>
-            <p>Select products to map to gang sheet builders.</p>
-          </div>
-          <VBtn color="primary">Open products</VBtn>
-        </div>
-        <div class="step">
-          <div class="step-index">4</div>
-          <div class="step-content">
-            <h3>Configure gang sheet output</h3>
-            <p>File name templates, auto trim, and download options.</p>
-          </div>
-          <VBtn variant="outlined">Open settings</VBtn>
-        </div>
-        <div class="step">
-          <div class="step-index">5</div>
-          <div class="step-content">
-            <h3>Customise appearance</h3>
-            <p>Choose colours, font, and welcome popup content.</p>
-          </div>
-          <VBtn variant="outlined">Theme options</VBtn>
-        </div>
-        <div class="step">
-          <div class="step-index">6</div>
-          <div class="step-content">
-            <h3>Upload fonts & gallery assets</h3>
-            <p>Add brand-specific fonts and background images.</p>
-          </div>
-          <VBtn variant="outlined">Manage assets</VBtn>
-        </div>
-        <div class="step">
-          <div class="step-index">7</div>
-          <div class="step-content">
-            <h3>Review billing & transactions</h3>
-            <p>Understand per-order fees and export transaction data.</p>
-          </div>
-          <VBtn variant="outlined">Transactions</VBtn>
+          <VBtn
+            v-if="step.status !== 'done'"
+            :disabled="isSaving"
+            :color="step.status === 'in_progress' ? 'primary' : undefined"
+            :variant="step.status === 'in_progress' ? 'tonal' : 'outlined'"
+            @click="handleAdvance(step)"
+          >
+            {{ step.status === 'in_progress' ? 'Mark complete' : 'Start' }}
+          </VBtn>
+          <VBtn v-else variant="text" disabled>Completed</VBtn>
         </div>
       </div>
     </section>
