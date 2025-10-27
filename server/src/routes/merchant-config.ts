@@ -230,6 +230,40 @@ function requireTenant(res: Parameters<typeof merchantConfigRouter.get>[1]["res"
   return true;
 }
 
+merchantConfigRouter.get("/catalog/products", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+
+    const products = await prisma.product.findMany({
+      where: tenantId
+        ? {
+            OR: [{ tenantId }, { tenantId: null }],
+            deletedAt: null,
+          }
+        : { deletedAt: null },
+      orderBy: [{ tenantId: "desc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        surfaces: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    res.json({ data: products });
+  }
+  catch (error) {
+    next(error);
+  }
+});
+
 merchantConfigRouter.get("/products/:productId/builder", async (req, res, next) => {
   try {
     const { prisma, tenantId } = req.context;

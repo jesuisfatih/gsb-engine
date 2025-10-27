@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { definePage } from "unplugin-vue-router/runtime";
+import { useNotificationStore } from "@/modules/core/stores/notificationStore";
+import { $api } from "@/utils/api";
 
 definePage({
   meta: {
@@ -10,20 +13,195 @@ definePage({
   },
 });
 
-const productRows = [
-  { name: "Custom Printing - Gang Sheet", artboard: "Gang Sheet", sizes: 41, selected: true },
-  { name: "Build Your Own UV DTF Gang Sheets", artboard: "Gang Sheet", sizes: 7 },
-  { name: "Free DTF Gang Sheet Builder", artboard: "Gang Sheet", sizes: 14 },
-  { name: "Glitter DTF Gang Sheet Builder", artboard: "Gang Sheet", sizes: 17 },
-];
+type ProductSummary = {
+  id: string;
+  title: string;
+  slug: string;
+  surfaces?: Array<{ id: string; name: string }>;
+};
 
-const sizeRows = Array.from({ length: 20 }).map((_, index) => ({
-  size: `22"×${96 + index * 6}"`,
-  width: 22,
-  height: 96 + index * 6,
-  price: 63 + index * 3,
-  maxFiles: "Unlimited",
-}));
+type BuilderSizeRow = {
+  id?: string;
+  label: string;
+  widthIn: number | null;
+  heightIn: number | null;
+  price: number | null;
+  maxFiles: number | null;
+  sortOrder: number;
+};
+
+type BuilderConfigForm = {
+  sizeOption: string;
+  sizeUnit: string;
+  productType: string;
+  printFileNameTokens: string[];
+  useCustomButtonLabel: boolean;
+  customButtonLabel: string | null;
+  settings: Record<string, unknown>;
+  sizes?: BuilderSizeRow[];
+};
+
+const products = ref<ProductSummary[]>([]);
+const selectedProductId = ref<string | null>(null);
+const loadingList = ref(false);
+const loadingConfig = ref(false);
+const savingConfig = ref(false);
+
+const builderForm = reactive<BuilderConfigForm>({
+  sizeOption: "Size",
+  sizeUnit: "in",
+  productType: "Gang Sheet",
+  printFileNameTokens: [],
+  useCustomButtonLabel: false,
+  customButtonLabel: null,
+  settings: {},
+});
+
+const sizeRows = ref<BuilderSizeRow[]>([]);
+
+const notification = useNotificationStore();
+
+const selectedProduct = computed(() => products.value.find(p => p.id === selectedProductId.value) ?? null);
+
+function resetForm() {
+  builderForm.sizeOption = "Size";
+  builderForm.sizeUnit = "in";
+  builderForm.productType = "Gang Sheet";
+  builderForm.printFileNameTokens = [];
+  builderForm.useCustomButtonLabel = false;
+  builderForm.customButtonLabel = null;
+  builderForm.settings = {};
+  sizeRows.value = [];
+}
+
+async function loadProducts() {
+  try {
+    loadingList.value = true;
+    const response = await $api<{ data: ProductSummary[] }>("/merchant/catalog/products");
+    products.value = response.data ?? [];
+    if (!selectedProductId.value && products.value.length > 0) {
+      selectedProductId.value = products.value[0].id;
+    }
+  }
+  catch (error) {
+    console.error(error);
+    notification.error("Ürün listesi alınamadı.");
+  }
+  finally {
+    loadingList.value = false;
+  }
+}
+
+async function loadBuilderConfig(productId: string) {
+  try {
+    loadingConfig.value = true;
+    const response = await $api<{
+      data: {
+        product: ProductSummary;
+        config: BuilderConfigForm & { sizes: BuilderSizeRow[] };
+      };
+    }>(`/merchant/config/products/${productId}/builder`);
+
+    const { config } = response.data;
+    builderForm.sizeOption = config.sizeOption;
+    builderForm.sizeUnit = config.sizeUnit;
+    builderForm.productType = config.productType;
+    builderForm.printFileNameTokens = [...(config.printFileNameTokens ?? [])];
+    builderForm.useCustomButtonLabel = config.useCustomButtonLabel;
+    builderForm.customButtonLabel = config.customButtonLabel;
+    builderForm.settings = config.settings ?? {};
+    sizeRows.value = (config.sizes ?? []).map((row, index) => ({
+      id: row.id,
+      label: row.label,
+      widthIn: row.widthIn ?? null,
+      heightIn: row.heightIn ?? null,
+      price: row.price ?? null,
+      maxFiles: row.maxFiles ?? null,
+      sortOrder: row.sortOrder ?? index,
+    }));
+  }
+  catch (error) {
+    console.error(error);
+    notification.error("Ürün ayarları getirilemedi.");
+    resetForm();
+  }
+  finally {
+    loadingConfig.value = false;
+  }
+}
+
+async function saveBuilderConfig() {
+  if (!selectedProductId.value)
+    return;
+
+  try {
+    savingConfig.value = true;
+    await $api(`/merchant/config/products/${selectedProductId.value}/builder`, {
+      method: "PUT",
+      body: {
+        ...builderForm,
+        sizes: sizeRows.value.map((row, index) => ({
+          id: row.id,
+          label: row.label,
+          widthIn: row.widthIn,
+          heightIn: row.heightIn,
+          price: row.price,
+          maxFiles: row.maxFiles,
+          sortOrder: row.sortOrder ?? index,
+        })),
+      },
+    });
+    notification.success("Ürün ayarları kaydedildi.");
+    await loadBuilderConfig(selectedProductId.value);
+  }
+  catch (error) {
+    console.error(error);
+    notification.error("Ürün ayarları kaydedilemedi.");
+  }
+  finally {
+    savingConfig.value = false;
+  }
+}
+
+function addSizeRow() {
+  const nextOrder = sizeRows.value.length > 0 ? Math.max(...sizeRows.value.map(row => row.sortOrder)) + 1 : 0;
+  sizeRows.value = [
+    ...sizeRows.value,
+    {
+      label: "New size",
+      widthIn: null,
+      heightIn: null,
+      price: null,
+      maxFiles: null,
+      sortOrder: nextOrder,
+    },
+  ];
+}
+
+function removeSizeRow(index: number) {
+  sizeRows.value = sizeRows.value.filter((_, position) => position !== index);
+}
+
+function updateSizeRow(index: number, key: keyof BuilderSizeRow, value: unknown) {
+  const current = sizeRows.value[index];
+  if (!current)
+    return;
+  sizeRows.value = sizeRows.value.map((row, position) =>
+    position === index ? { ...row, [key]: value } : row,
+  );
+}
+
+watch(selectedProductId, async (next) => {
+  if (!next)
+    return;
+  await loadBuilderConfig(next);
+});
+
+onMounted(async () => {
+  await loadProducts();
+  if (selectedProductId.value)
+    await loadBuilderConfig(selectedProductId.value);
+});
 </script>
 
 <template>
@@ -34,12 +212,17 @@ const sizeRows = Array.from({ length: 20 }).map((_, index) => ({
           <h2>Products</h2>
           <p>Assign builders or image-to-sheet workflows to your Shopify products.</p>
         </div>
-        <VBtn prepend-icon="tabler-database-import" color="primary">Import products</VBtn>
+        <div class="header-actions">
+          <VBtn prepend-icon="tabler-refresh" variant="text" :loading="loadingList" @click="loadProducts">
+            Refresh
+          </VBtn>
+          <VBtn prepend-icon="tabler-database-import" color="primary">Import products</VBtn>
+        </div>
       </header>
 
       <div class="table-tabs">
         <button class="tab is-active" type="button">Builders</button>
-        <button class="tab" type="button">Image to Sheet</button>
+        <button class="tab" type="button" disabled>Image to Sheet</button>
       </div>
 
       <table class="data-table product-table">
@@ -47,153 +230,161 @@ const sizeRows = Array.from({ length: 20 }).map((_, index) => ({
           <tr>
             <th />
             <th>Product name</th>
-            <th>Artboard</th>
-            <th>Sizes</th>
+            <th>Surfaces</th>
             <th />
           </tr>
         </thead>
         <tbody>
           <tr
-            v-for="product in productRows"
-            :key="product.name"
-            :class="{ 'is-selected': product.selected }"
+            v-for="product in products"
+            :key="product.id"
+            :class="{ 'is-selected': product.id === selectedProductId }"
+            @click="selectedProductId = product.id"
           >
             <td>
-              <VCheckbox hide-details density="compact" :model-value="product.selected" />
+              <VCheckbox hide-details density="compact" :model-value="product.id === selectedProductId" />
             </td>
             <td>
-              <span class="product-name">{{ product.name }}</span>
+              <span class="product-name">{{ product.title }}</span>
+              <span class="product-slug">{{ product.slug }}</span>
             </td>
             <td>
-              <VChip color="primary" variant="tonal" size="small">{{ product.artboard }}</VChip>
+              <VChip
+                v-for="surface in product.surfaces || []"
+                :key="surface.id"
+                size="small"
+                class="surface-chip"
+              >
+                {{ surface.name }}
+              </VChip>
+              <span v-if="!product.surfaces?.length" class="placeholder">Not mapped</span>
             </td>
-            <td>{{ product.sizes }}</td>
             <td class="actions">
               <VBtn icon="tabler-link" variant="text" size="small" />
               <VBtn icon="tabler-pencil" variant="text" size="small" />
               <VBtn icon="tabler-dots" variant="text" size="small" />
             </td>
           </tr>
+          <tr v-if="!products.length && !loadingList">
+            <td colspan="4" class="empty-state">No products found.</td>
+          </tr>
         </tbody>
       </table>
-
-      <footer class="table-footer list-footer">
-        <div class="pagination-info">
-          Per page
-          <VSelect
-            :items="[10, 20, 50]"
-            model-value="20"
-            hide-details
-            density="compact"
-            class="per-page"
-          />
-        </div>
-        <div class="pagination-controls">
-          <VBtn icon="tabler-chevrons-left" variant="text" size="small" />
-          <VBtn icon="tabler-chevron-left" variant="text" size="small" />
-          <VBtn icon="tabler-chevron-right" variant="text" size="small" />
-          <VBtn icon="tabler-chevrons-right" variant="text" size="small" />
-        </div>
-      </footer>
     </section>
 
-    <section class="card detail-card">
+    <section v-if="selectedProduct" class="card detail-card">
       <header class="detail-header">
-        <button type="button" class="ghost-btn">
-          <VIcon icon="tabler-arrow-left" size="18" />
-        </button>
-        <div class="detail-heading">
-          <span class="crumb">Custom Printing · Gang Sheet</span>
-          <h2>Custom Printing - Gang Sheet</h2>
+        <div>
+          <p class="detail-subheading">Custom Printing · Gang Sheet</p>
+          <h2 class="detail-title">{{ selectedProduct.title }}</h2>
         </div>
-        <div class="header-actions">
-          <VSwitch hide-details inset label="Live" color="primary" />
-          <VSwitch hide-details inset label="Allow builder" />
+        <div class="detail-actions">
+          <VBtn
+            color="primary"
+            prepend-icon="tabler-device-floppy"
+            :loading="savingConfig"
+            @click="saveBuilderConfig"
+          >
+            Save changes
+          </VBtn>
         </div>
       </header>
 
+      <VProgressLinear v-if="loadingConfig" indeterminate color="primary" />
+
       <div class="form-ribbon">
-        <VSelect label="Size option" :items="['Size', 'Length', 'Area']" model-value="Size" />
-        <VSelect label="Size unit" :items="['in', 'cm', 'mm']" model-value="in" />
-        <VSelect label="Product type" :items="['Gang Sheet', 'DTF Roll']" model-value="Gang Sheet" />
-        <VSelect label="Print file name" :items="['Default', 'Custom']" model-value="Default" />
-        <VSwitch hide-details inset label="Use custom button label" />
+        <VSelect label="Size option" :items="['Size', 'Length', 'Area']" v-model="builderForm.sizeOption" />
+        <VSelect label="Size unit" :items="['in', 'cm', 'mm']" v-model="builderForm.sizeUnit" />
+        <VSelect label="Product type" :items="['Gang Sheet', 'DTF Roll']" v-model="builderForm.productType" />
+        <VSwitch hide-details inset label="Use custom button label" v-model="builderForm.useCustomButtonLabel" />
+        <VTextField
+          label="Custom button label"
+          placeholder="Start building"
+          :disabled="!builderForm.useCustomButtonLabel"
+          v-model="builderForm.customButtonLabel"
+        />
       </div>
 
       <div class="tab-bar">
         <button class="tab is-active" type="button">Sizes & Prices</button>
-        <button class="tab" type="button">Settings</button>
+        <button class="tab" type="button" disabled>Settings</button>
       </div>
 
       <div class="tab-panel">
+        <header class="size-panel-header">
+          <span>Sizes</span>
+          <VBtn prepend-icon="tabler-plus" variant="text" @click="addSizeRow">Add size</VBtn>
+        </header>
         <table class="size-table">
           <thead>
             <tr>
-              <th>Size</th>
-              <th>Width</th>
-              <th>Height</th>
+              <th>Label</th>
+              <th>Width (in)</th>
+              <th>Height (in)</th>
               <th>Price</th>
-              <th>Max Allowed Files</th>
+              <th>Max files</th>
               <th />
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in sizeRows" :key="row.size">
+            <tr v-for="(row, index) in sizeRows" :key="row.id ?? index">
               <td>
-                <VTextField density="compact" hide-details :model-value="row.size" />
+                <VTextField density="compact" hide-details v-model="row.label" />
               </td>
               <td>
-                <VTextField density="compact" type="number" suffix="in" hide-details :model-value="row.width" />
+                <VTextField
+                  density="compact"
+                  type="number"
+                  suffix="in"
+                  hide-details
+                  :model-value="row.widthIn"
+                  @update:model-value="updateSizeRow(index, 'widthIn', $event ? Number($event) : null)"
+                />
               </td>
               <td>
-                <VTextField density="compact" type="number" suffix="in" hide-details :model-value="row.height" />
+                <VTextField
+                  density="compact"
+                  type="number"
+                  suffix="in"
+                  hide-details
+                  :model-value="row.heightIn"
+                  @update:model-value="updateSizeRow(index, 'heightIn', $event ? Number($event) : null)"
+                />
               </td>
               <td>
-                <VTextField density="compact" prefix="$" hide-details :model-value="row.price" />
+                <VTextField
+                  density="compact"
+                  prefix="$"
+                  hide-details
+                  :model-value="row.price"
+                  @update:model-value="updateSizeRow(index, 'price', $event ? Number($event) : null)"
+                />
               </td>
               <td>
-                <VSelect
+                <VTextField
                   density="compact"
                   hide-details
-                  :items="['Unlimited', '1', '3', '5']"
-                  model-value="Unlimited"
+                  type="number"
+                  :model-value="row.maxFiles"
+                  @update:model-value="updateSizeRow(index, 'maxFiles', $event ? Number($event) : null)"
                 />
               </td>
               <td class="row-actions">
-                <VBtn icon="tabler-plus" variant="text" size="small" />
-                <VBtn icon="tabler-trash" variant="text" size="small" />
+                <VBtn icon="tabler-trash" variant="text" size="small" @click="removeSizeRow(index)" />
               </td>
+            </tr>
+            <tr v-if="!sizeRows.length">
+              <td colspan="6" class="empty-state">No size presets configured.</td>
             </tr>
           </tbody>
         </table>
       </div>
+    </section>
 
-      <div class="tab-panel secondary">
-        <div class="settings-grid">
-          <div class="setting-block">
-            <h3>Auto build</h3>
-            <p>Enable the automatic panel arrangement for uploaded assets.</p>
-            <VSwitch hide-details inset label="Auto build default" color="primary" />
-            <VSelect
-              density="compact"
-              label="Strategy"
-              :items="['Recommended', 'Compact', 'Space saving']"
-              model-value="Recommended"
-            />
-          </div>
-          <div class="setting-block">
-            <h3>Button label</h3>
-            <p>Override the call-to-action button shown to your customers.</p>
-            <VTextField label="Label text" placeholder="Start building" />
-          </div>
-          <div class="setting-block">
-            <h3>File visibility</h3>
-            <p>Control how many uploads customers can attach per order.</p>
-            <VSwitch hide-details inset label="Show upload preview" />
-            <VSwitch hide-details inset label="Allow drag & drop reorder" />
-            <VSwitch hide-details inset label="Enable proof approval" />
-          </div>
-        </div>
+    <section v-else class="card detail-card empty-detail">
+      <div class="empty-content">
+        <h3>Select a product</h3>
+        <p>Choose a product on the left to manage its builder configuration.</p>
       </div>
     </section>
   </div>
@@ -202,7 +393,7 @@ const sizeRows = Array.from({ length: 20 }).map((_, index) => ({
 <style scoped>
 .products-layout {
   display: grid;
-  grid-template-columns: minmax(520px, 0.8fr) minmax(460px, 0.6fr);
+  grid-template-columns: minmax(520px, 0.75fr) minmax(420px, 0.6fr);
   gap: 28px;
   align-items: flex-start;
 }
@@ -236,6 +427,11 @@ const sizeRows = Array.from({ length: 20 }).map((_, index) => ({
 .list-header p {
   margin: 4px 0 0;
   color: rgba(17, 18, 23, 0.6);
+}
+
+.header-actions {
+  display: inline-flex;
+  gap: 12px;
 }
 
 .table-tabs {
@@ -297,23 +493,25 @@ const sizeRows = Array.from({ length: 20 }).map((_, index) => ({
   color: #111217;
 }
 
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
+.product-slug {
+  display: block;
+  font-size: 0.8rem;
+  color: rgba(17, 18, 23, 0.55);
 }
 
-.list-footer {
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: rgba(17, 18, 23, 0.6);
-  font-size: 0.85rem;
+.surface-chip {
+  margin-right: 4px;
+  margin-bottom: 4px;
 }
 
-.per-page {
-  max-width: 72px;
+.empty-state {
+  text-align: center;
+  padding: 24px;
+  color: rgba(17, 18, 23, 0.55);
+}
+
+.placeholder {
+  color: rgba(17, 18, 23, 0.4);
 }
 
 .detail-card {
@@ -323,44 +521,30 @@ const sizeRows = Array.from({ length: 20 }).map((_, index) => ({
 }
 
 .detail-header {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 16px;
 }
 
-.detail-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.detail-subheading {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(17, 18, 23, 0.55);
+  font-weight: 600;
 }
 
-.detail-heading h2 {
-  margin: 0;
+.detail-title {
+  margin: 4px 0 0;
   font-size: 1.5rem;
   font-weight: 700;
 }
 
-.crumb {
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: rgba(17, 18, 23, 0.55);
-  letter-spacing: 0.04em;
-}
-
-.ghost-btn {
-  border: none;
-  background: rgba(17, 18, 23, 0.05);
-  border-radius: 10px;
-  padding: 8px 10px;
-  cursor: pointer;
-}
-
-.header-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.detail-actions {
+  display: inline-flex;
+  gap: 12px;
 }
 
 .form-ribbon {
@@ -382,6 +566,14 @@ const sizeRows = Array.from({ length: 20 }).map((_, index) => ({
   border-radius: 16px;
   padding: 18px;
   background: rgba(17, 18, 23, 0.02);
+}
+
+.size-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-weight: 600;
 }
 
 .size-table {
@@ -413,35 +605,16 @@ const sizeRows = Array.from({ length: 20 }).map((_, index) => ({
   justify-content: flex-end;
 }
 
-.secondary {
-  background: #ffffff;
+.empty-detail {
+  place-items: center;
+  min-height: 320px;
 }
 
-.settings-grid {
-  display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.setting-block {
-  border: 1px solid rgba(17, 18, 23, 0.08);
-  border-radius: 14px;
-  padding: 16px;
-  display: grid;
-  gap: 12px;
-  background: rgba(17, 18, 23, 0.02);
-}
-
-.setting-block h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.setting-block p {
-  margin: 0;
-  font-size: 0.85rem;
+.empty-content {
+  text-align: center;
   color: rgba(17, 18, 23, 0.6);
+  display: grid;
+  gap: 8px;
 }
 
 @media (max-width: 1280px) {

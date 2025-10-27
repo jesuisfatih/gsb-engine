@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { computed, onMounted, reactive, ref } from "vue";
 import { definePage } from "unplugin-vue-router/runtime";
+import { useNotificationStore } from "@/modules/core/stores/notificationStore";
+import { $api } from "@/utils/api";
 
 definePage({
   meta: {
@@ -10,16 +13,127 @@ definePage({
   },
 });
 
-const builderToggles = [
-  { label: "Show image gallery", enabled: true },
-  { label: "Enable sort", enabled: false },
-  { label: "Enable color overlay", enabled: false },
-];
+type BuilderOptions = {
+  showImageGallery: boolean;
+  enableSort: boolean;
+  enableColorOverlay: boolean;
+  categoryViewMode: string;
+};
 
-const gallery = Array.from({ length: 8 }).map((_, index) => ({
-  name: `Gallery asset ${index + 1}`,
-  size: `${(1.4 + index * 0.2).toFixed(1)} MB`,
-}));
+type WatermarkSettings = {
+  useShopLogo: boolean;
+  opacity: number;
+};
+
+type GalleryAsset = {
+  id: string;
+  label: string | null;
+  url: string;
+  createdAt: string;
+  metadata?: Record<string, unknown> | null;
+};
+
+const notification = useNotificationStore();
+
+const builderOptions = reactive<BuilderOptions>({
+  showImageGallery: true,
+  enableSort: false,
+  enableColorOverlay: false,
+  categoryViewMode: "Dropdown",
+});
+
+const watermark = reactive<WatermarkSettings>({
+  useShopLogo: false,
+  opacity: 0.4,
+});
+
+const assets = ref<GalleryAsset[]>([]);
+
+const loadingSettings = ref(false);
+const savingSettings = ref(false);
+const loadingAssets = ref(false);
+
+const watermarkOpacityPercent = computed({
+  get: () => Math.round(watermark.opacity * 100),
+  set: (value: number | null | undefined) => {
+    const safe = Math.min(Math.max(value ?? 0, 0), 100);
+    watermark.opacity = safe / 100;
+  },
+});
+
+function handleOpacityInput(value: unknown) {
+  const numeric = Number(value);
+  if (Number.isNaN(numeric))
+    return;
+  watermark.opacity = Math.min(Math.max(numeric, 0), 1);
+}
+
+async function loadGallerySettings() {
+  try {
+    loadingSettings.value = true;
+    const response = await $api<{
+      data: {
+        builder: BuilderOptions;
+        watermark: WatermarkSettings;
+      };
+    }>("/merchant/config/gallery/settings");
+
+    const { builder, watermark: wm } = response.data;
+    builderOptions.showImageGallery = builder.showImageGallery;
+    builderOptions.enableSort = builder.enableSort;
+    builderOptions.enableColorOverlay = builder.enableColorOverlay;
+    builderOptions.categoryViewMode = builder.categoryViewMode;
+    watermark.useShopLogo = wm.useShopLogo;
+    watermark.opacity = wm.opacity ?? 0.4;
+  }
+  catch (error) {
+    console.error(error);
+    notification.error("Gallery settings could not be loaded.");
+  }
+  finally {
+    loadingSettings.value = false;
+  }
+}
+
+async function saveGallerySettings() {
+  try {
+    savingSettings.value = true;
+    await $api("/merchant/config/gallery/settings", {
+      method: "PUT",
+      body: {
+        builder: builderOptions,
+        watermark,
+      },
+    });
+    notification.success("Gallery settings saved.");
+  }
+  catch (error) {
+    console.error(error);
+    notification.error("Gallery settings could not be saved.");
+  }
+  finally {
+    savingSettings.value = false;
+  }
+}
+
+async function loadAssets() {
+  try {
+    loadingAssets.value = true;
+    const response = await $api<{ data: GalleryAsset[] }>("/merchant/config/gallery/assets");
+    assets.value = response.data ?? [];
+  }
+  catch (error) {
+    console.error(error);
+    notification.error("Gallery assets could not be loaded.");
+  }
+  finally {
+    loadingAssets.value = false;
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([loadGallerySettings(), loadAssets()]);
+});
 </script>
 
 <template>
@@ -30,13 +144,32 @@ const gallery = Array.from({ length: 8 }).map((_, index) => ({
           <h2>Builder settings</h2>
           <p>This section allows you to customise the appearance of the image gallery inside the builder.</p>
         </div>
-        <VBtn variant="outlined" prepend-icon="tabler-arrows-sort">Sync with Shopify collections</VBtn>
+        <div class="header-actions">
+          <VBtn
+            color="primary"
+            prepend-icon="tabler-device-floppy"
+            :loading="savingSettings"
+            @click="saveGallerySettings"
+          >
+            Save settings
+          </VBtn>
+        </div>
       </header>
 
+      <VProgressLinear v-if="loadingSettings" indeterminate color="primary" />
+
       <div class="toggle-stack">
-        <label v-for="toggle in builderToggles" :key="toggle.label" class="toggle-row">
-          <span>{{ toggle.label }}</span>
-          <VSwitch hide-details inset :model-value="toggle.enabled" :color="toggle.enabled ? 'primary' : undefined" />
+        <label class="toggle-row">
+          <span>Show image gallery</span>
+          <VSwitch hide-details inset color="primary" v-model="builderOptions.showImageGallery" />
+        </label>
+        <label class="toggle-row">
+          <span>Enable sort</span>
+          <VSwitch hide-details inset color="primary" v-model="builderOptions.enableSort" />
+        </label>
+        <label class="toggle-row">
+          <span>Enable color overlay</span>
+          <VSwitch hide-details inset color="primary" v-model="builderOptions.enableColorOverlay" />
         </label>
         <div class="select-row">
           <span>Category view mode</span>
@@ -44,7 +177,7 @@ const gallery = Array.from({ length: 8 }).map((_, index) => ({
             hide-details
             density="comfortable"
             :items="['Dropdown', 'Tabs', 'Collapsible']"
-            model-value="Dropdown"
+            v-model="builderOptions.categoryViewMode"
           />
         </div>
       </div>
@@ -56,13 +189,20 @@ const gallery = Array.from({ length: 8 }).map((_, index) => ({
           <h2>Watermark setting</h2>
           <p>Apply a watermark overlay on customer previews to protect your assets.</p>
         </div>
-        <VSwitch hide-details inset label="Use shop logo as watermark" />
+        <VSwitch hide-details inset label="Use shop logo as watermark" v-model="watermark.useShopLogo" />
       </header>
 
       <div class="watermark-grid">
         <div class="slider-col">
-          <VTextField label="Watermark opacity" suffix="" density="comfortable" model-value="0.4" />
-          <VSlider :model-value="40" color="primary" />
+          <VTextField
+            label="Watermark opacity"
+            density="comfortable"
+            suffix=""
+            type="number"
+            :model-value="watermark.opacity.toFixed(2)"
+            @update:model-value="handleOpacityInput($event)"
+          />
+          <VSlider color="primary" :model-value="watermarkOpacityPercent" @update:model-value="watermarkOpacityPercent = $event ?? 0" />
           <VBtn variant="outlined" prepend-icon="tabler-eye">Preview watermark</VBtn>
         </div>
         <div class="preview-col">
@@ -89,18 +229,24 @@ const gallery = Array.from({ length: 8 }).map((_, index) => ({
         </div>
       </header>
 
+      <VProgressLinear v-if="loadingAssets" indeterminate color="primary" />
+
       <div class="gallery-grid">
-        <article v-for="item in gallery" :key="item.name" class="gallery-card">
-          <div class="thumbnail">IMG</div>
+        <article v-for="item in assets" :key="item.id" class="gallery-card">
+          <div class="thumbnail">
+            <img v-if="item.url" :src="item.url" alt="" />
+            <span v-else>IMG</span>
+          </div>
           <div class="meta">
-            <p class="title">{{ item.name }}</p>
-            <span class="size">{{ item.size }}</span>
+            <p class="title">{{ item.label ?? "Untitled asset" }}</p>
+            <span class="size">{{ new Date(item.createdAt).toLocaleDateString() }}</span>
           </div>
           <div class="actions">
-            <VBtn icon="tabler-eye" variant="text" />
-            <VBtn icon="tabler-trash" variant="text" />
+            <VBtn icon="tabler-eye" variant="text" :href="item.url" target="_blank" />
+            <VBtn icon="tabler-trash" variant="text" disabled />
           </div>
         </article>
+        <p v-if="!assets.length && !loadingAssets" class="empty-assets">No assets uploaded yet.</p>
       </div>
     </section>
   </div>
@@ -138,6 +284,11 @@ const gallery = Array.from({ length: 8 }).map((_, index) => ({
 .card-header p {
   margin: 4px 0 0;
   color: rgba(17, 18, 23, 0.6);
+}
+
+.header-actions {
+  display: inline-flex;
+  gap: 12px;
 }
 
 .toggle-stack {
@@ -200,6 +351,7 @@ const gallery = Array.from({ length: 8 }).map((_, index) => ({
   display: grid;
   place-items: center;
   text-transform: uppercase;
+  overflow: hidden;
 }
 
 .card-actions {
@@ -235,6 +387,13 @@ const gallery = Array.from({ length: 8 }).map((_, index) => ({
   place-items: center;
   font-weight: 700;
   color: #407afc;
+  overflow: hidden;
+}
+
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .meta {
@@ -257,6 +416,13 @@ const gallery = Array.from({ length: 8 }).map((_, index) => ({
   display: inline-flex;
   gap: 4px;
   justify-content: flex-end;
+}
+
+.empty-assets {
+  grid-column: 1/-1;
+  text-align: center;
+  color: rgba(17, 18, 23, 0.55);
+  padding: 16px 0;
 }
 
 @media (max-width: 1080px) {
