@@ -137,6 +137,51 @@ const defaultGallerySettings = {
   },
 };
 
+const imageToSheetSettingsSchema = z.object({
+  printerWidth: z.number().positive().nullable().optional(),
+  useVariantWidths: z.boolean().default(false),
+  maxHeight: z.number().positive().nullable().optional(),
+  imageMargin: z.number().nonnegative().nullable().optional(),
+  artboardMargin: z.number().nonnegative().nullable().optional(),
+  unit: z.string().min(1).default("in"),
+  enableAllLocations: z.boolean().default(true),
+  disableDownloadValidation: z.boolean().default(false),
+  password: z.string().nullable().optional(),
+  pricingMode: z.string().min(1).default("area"),
+  pricePerUnit: z.number().nonnegative().nullable().optional(),
+  pricingSide: z.string().min(1).default("Width"),
+  shippingWeightRate: z.number().nonnegative().nullable().optional(),
+  sizes: z
+    .array(
+      z.object({
+        id: z.string().uuid().optional(),
+        label: z.string().min(1),
+        widthIn: z.number().positive().nullable().optional(),
+        heightIn: z.number().positive().nullable().optional(),
+        price: z.number().nonnegative().nullable().optional(),
+        sortOrder: z.number().int().min(0).optional(),
+      }),
+    )
+    .optional(),
+});
+
+const defaultImageToSheetSettings = {
+  printerWidth: null as number | null,
+  useVariantWidths: false,
+  maxHeight: null as number | null,
+  imageMargin: 0.01,
+  artboardMargin: 0.01,
+  unit: "in",
+  enableAllLocations: true,
+  disableDownloadValidation: false,
+  password: null as string | null,
+  pricingMode: "area",
+  pricePerUnit: 0.01,
+  pricingSide: "Width",
+  shippingWeightRate: 0,
+  sizes: [] as unknown[],
+};
+
 export const merchantConfigRouter = Router();
 
 function requireTenant(res: Parameters<typeof merchantConfigRouter.get>[1]["res"], tenantId?: string): tenantId is string {
@@ -473,6 +518,159 @@ merchantConfigRouter.get("/print-providers", async (req, res, next) => {
     });
 
     res.json({ data: providers });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.get("/image-to-sheet", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const settings = await prisma.imageToSheetSettings.findUnique({
+      where: { tenantId },
+      include: {
+        sizes: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        },
+      },
+    });
+
+    const payload = settings
+      ? {
+          printerWidth: settings.printerWidth?.toNumber() ?? null,
+          useVariantWidths: settings.useVariantWidths,
+          maxHeight: settings.maxHeight?.toNumber() ?? null,
+          imageMargin: settings.imageMargin?.toNumber() ?? null,
+          artboardMargin: settings.artboardMargin?.toNumber() ?? null,
+          unit: settings.unit,
+          enableAllLocations: settings.enableAllLocations,
+          disableDownloadValidation: settings.disableDownloadValidation,
+          password: settings.password,
+          pricingMode: settings.pricingMode,
+          pricePerUnit: settings.pricePerUnit?.toNumber() ?? null,
+          pricingSide: settings.pricingSide,
+          shippingWeightRate: settings.shippingWeightRate?.toNumber() ?? null,
+          sizes:
+            settings.sizes.map(size => ({
+              id: size.id,
+              label: size.label,
+              widthIn: size.widthIn?.toNumber() ?? null,
+              heightIn: size.heightIn?.toNumber() ?? null,
+              price: size.price?.toNumber() ?? null,
+              sortOrder: size.sortOrder,
+            })) ?? [],
+        }
+      : defaultImageToSheetSettings;
+
+    res.json({ data: payload });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.put("/image-to-sheet", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const payload = imageToSheetSettingsSchema.parse(req.body);
+
+    const upserted = await prisma.$transaction(async tx => {
+      const record = await tx.imageToSheetSettings.upsert({
+        where: { tenantId },
+        create: {
+          tenantId,
+          printerWidth: decimalOrNull(payload.printerWidth ?? null),
+          useVariantWidths: payload.useVariantWidths,
+          maxHeight: decimalOrNull(payload.maxHeight ?? null),
+          imageMargin: decimalOrNull(payload.imageMargin ?? null),
+          artboardMargin: decimalOrNull(payload.artboardMargin ?? null),
+          unit: payload.unit,
+          enableAllLocations: payload.enableAllLocations,
+          disableDownloadValidation: payload.disableDownloadValidation,
+          password: payload.password ?? undefined,
+          pricingMode: payload.pricingMode,
+          pricePerUnit: decimalOrNull(payload.pricePerUnit ?? null),
+          pricingSide: payload.pricingSide,
+          shippingWeightRate: decimalOrNull(payload.shippingWeightRate ?? null),
+        },
+        update: {
+          printerWidth: decimalOrNull(payload.printerWidth ?? null),
+          useVariantWidths: payload.useVariantWidths,
+          maxHeight: decimalOrNull(payload.maxHeight ?? null),
+          imageMargin: decimalOrNull(payload.imageMargin ?? null),
+          artboardMargin: decimalOrNull(payload.artboardMargin ?? null),
+          unit: payload.unit,
+          enableAllLocations: payload.enableAllLocations,
+          disableDownloadValidation: payload.disableDownloadValidation,
+          password: payload.password ?? undefined,
+          pricingMode: payload.pricingMode,
+          pricePerUnit: decimalOrNull(payload.pricePerUnit ?? null),
+          pricingSide: payload.pricingSide,
+          shippingWeightRate: decimalOrNull(payload.shippingWeightRate ?? null),
+        },
+      });
+
+      if (payload.sizes) {
+        await tx.imageToSheetSizePreset.deleteMany({ where: { settingsId: record.id } });
+        if (payload.sizes.length > 0) {
+          await tx.imageToSheetSizePreset.createMany({
+            data: payload.sizes.map((size, index) => ({
+              id: size.id,
+              settingsId: record.id,
+              label: size.label,
+              widthIn: decimalOrNull(size.widthIn ?? null),
+              heightIn: decimalOrNull(size.heightIn ?? null),
+              price: decimalOrNull(size.price ?? null),
+              sortOrder: size.sortOrder ?? index,
+              metadata: Prisma.JsonNull,
+            })),
+          });
+        }
+      }
+
+      return record;
+    });
+
+    const refreshed = await prisma.imageToSheetSettings.findUnique({
+      where: { id: upserted.id },
+      include: {
+        sizes: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        },
+      },
+    });
+
+    const payloadResponse = refreshed
+      ? {
+          printerWidth: refreshed.printerWidth?.toNumber() ?? null,
+          useVariantWidths: refreshed.useVariantWidths,
+          maxHeight: refreshed.maxHeight?.toNumber() ?? null,
+          imageMargin: refreshed.imageMargin?.toNumber() ?? null,
+          artboardMargin: refreshed.artboardMargin?.toNumber() ?? null,
+          unit: refreshed.unit,
+          enableAllLocations: refreshed.enableAllLocations,
+          disableDownloadValidation: refreshed.disableDownloadValidation,
+          password: refreshed.password,
+          pricingMode: refreshed.pricingMode,
+          pricePerUnit: refreshed.pricePerUnit?.toNumber() ?? null,
+          pricingSide: refreshed.pricingSide,
+          shippingWeightRate: refreshed.shippingWeightRate?.toNumber() ?? null,
+          sizes:
+            refreshed.sizes.map(size => ({
+              id: size.id,
+              label: size.label,
+              widthIn: size.widthIn?.toNumber() ?? null,
+              heightIn: size.heightIn?.toNumber() ?? null,
+              price: size.price?.toNumber() ?? null,
+              sortOrder: size.sortOrder,
+            })) ?? [],
+        }
+      : defaultImageToSheetSettings;
+
+    res.json({ data: payloadResponse });
   } catch (error) {
     next(error);
   }

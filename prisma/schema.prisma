@@ -115,6 +115,7 @@ model Tenant {
   shortcodeUsages  ShortcodeUsage[]
   billingConfig    BillingConfig?
   billingCharges   BillingCharge[]
+  imageToSheet     ImageToSheetSettings?
 }
 
 model User {
@@ -376,6 +377,47 @@ model GallerySettings {
   updatedAt      DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model ImageToSheetSettings {
+  id                       String   @id @default(uuid())
+  tenantId                 String   @unique
+  printerWidth             Decimal? @db.Decimal(10, 2)
+  useVariantWidths         Boolean  @default(false)
+  maxHeight                Decimal? @db.Decimal(10, 2)
+  imageMargin              Decimal? @db.Decimal(10, 2)
+  artboardMargin           Decimal? @db.Decimal(10, 2)
+  unit                     String   @default("in")
+  enableAllLocations       Boolean  @default(true)
+  disableDownloadValidation Boolean  @default(false)
+  password                 String?
+  pricingMode              String   @default("area")
+  pricePerUnit             Decimal? @db.Decimal(10, 4)
+  pricingSide              String   @default("Width")
+  shippingWeightRate       Decimal? @db.Decimal(10, 4)
+  metadata                 Json?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  sizes  ImageToSheetSizePreset[]
+}
+
+model ImageToSheetSizePreset {
+  id        String   @id @default(uuid())
+  settingsId String
+  label     String
+  widthIn   Decimal? @db.Decimal(10, 2)
+  heightIn  Decimal? @db.Decimal(10, 2)
+  price     Decimal? @db.Decimal(10, 2)
+  sortOrder Int      @default(0)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  settings ImageToSheetSettings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+
+  @@index([settingsId, sortOrder])
 }
 
 model DesignDocument {
