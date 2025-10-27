@@ -137,6 +137,44 @@ const defaultGallerySettings = {
   },
 };
 
+const appearanceSchema = z.object({
+  logoUrl: z.string().url().nullable().optional(),
+  faviconUrl: z.string().url().nullable().optional(),
+  primaryColor: z.string().min(1).optional(),
+  secondaryColor: z.string().min(1).optional(),
+  accentColor: z.string().min(1).optional(),
+  backgroundStyle: z
+    .object({
+      gradient: z.array(z.string()).max(2).optional(),
+      textureUrl: z.string().url().nullable().optional(),
+    })
+    .optional(),
+  typography: z
+    .object({
+      headingFont: z.string().optional(),
+      bodyFont: z.string().optional(),
+      buttonFont: z.string().optional(),
+    })
+    .optional(),
+});
+
+const defaultAppearance = {
+  logoUrl: null as string | null,
+  faviconUrl: null as string | null,
+  primaryColor: "#5d5af1",
+  secondaryColor: "#7c4dff",
+  accentColor: "#407afc",
+  backgroundStyle: {
+    gradient: ["#f7f9ff", "#fbf4ff"],
+    textureUrl: null as string | null,
+  },
+  typography: {
+    headingFont: "Poppins",
+    bodyFont: "Inter",
+    buttonFont: "DM Sans",
+  },
+};
+
 const imageToSheetSettingsSchema = z.object({
   printerWidth: z.number().positive().nullable().optional(),
   useVariantWidths: z.boolean().default(false),
@@ -671,6 +709,69 @@ merchantConfigRouter.put("/image-to-sheet", async (req, res, next) => {
       : defaultImageToSheetSettings;
 
     res.json({ data: payloadResponse });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.get("/appearance", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { branding: true },
+    });
+
+    const branding = tenant?.branding as Record<string, unknown> | undefined;
+    const payload = {
+      ...defaultAppearance,
+      ...(branding ?? {}),
+      backgroundStyle: {
+        ...defaultAppearance.backgroundStyle,
+        ...(branding?.backgroundStyle as Record<string, unknown> ?? {}),
+      },
+      typography: {
+        ...defaultAppearance.typography,
+        ...(branding?.typography as Record<string, unknown> ?? {}),
+      },
+    };
+
+    res.json({ data: payload });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.put("/appearance", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const payload = appearanceSchema.parse(req.body);
+
+    const merged = {
+      ...defaultAppearance,
+      ...payload,
+      backgroundStyle: {
+        ...defaultAppearance.backgroundStyle,
+        ...(payload.backgroundStyle ?? {}),
+      },
+      typography: {
+        ...defaultAppearance.typography,
+        ...(payload.typography ?? {}),
+      },
+    };
+
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        branding: merged,
+      },
+    });
+
+    res.json({ data: merged });
   } catch (error) {
     next(error);
   }
