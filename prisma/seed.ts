@@ -1,4 +1,4 @@
-import { PrismaClient, $Enums } from "../src/generated/prisma/client";
+import { PrismaClient, Prisma, $Enums } from "../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -206,6 +206,70 @@ async function ensurePricingRules(tenantId: string) {
   }
 }
 
+async function ensureBilling(tenantId: string) {
+  await prisma.billingConfig.upsert({
+    where: { tenantId },
+    update: {
+      currency: "USD",
+      perOrderFee: new Prisma.Decimal("1.75"),
+      freeOrderAllowance: 25,
+    },
+    create: {
+      tenantId,
+      currency: "USD",
+      perOrderFee: new Prisma.Decimal("1.75"),
+      freeOrderAllowance: 25,
+      notes: "Demo config with 25 free orders monthly, $1.75 afterwards.",
+    },
+  });
+
+  const charges = await prisma.billingCharge.count({ where: { tenantId } });
+  if (charges > 0) return;
+
+  const now = new Date();
+  const sampleCharges = [
+    {
+      tenantId,
+      type: "order_fee",
+      description: "Order #GSB-1001 usage fee",
+      currency: "USD",
+      quantity: 1,
+      unitAmount: new Prisma.Decimal("1.75"),
+      totalAmount: new Prisma.Decimal("1.75"),
+      status: $Enums.BillingChargeStatus.PAID,
+      occurredAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
+      settledAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+    },
+    {
+      tenantId,
+      type: "order_fee",
+      description: "Order #GSB-1002 usage fee",
+      currency: "USD",
+      quantity: 1,
+      unitAmount: new Prisma.Decimal("1.75"),
+      totalAmount: new Prisma.Decimal("1.75"),
+      status: $Enums.BillingChargeStatus.INVOICED,
+      occurredAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000),
+      invoicedAt: new Date(now.getTime() - 12 * 60 * 60 * 1000),
+    },
+    {
+      tenantId,
+      type: "order_fee",
+      description: "Order #GSB-1003 usage fee",
+      currency: "USD",
+      quantity: 1,
+      unitAmount: new Prisma.Decimal("1.75"),
+      totalAmount: new Prisma.Decimal("1.75"),
+      status: $Enums.BillingChargeStatus.PENDING,
+      occurredAt: now,
+    },
+  ];
+
+  await prisma.billingCharge.createMany({
+    data: sampleCharges,
+  });
+}
+
 async function main() {
   const superAdminUser = await ensureUser({
     email: "superadmin@gsb.dev",
@@ -257,6 +321,7 @@ async function main() {
   await ensureProduct(demoTenant.id);
   await ensureTechniques(demoTenant.id);
   await ensurePricingRules(demoTenant.id);
+  await ensureBilling(demoTenant.id);
 
   console.log("Seed completed with users:");
   console.log("Super Admin -> superadmin@gsb.dev / superadmin");

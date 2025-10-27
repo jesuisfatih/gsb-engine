@@ -10,6 +10,7 @@ import { shortcodesRouter } from "./shortcodes";
 import { proxyRouter } from "./proxy";
 import { supplierRoutingRouter } from "./supplier-routing";
 import { templatesRouter } from "./templates";
+import { billingRouter } from "./billing";
 
 export function createApiRouter() {
   const router = Router();
@@ -24,6 +25,7 @@ export function createApiRouter() {
   router.use("/suppliers/routing", supplierRoutingRouter);
   router.use("/templates", templatesRouter);
   router.use("/shortcodes", shortcodesRouter);
+  router.use("/billing", billingRouter);
   router.use("/proxy", proxyRouter);
 
   return router;
