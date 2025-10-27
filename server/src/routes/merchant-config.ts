@@ -137,6 +137,34 @@ const defaultGallerySettings = {
   },
 };
 
+const generalSettingsSchema = z.object({
+  merchantName: z.string().min(1),
+  supportEmail: z.string().email().nullable().optional(),
+  replyToEmail: z.string().email().nullable().optional(),
+  defaultLanguage: z.string().min(1),
+  timeZone: z.string().min(1),
+  orderPrefix: z.string().max(32).nullable().optional(),
+  notifications: z.object({
+    newSubmission: z.boolean(),
+    approvalReminder: z.boolean(),
+    weeklySummary: z.boolean(),
+  }),
+});
+
+const defaultGeneralSettings = {
+  merchantName: "",
+  supportEmail: null as string | null,
+  replyToEmail: null as string | null,
+  defaultLanguage: "English",
+  timeZone: "America/New_York",
+  orderPrefix: "",
+  notifications: {
+    newSubmission: true,
+    approvalReminder: true,
+    weeklySummary: false,
+  },
+};
+
 const appearanceSchema = z.object({
   logoUrl: z.string().url().nullable().optional(),
   faviconUrl: z.string().url().nullable().optional(),
@@ -156,6 +184,30 @@ const appearanceSchema = z.object({
       buttonFont: z.string().optional(),
     })
     .optional(),
+  layout: z
+    .object({
+      mainBackground: z.string().min(1).optional(),
+      sidebarBackground: z.string().min(1).optional(),
+      topbarBackground: z.string().min(1).optional(),
+      textColor: z.string().min(1).optional(),
+    })
+    .optional(),
+  welcomePopup: z
+    .object({
+      enabled: z.boolean().optional(),
+      message: z.string().max(500).nullable().optional(),
+      defaultView: z.enum(["list", "gallery"]).optional(),
+      quickActions: z
+        .object({
+          startNew: z.boolean().optional(),
+          reopenPrevious: z.boolean().optional(),
+          autoBuild: z.boolean().optional(),
+          resumeDraft: z.boolean().optional(),
+          nameAndNumber: z.boolean().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 });
 
 const defaultAppearance = {
@@ -172,6 +224,24 @@ const defaultAppearance = {
     headingFont: "Poppins",
     bodyFont: "Inter",
     buttonFont: "DM Sans",
+  },
+  layout: {
+    mainBackground: "#ffffff",
+    sidebarBackground: "#ffffff",
+    topbarBackground: "#f8fafc",
+    textColor: "#0f172a",
+  },
+  welcomePopup: {
+    enabled: true,
+    message: "Welcome to our custom printing studio!",
+    defaultView: "list" as "list" | "gallery",
+    quickActions: {
+      startNew: true,
+      reopenPrevious: true,
+      autoBuild: true,
+      resumeDraft: true,
+      nameAndNumber: false,
+    },
   },
 };
 
@@ -748,6 +818,111 @@ merchantConfigRouter.put("/image-to-sheet", async (req, res, next) => {
   }
 });
 
+merchantConfigRouter.get("/general", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        displayName: true,
+        settings: true,
+      },
+    });
+
+    const settings = (tenant?.settings as Record<string, unknown> | undefined) ?? {};
+    const stored = settings.general as Record<string, unknown> | undefined;
+    const storedNotifications = stored?.notifications as Record<string, unknown> | undefined;
+
+    const payload = {
+      ...defaultGeneralSettings,
+      ...(stored ?? {}),
+      notifications: {
+        ...defaultGeneralSettings.notifications,
+        ...(storedNotifications ?? {}),
+      },
+    };
+
+    if (!payload.merchantName) {
+      payload.merchantName = tenant?.displayName ?? defaultGeneralSettings.merchantName;
+    }
+
+    res.json({ data: payload });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.put("/general", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const payload = generalSettingsSchema.parse({
+      ...req.body,
+      supportEmail: req.body?.supportEmail ?? null,
+      replyToEmail: req.body?.replyToEmail ?? null,
+      orderPrefix: req.body?.orderPrefix ?? "",
+    });
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true, displayName: true },
+    });
+
+    const settings = (tenant?.settings as Record<string, unknown> | undefined) ?? {};
+    const storedGeneral = settings.general as Record<string, unknown> | undefined;
+    const storedNotifications = storedGeneral?.notifications as Record<string, unknown> | undefined;
+
+    const mergedGeneral = {
+      ...defaultGeneralSettings,
+      ...(storedGeneral ?? {}),
+      ...payload,
+      notifications: {
+        ...defaultGeneralSettings.notifications,
+        ...(storedNotifications ?? {}),
+        ...(payload.notifications ?? defaultGeneralSettings.notifications),
+      },
+    };
+
+    const nextSettings = {
+      ...settings,
+      general: mergedGeneral,
+    };
+
+    const result = await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        displayName: payload.merchantName ?? tenant?.displayName ?? defaultGeneralSettings.merchantName,
+        settings: nextSettings,
+      },
+      select: {
+        displayName: true,
+        settings: true,
+      },
+    });
+
+    const updatedSettings = (result.settings as Record<string, unknown> | undefined) ?? nextSettings;
+    const updatedGeneral = updatedSettings.general as Record<string, unknown> | undefined;
+    const updatedNotifications = updatedGeneral?.notifications as Record<string, unknown> | undefined;
+
+    const responsePayload = {
+      ...defaultGeneralSettings,
+      ...(updatedGeneral ?? {}),
+      notifications: {
+        ...defaultGeneralSettings.notifications,
+        ...(updatedNotifications ?? {}),
+      },
+      merchantName: result.displayName ?? payload.merchantName,
+    };
+
+    res.json({ data: responsePayload });
+  } catch (error) {
+    next(error);
+  }
+});
+
 merchantConfigRouter.get("/appearance", async (req, res, next) => {
   try {
     const { prisma, tenantId } = req.context;
@@ -759,6 +934,9 @@ merchantConfigRouter.get("/appearance", async (req, res, next) => {
     });
 
     const branding = tenant?.branding as Record<string, unknown> | undefined;
+    const popup = branding?.welcomePopup as Record<string, unknown> | undefined;
+    const popupActions = popup?.quickActions as Record<string, unknown> | undefined;
+
     const payload = {
       ...defaultAppearance,
       ...(branding ?? {}),
@@ -769,6 +947,18 @@ merchantConfigRouter.get("/appearance", async (req, res, next) => {
       typography: {
         ...defaultAppearance.typography,
         ...(branding?.typography as Record<string, unknown> ?? {}),
+      },
+      layout: {
+        ...defaultAppearance.layout,
+        ...(branding?.layout as Record<string, unknown> ?? {}),
+      },
+      welcomePopup: {
+        ...defaultAppearance.welcomePopup,
+        ...(popup ?? {}),
+        quickActions: {
+          ...defaultAppearance.welcomePopup.quickActions,
+          ...(popupActions ?? {}),
+        },
       },
     };
 
@@ -795,6 +985,18 @@ merchantConfigRouter.put("/appearance", async (req, res, next) => {
       typography: {
         ...defaultAppearance.typography,
         ...(payload.typography ?? {}),
+      },
+      layout: {
+        ...defaultAppearance.layout,
+        ...(payload.layout ?? {}),
+      },
+      welcomePopup: {
+        ...defaultAppearance.welcomePopup,
+        ...(payload.welcomePopup ?? {}),
+        quickActions: {
+          ...defaultAppearance.welcomePopup.quickActions,
+          ...(payload.welcomePopup?.quickActions ?? {}),
+        },
       },
     };
 
