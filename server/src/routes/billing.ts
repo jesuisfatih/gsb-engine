@@ -46,6 +46,11 @@ billingRouter.put("/config", async (req, res, next) => {
   try {
     const { prisma, tenantId } = req.context;
     if (!tenantId) return res.status(400).json({ error: "Tenant context required" });
+    const memberships = req.context.memberships ?? [];
+    const isSuperAdmin = memberships.some(m => m.tenantId === tenantId && m.role === "SUPER_ADMIN");
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: "Only platform administrators can update billing configuration" });
+    }
 
     const payload = updateConfigSchema.parse(req.body);
     const updated = await upsertTenantBillingConfig(prisma, tenantId, payload);

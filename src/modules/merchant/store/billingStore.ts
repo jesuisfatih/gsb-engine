@@ -44,7 +44,6 @@ type State = {
   summaryError: string | null;
   config: BillingConfig | null;
   configLoading: boolean;
-  configError: string | null;
   charges: BillingCharge[];
   chargesLoading: boolean;
   chargesError: string | null;
@@ -57,7 +56,6 @@ export const useMerchantBillingStore = defineStore("merchant-billing", {
     summaryError: null,
     config: null,
     configLoading: false,
-    configError: null,
     charges: [],
     chargesLoading: false,
     chargesError: null,
@@ -81,30 +79,10 @@ export const useMerchantBillingStore = defineStore("merchant-billing", {
     async fetchConfig() {
       try {
         this.configLoading = true;
-        this.configError = null;
         const response = await $api<{ data: BillingConfig | null }>("/billing/config");
         this.config = response.data;
       } catch (error: any) {
-        this.configError = error?.response?._data?.error ?? error?.message ?? "Unable to load billing configuration";
         console.warn("[billing] config error", error);
-      } finally {
-        this.configLoading = false;
-      }
-    },
-
-    async updateConfig(payload: { currency: string; perOrderFee: number | null; freeOrderAllowance: number; notes?: string | null }) {
-      try {
-        this.configLoading = true;
-        this.configError = null;
-        const response = await $api<{ data: BillingConfig }>("/billing/config", {
-          method: "PUT",
-          body: payload,
-        });
-        this.config = response.data;
-      } catch (error: any) {
-        this.configError = error?.response?._data?.error ?? error?.message ?? "Unable to update billing configuration";
-        console.warn("[billing] update error", error);
-        throw error;
       } finally {
         this.configLoading = false;
       }

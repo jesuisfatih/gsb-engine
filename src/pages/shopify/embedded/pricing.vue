@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch, watchEffect } from "vue";
+import { computed, onMounted, reactive, watchEffect } from "vue";
 import { storeToRefs } from "pinia";
 import { definePage } from "unplugin-vue-router/runtime";
 import { useMerchantBillingStore } from "@/modules/merchant/store/billingStore";
@@ -10,7 +10,7 @@ definePage({
     layout: "shopify-embedded",
     public: true,
     embeddedTitle: "Pricing & Billing",
-    embeddedSubtitle: "Track platform usage fees and control customer-facing editor pricing.",
+    embeddedSubtitle: "Review platform usage fees and configure customer-facing editor markups.",
   },
 });
 
@@ -23,38 +23,19 @@ const {
   summaryError,
   config,
   configLoading,
-  configError,
   charges,
   chargesLoading,
   chargesError,
 } = storeToRefs(billingStore);
-
-const configForm = reactive({
-  currency: "USD",
-  perOrderFee: null as number | null,
-  freeOrderAllowance: 0,
-  notes: "",
-});
-const configSaveLoading = ref(false);
-
-watch(
-  () => config.value,
-  (value) => {
-    configForm.currency = value?.currency ?? "USD";
-    configForm.perOrderFee = value?.perOrderFee ? Number(value.perOrderFee) : null;
-    configForm.freeOrderAllowance = value?.freeOrderAllowance ?? 0;
-    configForm.notes = value?.notes ?? "";
-  },
-  { immediate: true },
-);
 
 const markupDrafts = reactive<Record<string, number>>({});
 
 watchEffect(() => {
   const list = pricingStore.markupList;
   for (const item of list) {
-    if (Number.isFinite(pricingStore.getPercentage(item.slug))) {
-      markupDrafts[item.slug] = pricingStore.getPercentage(item.slug);
+    const percent = pricingStore.getPercentage(item.slug);
+    if (Number.isFinite(percent)) {
+      markupDrafts[item.slug] = percent;
     } else if (!(item.slug in markupDrafts)) {
       markupDrafts[item.slug] = 0;
     }
@@ -64,26 +45,14 @@ watchEffect(() => {
 const summaryMetrics = computed(() => {
   if (!summary.value) return [];
   return [
-    {
-      label: "MTD Orders",
-      value: summary.value.monthToDateOrders.toString(),
-    },
+    { label: "MTD Orders", value: summary.value.monthToDateOrders.toString() },
     {
       label: "MTD Usage Fees",
       value: formatCurrency(summary.value.monthToDateCharges, summary.value.currency),
     },
-    {
-      label: "Pending",
-      value: formatCurrency(summary.value.pendingCharges, summary.value.currency),
-    },
-    {
-      label: "Invoiced",
-      value: formatCurrency(summary.value.invoicedCharges, summary.value.currency),
-    },
-    {
-      label: "Lifetime Paid",
-      value: formatCurrency(summary.value.paidCharges, summary.value.currency),
-    },
+    { label: "Pending", value: formatCurrency(summary.value.pendingCharges, summary.value.currency) },
+    { label: "Invoiced", value: formatCurrency(summary.value.invoicedCharges, summary.value.currency) },
+    { label: "Lifetime Paid", value: formatCurrency(summary.value.paidCharges, summary.value.currency) },
   ];
 });
 
@@ -118,29 +87,13 @@ const resolveStatusChip = (status: string) => {
           : status === "REFUNDED"
             ? "warning"
             : "pending";
+
   return { tone, label: status.toLowerCase().replace(/_/g, " ") };
 };
-
-async function saveConfig() {
-  if (configSaveLoading.value) return;
-  configSaveLoading.value = true;
-  try {
-    await billingStore.updateConfig({
-      currency: configForm.currency,
-      perOrderFee: configForm.perOrderFee !== null ? Number(configForm.perOrderFee) : null,
-      freeOrderAllowance: Number(configForm.freeOrderAllowance ?? 0),
-      notes: configForm.notes || null,
-    });
-    await billingStore.fetchSummary();
-  } finally {
-    configSaveLoading.value = false;
-  }
-}
 
 async function saveMarkup(slug: string) {
   const value = Number(markupDrafts[slug] ?? 0);
   await pricingStore.saveMarkup(slug, value);
-  await billingStore.fetchSummary(); // refresh to reflect change in totals if needed
 }
 
 onMounted(async () => {
@@ -159,7 +112,7 @@ onMounted(async () => {
       <header class="section-header">
         <div>
           <h2>Platform Usage Fees</h2>
-          <p class="section-subtitle">Monitor what you owe the platform for orders processed through the editor.</p>
+          <p class="section-subtitle">Read-only overview of fees owed to the platform for orders processed via the editor.</p>
         </div>
         <VBtn variant="outlined" size="small" :loading="summaryLoading" @click="billingStore.fetchSummary()">
           Refresh
@@ -192,59 +145,35 @@ onMounted(async () => {
 
       <div class="config-grid">
         <div>
-          <h3>Usage Fee Configuration</h3>
+          <h3>Usage Fee Details</h3>
           <p class="config-caption">
-            Set how much you pay per fulfilled order after the free allowance.
+            These values are set by the platform owner. Contact support if adjustments are required.
           </p>
         </div>
-        <VForm @submit.prevent="saveConfig">
-          <div class="form-grid">
-            <VTextField
-              v-model="configForm.currency"
-              label="Currency"
-              placeholder="USD"
-              density="comfortable"
-              :disabled="configLoading || configSaveLoading"
-              maxlength="3"
-              class="form-item"
-            />
-            <VTextField
-              v-model.number="configForm.perOrderFee"
-              label="Per-order fee"
-              type="number"
-              min="0"
-              step="0.01"
-              density="comfortable"
-              :disabled="configLoading || configSaveLoading"
-              class="form-item"
-              prefix="$"
-            />
-            <VTextField
-              v-model.number="configForm.freeOrderAllowance"
-              label="Free orders per month"
-              type="number"
-              min="0"
-              density="comfortable"
-              :disabled="configLoading || configSaveLoading"
-              class="form-item"
-            />
+        <div v-if="configLoading" class="config-panel">
+          <VProgressLinear indeterminate color="primary" />
+        </div>
+        <div v-else-if="config" class="config-display">
+          <div class="config-row">
+            <span>Currency</span>
+            <span>{{ config.currency }}</span>
           </div>
-          <VTextarea
-            v-model="configForm.notes"
-            label="Notes"
-            hint="Optional notes for admins or finance."
-            persistent-hint
-            rows="2"
-            density="comfortable"
-            :disabled="configLoading || configSaveLoading"
-          />
-          <div class="form-actions">
-            <VBtn type="submit" color="primary" :loading="configSaveLoading" :disabled="configLoading">
-              Save configuration
-            </VBtn>
-            <span v-if="configError" class="error-text">{{ configError }}</span>
+          <div class="config-row">
+            <span>Per-order fee</span>
+            <span>{{ config.perOrderFee ? formatCurrency(Number(config.perOrderFee), config.currency) : "Not configured" }}</span>
           </div>
-        </VForm>
+          <div class="config-row">
+            <span>Free orders per month</span>
+            <span>{{ config.freeOrderAllowance }}</span>
+          </div>
+          <div v-if="config.notes" class="config-notes">
+            <span class="notes-label">Notes</span>
+            <p>{{ config.notes }}</p>
+          </div>
+        </div>
+        <div v-else class="config-empty">
+          <span>The platform owner has not assigned usage fees yet.</span>
+        </div>
       </div>
     </section>
 
@@ -252,10 +181,10 @@ onMounted(async () => {
       <header class="section-header">
         <div>
           <h2>Recent Usage Charges</h2>
-          <p class="section-subtitle">Each item represents a charge applied to your account after the free allowance.</p>
+          <p class="section-subtitle">Each row represents a per-order fee charged to your account.</p>
         </div>
         <VBtn variant="text" size="small" :loading="chargesLoading" @click="billingStore.fetchCharges(50)">
-          Reload list
+          Reload
         </VBtn>
       </header>
 
@@ -298,7 +227,7 @@ onMounted(async () => {
       <header class="section-header">
         <div>
           <h2>Editor Markups</h2>
-          <p class="section-subtitle">Control the margin applied to customer-facing prices generated by the editor.</p>
+          <p class="section-subtitle">Adjust the margin applied to customer quotes generated inside the editor.</p>
         </div>
         <VBtn variant="outlined" size="small" :loading="pricingStore.loading" @click="pricingStore.loadMarkups()">
           Refresh markups
@@ -317,11 +246,7 @@ onMounted(async () => {
       </VAlert>
 
       <div class="markup-grid">
-        <div
-          v-for="markup in pricingStore.markupList"
-          :key="markup.slug"
-          class="markup-card"
-        >
+        <div v-for="markup in pricingStore.markupList" :key="markup.slug" class="markup-card">
           <div class="markup-header">
             <span class="markup-label">{{ markup.label }}</span>
             <VChip color="primary" variant="tonal" size="small">
@@ -338,12 +263,7 @@ onMounted(async () => {
             density="comfortable"
             :disabled="pricingStore.saving"
           />
-          <VBtn
-            color="primary"
-            block
-            :loading="pricingStore.saving"
-            @click="saveMarkup(markup.slug)"
-          >
+          <VBtn color="primary" block :loading="pricingStore.saving" @click="saveMarkup(markup.slug)">
             Save
           </VBtn>
         </div>
@@ -431,28 +351,54 @@ onMounted(async () => {
   gap: 16px;
 }
 
-.config-caption {
-  margin: 8px 0 0;
-  color: rgba(32, 34, 35, 0.65);
+.config-panel {
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.form-grid {
+.config-display {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
 }
 
-.form-actions {
+.config-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 12px;
+  justify-content: space-between;
+  border: 1px solid rgba(32, 34, 35, 0.08);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  color: #1a1c1d;
 }
 
-.error-text {
-  color: #c72c2e;
+.config-row span:first-child {
+  font-weight: 600;
+  color: rgba(32, 34, 35, 0.72);
+}
+
+.config-notes {
+  border: 1px solid rgba(32, 34, 35, 0.08);
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: rgba(92, 106, 196, 0.06);
+}
+
+.notes-label {
+  font-weight: 600;
   font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(32, 34, 35, 0.7);
+}
+
+.config-empty {
+  border: 1px dashed rgba(32, 34, 35, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 0.9rem;
+  color: rgba(32, 34, 35, 0.65);
+  background: rgba(246, 246, 247, 0.6);
 }
 
 .usage-table {
