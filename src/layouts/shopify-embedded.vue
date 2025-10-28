@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { computed, onMounted, provide, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+import createApp from "@shopify/app-bridge";
+import { getSessionToken } from "@shopify/app-bridge-utils";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
-import createApp from "@shopify/app-bridge";
-import { getSessionToken } from "@shopify/app-bridge-utils";
-import { computed, onMounted, provide, ref, watch } from "vue";
-import { useRoute } from "vue-router";
 
 type NavSection = {
   title: string;
@@ -185,6 +185,7 @@ async function exchangeShopifySession(token: string) {
   if (sessionIssuedFor.value === token && isAuthenticated.value) return;
   if (exchangingSession.value) return;
 
+  console.log("[shopify-layout] Starting session exchange...");
   exchangingSession.value = true;
   try {
     const response = await fetch(`${apiBase}/auth/shopify/session`, {
@@ -199,18 +200,23 @@ async function exchangeShopifySession(token: string) {
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
       const message = payload?.error ?? `HTTP ${response.status}`;
+      console.error("[shopify-layout] Session exchange failed:", message);
       throw new Error(message);
     }
 
     if (!payload?.data) {
+      console.error("[shopify-layout] Empty session response");
       throw new Error("Oturum doğrulama yanıtı eksik");
     }
 
+    console.log("[shopify-layout] Session exchange successful, applying payload...");
     applySessionPayload(payload.data as ShopifySessionResponse);
     sessionIssuedFor.value = token;
     lastError.value = null;
+    console.log("[shopify-layout] Session applied, isAuthenticated:", isAuthenticated.value);
   } catch (error: any) {
     const message = error?.message ?? "Bilinmeyen hata";
+    console.error("[shopify-layout] Session exchange error:", error);
     if (lastError.value !== message) {
       notification.error(`Shopify oturum doğrulaması başarısız: ${message}`);
     }
@@ -321,26 +327,25 @@ provide("shopifyShopDomain", shopDomain);
 
 <style scoped>
 .embedded-frame {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: linear-gradient(150deg, #f7f9ff 0%, #fbf4ff 50%, #f5f2ff 100%);
   color: #151833;
-  min-block-size: 100vh;
 }
 
 .topbar {
-  position: sticky;
-  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(100deg, #eef1ff 0%, #d6e2ff 40%, #e9d7ff 100%);
-  box-shadow: 0 18px 36px -24px rgba(38, 57, 120, 60%);
-  color: #1c1f3f;
   gap: 16px;
-  inset-block-start: 0;
-  padding-block: 16px;
-  padding-inline: 28px;
+  padding: 16px 28px;
+  background: linear-gradient(100deg, #eef1ff 0%, #d6e2ff 40%, #e9d7ff 100%);
+  color: #1c1f3f;
+  box-shadow: 0 18px 36px -24px rgba(38, 57, 120, 0.6);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .topbar-left {
@@ -350,20 +355,20 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .icon-button {
-  display: grid;
   border: none;
-  border-radius: 50%;
-  background: rgba(40, 55, 130, 12%);
-  block-size: 38px;
+  background: rgba(40, 55, 130, 0.12);
   color: inherit;
-  cursor: pointer;
-  inline-size: 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
   place-items: center;
+  cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .icon-button:hover {
-  background: rgba(40, 55, 130, 20%);
+  background: rgba(40, 55, 130, 0.2);
   transform: translateY(-1px);
 }
 
@@ -374,13 +379,13 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .brand-title {
-  font-size: 0.98rem;
   font-weight: 600;
+  font-size: 0.98rem;
 }
 
 .brand-subtle {
-  color: rgba(28, 31, 63, 65%);
   font-size: 0.8rem;
+  color: rgba(28, 31, 63, 0.65);
 }
 
 .topbar-center {
@@ -395,10 +400,9 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .page-subtitle {
-  color: rgba(28, 31, 63, 55%);
+  margin: 4px 0 0;
   font-size: 0.88rem;
-  margin-block: 4px 0;
-  margin-inline: 0;
+  color: rgba(28, 31, 63, 0.55);
 }
 
 .topbar-right {
@@ -408,60 +412,58 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .status-chip {
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   display: inline-flex;
   align-items: center;
-  border: 1px solid rgba(76, 120, 255, 28%);
-  border-radius: 999px;
-  background: rgba(76, 120, 255, 15%);
-  color: #2643a7;
-  font-size: 0.76rem;
   gap: 6px;
-  letter-spacing: 0.04em;
-  padding-block: 6px;
-  padding-inline: 16px;
-  text-transform: uppercase;
+  background: rgba(76, 120, 255, 0.15);
+  color: #2643a7;
+  border: 1px solid rgba(76, 120, 255, 0.28);
 }
 
 .status-chip[data-tone="success"] {
-  border-color: rgba(72, 199, 148, 25%);
-  background: rgba(72, 199, 148, 15%);
+  background: rgba(72, 199, 148, 0.15);
   color: #256f59;
+  border-color: rgba(72, 199, 148, 0.25);
 }
 
 .status-chip[data-tone="warning"] {
-  background: rgba(255, 205, 102, 18%);
+  background: rgba(255, 205, 102, 0.18);
   color: #8a5c00;
 }
 
 .status-chip[data-tone="critical"] {
-  background: rgba(255, 146, 154, 20%);
+  background: rgba(255, 146, 154, 0.2);
   color: #a12532;
 }
 
 .topbar-search {
-  min-inline-size: 240px;
+  min-width: 240px;
 }
 
 .profile-chip {
   display: flex;
   align-items: center;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 65%);
-  box-shadow: 0 10px 24px -18px rgba(63, 81, 181, 60%);
   gap: 10px;
-  padding-block: 8px;
-  padding-inline: 16px;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 8px 16px;
+  border-radius: 999px;
+  box-shadow: 0 10px 24px -18px rgba(63, 81, 181, 0.6);
 }
 
 .profile-avatar {
-  display: grid;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: linear-gradient(140deg, #5a61ff, #7c4dff);
-  block-size: 30px;
-  color: #fff;
-  font-weight: 600;
-  inline-size: 30px;
+  color: #ffffff;
+  display: grid;
   place-items: center;
+  font-weight: 600;
 }
 
 .profile-name {
@@ -470,18 +472,17 @@ provide("shopifyShopDomain", shopDomain);
 
 .content-shell {
   display: grid;
-  flex: 1 1 auto;
   grid-template-columns: 260px 1fr;
-  min-block-size: 0;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .sidebar {
-  background: linear-gradient(180deg, #fff 0%, #eef0ff 60%, #f5f6ff 100%);
-  border-inline-end: 1px solid rgba(137, 149, 255, 30%);
-  color: rgba(36, 40, 73, 90%);
+  border-right: 1px solid rgba(137, 149, 255, 0.3);
+  background: linear-gradient(180deg, #ffffff 0%, #eef0ff 60%, #f5f6ff 100%);
+  padding: 28px 18px;
   overflow-y: auto;
-  padding-block: 28px;
-  padding-inline: 18px;
+  color: rgba(36, 40, 73, 0.9);
 }
 
 .sidebar-nav {
@@ -491,106 +492,102 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .nav-section {
-  color: rgba(65, 70, 110, 50%);
+  margin: 0 0 10px;
   font-size: 0.72rem;
-  font-weight: 600;
   letter-spacing: 0.08em;
-  margin-block: 0 10px;
-  margin-inline: 0;
-  padding-inline: 10px;
   text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(65, 70, 110, 0.5);
+  padding-inline: 10px;
 }
 
 .nav-list {
-  display: grid;
-  padding: 0;
-  margin: 0;
-  gap: 6px;
   list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
   border-radius: 12px;
-  color: rgba(35, 40, 80, 85%);
+  text-decoration: none;
+  color: rgba(35, 40, 80, 0.85);
   font-size: 0.95rem;
   font-weight: 500;
-  gap: 12px;
-  padding-block: 12px;
-  padding-inline: 16px;
-  text-decoration: none;
   transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .nav-link:hover {
-  background: rgba(96, 92, 220, 15%);
+  background: rgba(96, 92, 220, 0.15);
   color: #4631b8;
   transform: translateX(4px);
 }
 
 .nav-link.is-active {
   background: linear-gradient(120deg, #5d5af1 0%, #a855f7 100%);
-  box-shadow: 0 18px 32px -18px rgba(93, 90, 241, 90%);
-  color: #fff;
+  color: #ffffff;
+  box-shadow: 0 18px 32px -18px rgba(93, 90, 241, 0.9);
 }
 
 .nav-icon {
+  width: 22px;
+  height: 22px;
   display: grid;
-  block-size: 22px;
-  color: #1f1f2b;
-  inline-size: 22px;
   place-items: center;
+  color: #1f1f2b;
 }
 
 .nav-icon :deep(.v-icon) {
-  display: grid;
-  block-size: 100%;
-  color: inherit;
+  width: 100%;
+  height: 100%;
   font-size: 20px;
-  inline-size: 100%;
+  display: grid;
   place-items: center;
+  color: inherit;
 }
 
 .nav-icon :deep(.v-icon > i),
 .nav-icon :deep(.v-icon > span),
 .nav-icon :deep(.v-icon > svg) {
-  block-size: 100%;
-  inline-size: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 .nav-link.is-active .nav-icon {
-  color: #fff;
+  color: #ffffff;
 }
 
 .workspace {
   padding: 40px;
-  background: transparent;
   overflow-y: auto;
+  background: transparent;
 }
-
 .workspace :deep(.card) {
-  border: 1px solid rgba(90, 96, 164, 12%);
-  background: #fff;
-  box-shadow: 0 18px 32px -24px rgba(89, 70, 201, 25%);
+  background: #ffffff;
+  border: 1px solid rgba(90, 96, 164, 0.12);
+  box-shadow: 0 18px 32px -24px rgba(89, 70, 201, 0.25);
 }
 
 .auth-pending {
+  min-height: 60vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgba(28, 31, 63, 70%);
-  font-size: 0.95rem;
   gap: 16px;
-  min-block-size: 60vh;
+  color: rgba(28, 31, 63, 0.7);
+  font-size: 0.95rem;
 }
 
 .auth-error {
   padding: 24px;
-  margin-block: 0;
-  margin-inline: auto;
-  max-inline-size: 600px;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 @media (max-width: 1080px) {

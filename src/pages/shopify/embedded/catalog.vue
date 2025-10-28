@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { definePage } from "unplugin-vue-router/runtime";
 import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
+import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import type { ShopifyProductSummary, ShopifyVariantSummary } from "@/modules/catalog/services/catalogService";
 import { useShortcodeStore } from "@/modules/merchant/store/shortcodeStore";
 
@@ -140,6 +141,19 @@ function hydrateRowSelections() {
 
 async function initialise() {
   try {
+    const sessionStore = useSessionStore();
+    
+    let attempts = 0;
+    const maxAttempts = 30;
+    while (!sessionStore.isAuthenticated && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      attempts++;
+    }
+    
+    if (!sessionStore.isAuthenticated) {
+      console.warn("[catalog] Authentication timeout, proceeding with limited features");
+    }
+
     await catalog.ensureLoaded();
     await Promise.all([
       catalog.fetchShopifyCatalog().catch(error => {

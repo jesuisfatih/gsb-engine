@@ -153,6 +153,15 @@ export const useCatalogStore = defineStore("catalog", {
       this.error = null;
       try {
         const session = useSessionStore();
+        
+        if (!session.accessToken) {
+          console.warn("[catalog] No access token available, using seed data");
+          const fallback = await fetchSeedCatalog();
+          this.products = clone(fallback.map(normalizeProduct));
+          this.loaded = true;
+          return;
+        }
+
         if (session.accessToken && !session.activeTenantId)
           await session.fetchServerSession({ silent: true }).catch(() => {});
 
@@ -160,7 +169,13 @@ export const useCatalogStore = defineStore("catalog", {
         this.products = clone(data.map(normalizeProduct));
         this.loaded = true;
       } catch (primaryError: any) {
-        console.warn("[catalog] API catalog fetch failed, falling back to seed data.", primaryError);
+        const status = primaryError?.response?.status;
+        if (status === 401 || status === 403) {
+          console.warn("[catalog] Authentication failed, using seed data");
+        } else {
+          console.warn("[catalog] API catalog fetch failed, falling back to seed data.", primaryError);
+        }
+        
         try {
           const fallback = await fetchSeedCatalog();
           this.products = clone(fallback.map(normalizeProduct));
