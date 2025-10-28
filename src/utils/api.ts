@@ -1,5 +1,21 @@
 import { ofetch } from 'ofetch'
 
+declare global {
+  interface Window {
+    __shopifyAuthenticatedFetch?: typeof fetch;
+  }
+}
+
+function resolveShopifyFetch(): typeof fetch {
+  if (typeof window !== 'undefined') {
+    const custom = window.__shopifyAuthenticatedFetch;
+    if (typeof custom === 'function')
+      return custom;
+  }
+
+  return fetch;
+}
+
 function readCookieValue(name: string): string | null {
   if (typeof document === 'undefined' || !document.cookie)
     return null
@@ -53,6 +69,7 @@ const normalisedBaseUrl = rawBaseUrl.replace(/\/+$/, '')
 export const $api = ofetch.create({
   baseURL: normalisedBaseUrl,
   credentials: 'include',
+  fetch: (input, init) => resolveShopifyFetch()(input as RequestInfo, init as RequestInit),
   async onRequest({ options }) {
     const headers = new Headers(options.headers ?? {})
 
