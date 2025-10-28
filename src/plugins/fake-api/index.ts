@@ -40,6 +40,22 @@ const worker = setupWorker(
 )
 
 export default function () {
+  if (import.meta.env.PROD) {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations
+          .filter(reg => reg.active?.scriptURL?.includes('mockServiceWorker'))
+          .forEach(reg => {
+            reg.unregister().catch(() => {})
+          })
+      }).catch(() => {})
+    }
+    return
+  }
+
+  if (typeof window === 'undefined')
+    return
+
   const workerUrl = `${import.meta.env.BASE_URL ?? '/'}mockServiceWorker.js`
 
   worker.start({
