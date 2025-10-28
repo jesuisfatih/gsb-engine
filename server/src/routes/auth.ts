@@ -497,9 +497,17 @@ authRouter.post("/shopify/session", async (req, res, next) => {
 
     const secureCookie = env.NODE_ENV !== "development";
     const maxAgeSeconds = 15 * 60;
+    const sessionCookieName = secureCookie ? "__Host-sid" : "sid";
+    const sameSiteValue = secureCookie ? "None" : "Lax";
+    const sessionAttributes = ["Path=/", `SameSite=${sameSiteValue}`, `Max-Age=${maxAgeSeconds}`, "HttpOnly"];
+    const tenantAttributes = ["Path=/", `SameSite=${sameSiteValue}`, `Max-Age=${maxAgeSeconds}`];
+    if (secureCookie) {
+      sessionAttributes.push("Secure", "Partitioned");
+      tenantAttributes.push("Secure", "Partitioned");
+    }
     const cookieHeaders: string[] = [
-      `__Host-sid=${accessToken}; Path=/; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age=${maxAgeSeconds}`,
-      `tenantId=${tenant.id}; Path=/; Secure; SameSite=None; Partitioned; Max-Age=${maxAgeSeconds}`,
+      `${sessionCookieName}=${accessToken}; ${sessionAttributes.join("; ")}`,
+      `tenantId=${tenant.id}; ${tenantAttributes.join("; ")}`,
     ];
     console.log("[shopify-auth] setting session cookies", cookieHeaders);
     res.setHeader("Set-Cookie", cookieHeaders);

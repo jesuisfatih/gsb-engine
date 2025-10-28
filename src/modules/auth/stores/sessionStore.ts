@@ -37,12 +37,13 @@ function writeStoredToken(token: string | null) {
     window.localStorage.setItem('gsb:accessToken', token)
 
   if (typeof document !== 'undefined') {
-    if (!token) {
-      document.cookie = 'accessToken=; Path=/; Max-Age=0; SameSite=None; Secure'
-    }
-    else {
-      document.cookie = `accessToken=${token}; Path=/; SameSite=None; Secure`
-    }
+    const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:'
+    const sameSite = isSecure ? 'None' : 'Lax'
+    const secureFlag = isSecure ? '; Secure' : ''
+    if (!token)
+      document.cookie = `accessToken=; Path=/; Max-Age=0; SameSite=${sameSite}${secureFlag}`
+    else
+      document.cookie = `accessToken=${token}; Path=/; SameSite=${sameSite}${secureFlag}`
   }
 }
 
@@ -75,18 +76,22 @@ function updateAbility(rules: Rule[]) {
 
 function updateTenantContext(tenantId?: string | null) {
   const tenantCookie = useCookie<string | null>('tenantId', { default: () => null })
+  const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  const sameSite = isSecure ? 'None' : 'Lax'
+  const secureFlag = isSecure ? '; Secure' : ''
+
   if (tenantId) {
     tenantCookie.value = tenantId
     if (typeof window !== 'undefined')
       window.localStorage.setItem('gsb:tenantId', tenantId)
     if (typeof document !== 'undefined')
-      document.cookie = `tenantId=${tenantId}; Path=/; SameSite=None; Secure`
+      document.cookie = `tenantId=${tenantId}; Path=/; SameSite=${sameSite}${secureFlag}`
   } else {
     tenantCookie.value = null
     if (typeof window !== 'undefined')
       window.localStorage.removeItem('gsb:tenantId')
     if (typeof document !== 'undefined')
-      document.cookie = 'tenantId=; Path=/; Max-Age=0; SameSite=None; Secure'
+      document.cookie = `tenantId=; Path=/; Max-Age=0; SameSite=${sameSite}${secureFlag}`
   }
 }
 
