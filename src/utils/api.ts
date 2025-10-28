@@ -41,6 +41,7 @@ function resolveTenantId(): string | undefined {
 
 export const $api = ofetch.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  credentials: 'include',
   async onRequest({ options }) {
     const headers = new Headers(options.headers ?? {})
 
