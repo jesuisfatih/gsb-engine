@@ -145,6 +145,12 @@ async function bootstrapAppBridge() {
       host: hostParam.value,
       forceRedirect: true,
     });
+
+    if (typeof window !== "undefined") {
+      window.__shopifyApp = app;
+      window.__getShopifyToken = () => getSessionToken(app);
+    }
+
     appBridge.value = app;
     lastError.value = null;
 
@@ -161,6 +167,10 @@ async function bootstrapAppBridge() {
     
     console.log("[shopify-layout] Getting session token from App Bridge...");
     const token = await getSessionToken(app);
+    if (typeof window !== "undefined") {
+      window.__lastShopifyToken = token;
+      console.log("[shopify-layout] session token raw:", token);
+    }
     console.log("[shopify-layout] Session token received, length:", token?.length || 0);
     sessionToken.value = token;
   } catch (error) {
@@ -666,5 +676,4 @@ provide("shopifyShopDomain", shopDomain);
   }
 }
 </style>
-
 
