@@ -3,7 +3,7 @@ import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
 import createApp from "@shopify/app-bridge";
-import { getSessionToken } from "@shopify/app-bridge-utils";
+import { authenticatedFetch, getSessionToken } from "@shopify/app-bridge-utils";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
@@ -20,6 +20,7 @@ const route = useRoute();
 
 const appBridge = ref<ReturnType<typeof createApp> | null>(null);
 const sessionToken = ref<string>("");
+const shopifyFetch = ref<typeof fetch | null>(null);
 const lastError = ref<string | null>(null);
 const sessionIssuedFor = ref<string | null>(null);
 const exchangingSession = ref(false);
@@ -144,6 +145,17 @@ async function bootstrapAppBridge() {
 
     appBridge.value = app;
     lastError.value = null;
+
+    try {
+      const authenticated = authenticatedFetch(app);
+      shopifyFetch.value = authenticated;
+      if (typeof window !== "undefined") {
+        window.__shopifyAuthenticatedFetch = authenticated;
+      }
+      console.log("[shopify-layout] Authenticated fetch initialised");
+    } catch (fetchError) {
+      console.warn("[shopify-layout] Failed to initialise authenticatedFetch", fetchError);
+    }
     
     console.log("[shopify-layout] Getting session token from App Bridge...");
     const token = await getSessionToken(app);
@@ -206,6 +218,12 @@ async function exchangeShopifySession(token: string) {
     console.warn("[shopify-layout] No token provided, skipping session exchange");
     return;
   }
+  const tokenSegments = token.split(".");
+  if (tokenSegments.length !== 3 || tokenSegments.some(segment => segment.length === 0)) {
+    console.error("[shopify-layout] Received malformed session token");
+    lastError.value = "Shopify session token gecersiz";
+    return;
+  }
   if (sessionIssuedFor.value === token && isAuthenticated.value) return;
   if (exchangingSession.value) return;
 
@@ -214,7 +232,8 @@ async function exchangeShopifySession(token: string) {
   
   exchangingSession.value = true;
   try {
-    const response = await fetch(`${apiBase}/auth/shopify/session`, {
+    const fetcher = shopifyFetch.value ?? fetch;
+    const response = await fetcher(`${apiBase}/auth/shopify/session`, {
       method: "POST",
       credentials: "include",
       headers: {

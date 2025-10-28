@@ -19,7 +19,7 @@ const refreshSchema = z.object({
 });
 
 const shopifySessionSchema = z.object({
-  token: z.string().min(1),
+  token: z.string().min(1).optional(),
   shop: z.string().optional(),
 });
 
@@ -358,11 +358,24 @@ authRouter.post("/refresh", (req, res) => {
 
 authRouter.post("/shopify/session", async (req, res, next) => {
   try {
-    const { token, shop } = shopifySessionSchema.parse(req.body ?? {});
-    
+    const { token: bodyToken, shop } = shopifySessionSchema.parse(req.body ?? {});
+    const authHeader = req.get("authorization") || req.get("Authorization") || "";
+    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    const token = (bodyToken ?? "").trim() || bearerToken;
+
     console.log("[shopify-auth] Session request received");
     console.log("[shopify-auth] Token length:", token?.length || 0, "Shop:", shop);
-    console.log("[shopify-auth] Token preview:", token?.substring(0, 50) + "...");
+    console.log("[shopify-auth] Token preview:", token ? `${token.substring(0, 24)}...${token.substring(token.length - 6)}` : "none");
+    if (!token) {
+      console.warn("[shopify-auth] Session exchange missing token in body/header");
+      return res.status(400).json({ error: "Missing Shopify session token" });
+    }
+
+    const tokenSegments = token.split(".");
+    if (tokenSegments.length !== 3 || tokenSegments.some(segment => segment.length === 0)) {
+      console.warn("[shopify-auth] Session exchange received malformed token");
+      return res.status(400).json({ error: "Invalid Shopify session token" });
+    }
 
     if (!env.SHOPIFY_API_SECRET) {
       return res.status(500).json({ error: "Shopify API secret not configured" });
