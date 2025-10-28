@@ -7,6 +7,12 @@ import { authenticatedFetch, getSessionToken } from "@shopify/app-bridge-utils";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
+console.log("[shopify-layout] session token raw:", token);
+
+
+
+
+
 type NavSection = {
   title: string;
   items: Array<{
@@ -664,3 +670,5 @@ provide("shopifyShopDomain", shopDomain);
   }
 }
 </style>
+
+
