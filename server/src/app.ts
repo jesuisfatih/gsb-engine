@@ -2,6 +2,7 @@ import "./types/express";
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 import { createApiRouter } from "./routes";
 import { contextMiddleware } from "./middlewares/context";
 import { optionalAuthMiddleware, requireAuthMiddleware } from "./middlewares/authenticate";
@@ -13,8 +14,10 @@ import { proxyRouter } from "./routes/proxy";
 export function createApp() {
   const app = express();
 
+  app.set("trust proxy", 1);
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json({ limit: "10mb" }));
+  app.use(cookieParser());
   app.use(optionalAuthMiddleware);
   app.use(contextMiddleware);
   app.use(morgan("tiny"));

@@ -23,10 +23,20 @@ declare global {
 
 function extractToken(req: Request): string | null {
   const header = req.headers.authorization;
-  if (!header) return null;
-  const [scheme, token] = header.split(" ");
-  if (!scheme || !token || scheme.toLowerCase() !== "bearer") return null;
-  return token;
+  if (header) {
+    const [scheme, token] = header.split(" ");
+    if (scheme && token && scheme.toLowerCase() === "bearer") {
+      return token;
+    }
+  }
+
+  const cookieToken =
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    (req as Request & { cookies?: Record<string, string> }).cookies?.accessToken ??
+    (req as Request & { cookies?: Record<string, string> }).cookies?.sid;
+  if (cookieToken) return cookieToken;
+
+  return null;
 }
 
 export function optionalAuthMiddleware(req: Request, res: Response, next: NextFunction) {
