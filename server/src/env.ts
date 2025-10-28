@@ -15,6 +15,8 @@ const envSchema = z.object({
   SHOPIFY_TEST_VARIANT_GID: z.string().trim().optional(),
   SHOPIFY_API_KEY: z.string().trim().optional(),
   SHOPIFY_API_SECRET: z.string().trim().optional(),
+  SHOPIFY_DEFAULT_TENANT_SLUG: z.string().trim().optional(),
+  SHOPIFY_VALIDATE_SESSION_SIGNATURE: z.coerce.boolean().default(true),
   MOCKUP_SERVICE_URL: z.string().trim().optional(),
   MOCKUP_SERVICE_TOKEN: z.string().trim().optional(),
   NOTIFICATION_MODE: z.enum(["mock", "webhook", "disabled"]).default("mock"),

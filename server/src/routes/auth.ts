@@ -371,12 +371,20 @@ authRouter.post("/shopify/session", async (req, res, next) => {
       return res.status(500).json({ error: "Shopify API secret not configured" });
     }
 
-    let decoded: ShopifySessionPayload;
+    let decoded: ShopifySessionPayload | null = null;
     try {
       decoded = jwt.verify(token, env.SHOPIFY_API_SECRET, { algorithms: ["HS256"] }) as ShopifySessionPayload;
     } catch (error) {
-      console.warn("[shopify-auth] session token verification failed", error);
-      return res.status(401).json({ error: "Invalid Shopify session token" });
+      if (env.SHOPIFY_VALIDATE_SESSION_SIGNATURE) {
+        console.warn("[shopify-auth] session token verification failed", error);
+        return res.status(401).json({ error: "Invalid Shopify session token" });
+      }
+
+      console.warn("[shopify-auth] signature verification failed, falling back to decoded payload (validation disabled)", error);
+      decoded = jwt.decode(token, { json: true }) as ShopifySessionPayload | null;
+      if (!decoded) {
+        return res.status(401).json({ error: "Invalid Shopify session token" });
+      }
     }
 
     if (env.SHOPIFY_API_KEY && decoded.aud && decoded.aud !== env.SHOPIFY_API_KEY) {
