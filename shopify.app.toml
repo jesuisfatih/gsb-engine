@@ -1,0 +1,12 @@
+client_id = "fe2fa282682645ed90c6538ddf50f0e4"
+name = "Gang Sheet Builder By USA"
+application_url = "https://app.gsb-engine.dev/shopify/embedded"
+embedded = true
+
+[auth]
+redirect_urls = ["https://app.gsb-engine.dev/api/auth/callback"]
+
+[webhooks]
+api_version = "2025-10"
+
+use_legacy_install_flow = true
