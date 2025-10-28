@@ -6,31 +6,33 @@
 {%- endcomment -%}
 
 {%- assign gsb_handle = product.metafields.gsb.shortcode -%}
+{%- assign gsb_initial_variant = product.selected_or_first_available_variant -%}
 
-{%- if gsb_handle -%}
-  <div class="product-form__item gsb-product-button">
-    <div
-      data-gsb-shortcode="{{ gsb_handle }}"
-      data-button-label="{{ section.settings.gsb_button_label | default: 'Customize & Add to cart' }}"
-      data-button-bg="{{ section.settings.gsb_button_color | default: '#4c1d95' }}"
-      data-button-color="{{ section.settings.gsb_button_text | default: '#ffffff' }}"
-      data-open-mode="{{ section.settings.gsb_open_mode | default: 'navigate' }}"
-      data-editor-url="{{ section.settings.gsb_editor_url | default: '/editor' }}"
-      data-api-url="{{ section.settings.gsb_api_url | default: '/api/embed/shortcodes' }}"
-      data-mobile-full-width="true"
-    ></div>
-  </div>
+<div class="product-form__item gsb-product-button">
+  <div
+    data-gsb-shortcode="{{ gsb_handle }}"
+    data-gsb-product-gid="{{ product.admin_graphql_api_id }}"
+    data-gsb-variant-id="{{ gsb_initial_variant.admin_graphql_api_id }}"
+    data-gsb-mapping-url="{{ section.settings.gsb_mapping_url | default: '/api/embed/catalog/mappings' }}"
+    data-button-label="{{ section.settings.gsb_button_label | default: 'Customize & Add to cart' }}"
+    data-button-bg="{{ section.settings.gsb_button_color | default: '#4c1d95' }}"
+    data-button-color="{{ section.settings.gsb_button_text | default: '#ffffff' }}"
+    data-open-mode="{{ section.settings.gsb_open_mode | default: 'navigate' }}"
+    data-editor-url="{{ section.settings.gsb_editor_url | default: '/editor' }}"
+    data-api-url="{{ section.settings.gsb_api_url | default: '/api/embed/shortcodes' }}"
+    data-mobile-full-width="true"
+  ></div>
+</div>
 
-  {%- unless gsb_short_code_loader_included -%}
-    {%- assign gsb_short_code_loader_included = true -%}
-    <script
-      src="{{ section.settings.gsb_script_url | default: '/gsb-shortcode.js' }}"
-      data-api-url="{{ section.settings.gsb_api_url | default: '/api/embed/shortcodes' }}"
-      data-editor-url="{{ section.settings.gsb_editor_url | default: '/editor' }}"
-      defer
-    ></script>
-  {%- endunless -%}
-{%- else -%}
-  {%- comment -%}No shortcode mapped; render original add-to-cart form snippet instead{%- endcomment -%}
-  {% render 'buy-buttons', product: product, form: form, show_dynamic_checkout: section.settings.enable_dynamic_checkout %}
-{%- endif -%}
+{% render 'buy-buttons', product: product, form: form, show_dynamic_checkout: section.settings.enable_dynamic_checkout %}
+
+{%- unless gsb_short_code_loader_included -%}
+  {%- assign gsb_short_code_loader_included = true -%}
+  <script
+    src="{{ section.settings.gsb_script_url | default: '/gsb-shortcode.js' }}"
+    data-api-url="{{ section.settings.gsb_api_url | default: '/api/embed/shortcodes' }}"
+    data-editor-url="{{ section.settings.gsb_editor_url | default: '/editor' }}"
+    data-mapping-url="{{ section.settings.gsb_mapping_url | default: '/api/embed/catalog/mappings' }}"
+    defer
+  ></script>
+{%- endunless -%}

@@ -1,0 +1,122 @@
+{% render 'gsb-product-button', product: product, form: form, block: block, settings: block.settings %}
+
+{% schema %}
+{
+  "name": "t:app_embed_blocks.product_button_name",
+  "target": "section",
+  "templates": ["product"],
+  "settings": [
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "t:app_embed_settings.button_label",
+      "default": "Customize & Add to cart"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "t:app_embed_settings.button_color",
+      "default": "#4c1d95"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "t:app_embed_settings.button_text_color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "select",
+      "id": "button_variant",
+      "label": "t:app_embed_settings.button_variant",
+      "default": "pill",
+      "options": [
+        { "value": "pill", "label": "Pill" },
+        { "value": "rounded", "label": "Rounded" },
+        { "value": "square", "label": "Square" }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "button_size",
+      "label": "t:app_embed_settings.button_size",
+      "default": "md",
+      "options": [
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "button_icon",
+      "label": "t:app_embed_settings.button_icon"
+    },
+    {
+      "type": "text",
+      "id": "button_shadow",
+      "label": "t:app_embed_settings.button_shadow"
+    },
+    {
+      "type": "text",
+      "id": "fallback_shortcode",
+      "label": "t:app_embed_settings.fallback_shortcode"
+    },
+    {
+      "type": "select",
+      "id": "open_mode",
+      "label": "t:app_embed_settings.open_mode",
+      "default": "navigate",
+      "options": [
+        { "value": "navigate", "label": "Same tab" },
+        { "value": "popup", "label": "Popup window" }
+      ]
+    },
+    {
+      "type": "url",
+      "id": "return_url",
+      "label": "t:app_embed_settings.return_url"
+    },
+    {
+      "type": "checkbox",
+      "id": "mobile_full_width",
+      "label": "t:app_embed_settings.mobile_full_width",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_native_buttons",
+      "label": "t:app_embed_blocks.product_button_settings.show_native_buttons",
+      "default": true
+    },
+    {
+      "type": "url",
+      "id": "editor_url",
+      "label": "t:app_embed_settings.editor_url",
+      "default": "/editor"
+    },
+    {
+      "type": "url",
+      "id": "api_url",
+      "label": "t:app_embed_settings.api_url",
+      "default": "/api/embed/shortcodes"
+    },
+    {
+      "type": "url",
+      "id": "mapping_url",
+      "label": "t:app_embed_settings.mapping_url",
+      "default": "/api/embed/catalog/mappings"
+    },
+    {
+      "type": "url",
+      "id": "script_url",
+      "label": "t:app_embed_settings.script_url",
+      "default": "/gsb-shortcode.js"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:presets.product_button"
+    }
+  ]
+}
+{% endschema %}

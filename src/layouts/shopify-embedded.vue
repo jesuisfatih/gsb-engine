@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, provide, ref } from "vue";
+import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import createApp from "@shopify/app-bridge";
 import { getSessionToken } from "@shopify/app-bridge-utils";
+import { useSessionStore } from "@/modules/auth/stores/sessionStore";
+import { useNotificationStore } from "@/modules/core/stores/notificationStore";
+import type { RoleId, SessionUser } from "@/modules/core/types/domain";
 
 type NavSection = {
   title: string;
@@ -18,11 +21,21 @@ const route = useRoute();
 const appBridge = ref<ReturnType<typeof createApp> | null>(null);
 const sessionToken = ref<string>("");
 const lastError = ref<string | null>(null);
+const sessionIssuedFor = ref<string | null>(null);
+const exchangingSession = ref(false);
+
+const sessionStore = useSessionStore();
+const notification = useNotificationStore();
 
 const apiKey =
   import.meta.env.VITE_SHOPIFY_APP_API_KEY ??
   import.meta.env.VITE_SHOPIFY_API_KEY ??
   "";
+
+const apiBase =
+  (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
+
+const isAuthenticated = computed(() => sessionStore.isAuthenticated);
 
 const hostParam = computed<string | undefined>(() => {
   const fromRoute = route.query.host;
@@ -45,11 +58,13 @@ const shopDomain = computed<string | undefined>(() => {
 });
 
 const statusBadge = computed(() => {
-  if (!apiKey) return { tone: "critical", text: "API key missing" };
-  if (!hostParam.value) return { tone: "warning", text: "Waiting for host" };
-  if (sessionToken.value) return { tone: "success", text: "Connected" };
-  if (lastError.value) return { tone: "critical", text: "Session error" };
-  return { tone: "info", text: "Authorising…" };
+  if (!apiKey) return { tone: "critical", text: "API anahtarı eksik" };
+  if (!hostParam.value) return { tone: "warning", text: "Host parametresi bekleniyor" };
+  if (isAuthenticated.value) return { tone: "success", text: "Shopify bağlandı" };
+  if (exchangingSession.value) return { tone: "info", text: "Shopify yetkilendiriliyor…" };
+  if (lastError.value) return { tone: "critical", text: "Oturum hatası" };
+  if (sessionToken.value) return { tone: "info", text: "Shopify yanıtı bekleniyor…" };
+  return { tone: "info", text: "Hazırlanıyor…" };
 });
 
 const navSections: NavSection[] = [
@@ -63,7 +78,7 @@ const navSections: NavSection[] = [
   {
     title: "Commerce",
     items: [
-      { icon: "tabler-package", label: "Products", name: "shopify-embedded-products" },
+      { icon: "tabler-package", label: "Catalog & Surfaces", name: "shopify-embedded-products" },
       { icon: "tabler-receipt-2", label: "Orders", name: "shopify-embedded-orders" },
       { icon: "tabler-brush", label: "Designs", name: "shopify-embedded-designs" },
       { icon: "tabler-stack-2", label: "Templates", name: "shopify-embedded-templates" },
@@ -119,9 +134,103 @@ async function bootstrapAppBridge() {
   }
 }
 
+const KNOWN_ROLES: RoleId[] = ["super-admin", "merchant-admin", "merchant-staff", "customer"];
+
+function coerceRole(value?: string): RoleId {
+  return KNOWN_ROLES.includes(value as RoleId) ? (value as RoleId) : "merchant-admin";
+}
+
+type ShopifySessionResponse = {
+  accessToken: string;
+  tenantId: string;
+  user: {
+    id: string;
+    email: string;
+    fullName?: string | null;
+    role: string;
+    merchantId?: string | null;
+  };
+  tenants?: Array<{
+    id: string;
+    slug?: string | null;
+    name: string;
+    role: string;
+    isActive?: boolean;
+  }>;
+};
+
+function applySessionPayload(payload: ShopifySessionResponse) {
+  const sessionUser: SessionUser = {
+    id: payload.user.id,
+    email: payload.user.email,
+    fullName: payload.user.fullName ?? undefined,
+    role: coerceRole(payload.user.role),
+    tenantId: payload.tenantId,
+    merchantId: payload.user.merchantId ?? payload.tenantId,
+  };
+
+  sessionStore.setSession({
+    user: sessionUser,
+    accessToken: payload.accessToken,
+    tenants: (payload.tenants ?? []).map(tenant => ({
+      ...tenant,
+      role: coerceRole(tenant.role),
+    })),
+    tenantId: payload.tenantId,
+  });
+}
+
+async function exchangeShopifySession(token: string) {
+  if (!token) return;
+  if (sessionIssuedFor.value === token && isAuthenticated.value) return;
+  if (exchangingSession.value) return;
+
+  exchangingSession.value = true;
+  try {
+    const response = await fetch(`${apiBase}/auth/shopify/session`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token, shop: shopDomain.value }),
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const message = payload?.error ?? `HTTP ${response.status}`;
+      throw new Error(message);
+    }
+
+    if (!payload?.data) {
+      throw new Error("Oturum doğrulama yanıtı eksik");
+    }
+
+    applySessionPayload(payload.data as ShopifySessionResponse);
+    sessionIssuedFor.value = token;
+    lastError.value = null;
+  } catch (error: any) {
+    const message = error?.message ?? "Bilinmeyen hata";
+    if (lastError.value !== message) {
+      notification.error(`Shopify oturum doğrulaması başarısız: ${message}`);
+    }
+    lastError.value = message;
+  } finally {
+    exchangingSession.value = false;
+  }
+}
+
 onMounted(() => {
   bootstrapAppBridge();
 });
+
+watch(
+  () => sessionToken.value,
+  token => {
+    if (!token) return;
+    void exchangeShopifySession(token);
+  },
+);
 
 provide("shopifyAppBridge", appBridge);
 provide("shopifySessionToken", sessionToken);

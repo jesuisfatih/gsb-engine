@@ -1,10 +1,3 @@
-{%- comment -%}
-  Gang Sheet Builder - Legacy product button snippet
-  Injects the responsive edit button or falls back to the default add-to-cart form.
-
-  Usage: {% render 'gsb-product-button', product: product %}
-{%- endcomment -%}
-
 {%- liquid
   assign gsb_controls = settings
   if gsb_controls == blank and block and block.settings
@@ -30,6 +23,7 @@
 {%- assign gsb_return_url = gsb_controls.return_url | default: gsb_controls.gsb_return_url | default: "" -%}
 {%- assign gsb_mobile_full = gsb_controls.mobile_full_width | default: gsb_controls.gsb_mobile_full_width | default: true -%}
 {%- assign gsb_fallback_handle = gsb_controls.fallback_shortcode | default: gsb_controls.gsb_fallback_shortcode | default: "" -%}
+{%- assign gsb_show_native = gsb_controls.show_native_buttons | default: gsb_controls.gsb_show_native_buttons | default: true -%}
 
 {%- assign gsb_initial_variant = product.selected_or_first_available_variant -%}
 {%- assign gsb_handle = gsb_fallback_handle | default: product.metafields.gsb.shortcode -%}
@@ -54,8 +48,6 @@
     data-mobile-full-width="{{ gsb_mobile_full | default: true }}"
   ></div>
 </div>
-
-{%- assign gsb_show_native = gsb_controls.show_native_buttons | default: gsb_controls.gsb_show_native_buttons | default: true -%}
 
 {% if form and section and gsb_show_native %}
   {% render 'buy-buttons', product: product, form: form, show_dynamic_checkout: section.settings.enable_dynamic_checkout %}

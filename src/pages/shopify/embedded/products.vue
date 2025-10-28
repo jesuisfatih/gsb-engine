@@ -8,8 +8,8 @@ definePage({
   meta: {
     layout: "shopify-embedded",
     public: true,
-    embeddedTitle: "Products",
-    embeddedSubtitle: "Sync products from Shopify and map them to gang sheet builders.",
+    embeddedTitle: "Catalog & Surfaces",
+    embeddedSubtitle: "Sync Shopify variants with GSB products and surfaces for the editor.",
   },
 });
 

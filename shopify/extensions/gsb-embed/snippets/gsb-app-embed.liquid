@@ -1,0 +1,178 @@
+{%- liquid
+  assign gsb_button_label = settings.button_label | default: "Customize & Add to cart"
+  assign gsb_button_bg = settings.button_color | default: "#4c1d95"
+  assign gsb_button_text = settings.button_text_color | default: "#ffffff"
+  assign gsb_button_variant = settings.button_variant | default: "pill"
+  assign gsb_button_size = settings.button_size | default: "md"
+  assign gsb_button_icon = settings.button_icon | default: ""
+  assign gsb_button_shadow = settings.button_shadow | default: ""
+  assign gsb_open_mode = settings.open_mode | default: "navigate"
+  assign gsb_editor_url = settings.editor_url | default: "/editor"
+  assign gsb_api_url = settings.api_url | default: "/api/embed/shortcodes"
+  assign gsb_mapping_url = settings.mapping_url | default: "/api/embed/catalog/mappings"
+  assign gsb_script_url = settings.script_url | default: "/gsb-shortcode.js"
+  assign gsb_return_url = settings.return_url | default: ""
+  assign gsb_mobile_full = settings.mobile_full_width
+
+  assign gsb_handle = settings.fallback_shortcode | default: ""
+  assign gsb_product_gid = ""
+  assign gsb_variant_gid = ""
+  if product
+    assign gsb_product_gid = product.admin_graphql_api_id
+    assign gsb_handle = gsb_handle | default: product.metafields.gsb.shortcode
+    assign gsb_variant = product.selected_or_first_available_variant
+    if gsb_variant
+      assign gsb_variant_gid = gsb_variant.admin_graphql_api_id
+    endif
+  endif
+
+  assign gsb_mobile_full_attr = gsb_mobile_full
+  if gsb_mobile_full_attr == blank
+    assign gsb_mobile_full_attr = true
+  endif
+-%}
+
+<div class="gsb-app-embed">
+  <div
+    class="gsb-app-embed__placeholder"
+    data-gsb-shortcode="{{ gsb_handle }}"
+    data-gsb-product-gid="{{ gsb_product_gid }}"
+    data-gsb-variant-id="{{ gsb_variant_gid }}"
+    data-gsb-mapping-url="{{ gsb_mapping_url }}"
+    data-button-label="{{ gsb_button_label }}"
+    data-button-bg="{{ gsb_button_bg }}"
+    data-button-color="{{ gsb_button_text }}"
+    data-button-variant="{{ gsb_button_variant }}"
+    data-button-size="{{ gsb_button_size }}"
+    data-button-icon="{{ gsb_button_icon }}"
+    data-button-shadow="{{ gsb_button_shadow }}"
+    data-open-mode="{{ gsb_open_mode }}"
+    data-editor-url="{{ gsb_editor_url }}"
+    data-api-url="{{ gsb_api_url }}"
+    data-return-url="{{ gsb_return_url }}"
+    data-mobile-full-width="{{ gsb_mobile_full_attr }}"
+  ></div>
+</div>
+
+{%- unless gsb_short_code_loader_included -%}
+  {%- assign gsb_short_code_loader_included = true -%}
+  <script
+    src="{{ gsb_script_url }}"
+    data-api-url="{{ gsb_api_url }}"
+    data-editor-url="{{ gsb_editor_url }}"
+    data-mapping-url="{{ gsb_mapping_url }}"
+    defer
+  ></script>
+{%- endunless -%}
+
+{% schema %}
+{
+  "name": "t:app_embed_name",
+  "target": "body",
+  "settings": [
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "t:app_embed_settings.button_label",
+      "default": "Customize & Add to cart"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "t:app_embed_settings.button_color",
+      "default": "#4c1d95"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "t:app_embed_settings.button_text_color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "select",
+      "id": "button_variant",
+      "label": "t:app_embed_settings.button_variant",
+      "default": "pill",
+      "options": [
+        { "value": "pill", "label": "Pill" },
+        { "value": "rounded", "label": "Rounded" },
+        { "value": "square", "label": "Square" }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "button_size",
+      "label": "t:app_embed_settings.button_size",
+      "default": "md",
+      "options": [
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "button_icon",
+      "label": "t:app_embed_settings.button_icon",
+      "info": "Use a Unicode character or emoji."
+    },
+    {
+      "type": "text",
+      "id": "button_shadow",
+      "label": "t:app_embed_settings.button_shadow",
+      "info": "Optional CSS box-shadow value."
+    },
+    {
+      "type": "text",
+      "id": "fallback_shortcode",
+      "label": "t:app_embed_settings.fallback_shortcode",
+      "info": "Used when the product metafield or variant mapping is missing."
+    },
+    {
+      "type": "select",
+      "id": "open_mode",
+      "label": "t:app_embed_settings.open_mode",
+      "default": "navigate",
+      "options": [
+        { "value": "navigate", "label": "Same tab" },
+        { "value": "popup", "label": "Popup window" }
+      ]
+    },
+    {
+      "type": "url",
+      "id": "return_url",
+      "label": "t:app_embed_settings.return_url"
+    },
+    {
+      "type": "checkbox",
+      "id": "mobile_full_width",
+      "label": "t:app_embed_settings.mobile_full_width",
+      "default": true
+    },
+    {
+      "type": "url",
+      "id": "editor_url",
+      "label": "t:app_embed_settings.editor_url",
+      "default": "/editor"
+    },
+    {
+      "type": "url",
+      "id": "api_url",
+      "label": "t:app_embed_settings.api_url",
+      "default": "/api/embed/shortcodes"
+    },
+    {
+      "type": "url",
+      "id": "mapping_url",
+      "label": "t:app_embed_settings.mapping_url",
+      "default": "/api/embed/catalog/mappings"
+    },
+    {
+      "type": "url",
+      "id": "script_url",
+      "label": "t:app_embed_settings.script_url",
+      "default": "/gsb-shortcode.js"
+    }
+  ]
+}
+{% endschema %}

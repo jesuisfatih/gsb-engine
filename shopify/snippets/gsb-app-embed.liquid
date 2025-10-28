@@ -13,45 +13,69 @@
     return_to         - optional URL to return to after editing
 {%- endcomment -%}
 
-{%- assign handle = shortcode_handle | default: product.metafields.gsb.shortcode -%}
-{%- unless handle -%}
-  {%- comment -%}No shortcode available; do not render a button{%- endcomment -%}
-  {% return %}
-{%- endunless -%}
+{%- liquid
+  assign embed_button_label = button_label | default: "Customize & Add to cart"
+  assign embed_button_bg = button_color | default: "#4c1d95"
+  assign embed_button_text = button_text_color | default: "#ffffff"
+  assign embed_button_variant = button_variant | default: "pill"
+  assign embed_button_size = button_size | default: "md"
+  assign embed_button_icon = button_icon | default: ""
+  assign embed_button_shadow = button_shadow | default: ""
+  assign embed_open_mode = open_mode | default: "navigate"
+  assign embed_editor_url = editor_url | default: "/editor"
+  assign embed_api_url = api_url | default: "/api/embed/shortcodes"
+  assign embed_mapping_url = mapping_url | default: "/api/embed/catalog/mappings"
+  assign embed_script_url = editor_script_url | default: "/gsb-shortcode.js"
+  assign embed_return_to = return_to | default: ""
+  assign embed_mobile_full = mobile_full_width
 
-{%- assign embed_button_label = button_label | default: 'Edit design' -%}
-{%- assign embed_button_bg = button_color | default: '#4c1d95' -%}
-{%- assign embed_button_text = button_text_color | default: '#ffffff' -%}
-{%- assign embed_button_variant = button_variant | default: 'pill' -%}
-{%- assign embed_button_size = button_size | default: 'md' -%}
-{%- assign embed_button_icon = button_icon | default: '' -%}
-{%- assign embed_open_mode = open_mode | default: 'navigate' -%}
-{%- assign embed_return_to = return_to | default: '' -%}
+  assign embed_handle = shortcode_handle | default: ""
+  assign embed_product_gid = ""
+  assign embed_variant_gid = ""
+  if product
+    assign embed_product_gid = product.admin_graphql_api_id
+    assign embed_handle = embed_handle | default: product.metafields.gsb.shortcode
+    assign embed_variant = product.selected_or_first_available_variant
+    if embed_variant
+      assign embed_variant_gid = embed_variant.admin_graphql_api_id
+    endif
+  endif
+
+  assign embed_mobile_full_attr = embed_mobile_full
+  if embed_mobile_full_attr == blank
+    assign embed_mobile_full_attr = true
+  endif
+-%}
 
 <div class="gsb-app-embed">
   <div
     class="gsb-app-embed__placeholder"
-    data-gsb-shortcode="{{ handle }}"
-    data-editor-url="{{ editor_url | default: '/editor' }}"
-    data-api-url="{{ api_url | default: '/api/embed/shortcodes' }}"
+    data-gsb-shortcode="{{ embed_handle }}"
+    data-gsb-product-gid="{{ embed_product_gid }}"
+    data-gsb-variant-id="{{ embed_variant_gid }}"
+    data-gsb-mapping-url="{{ embed_mapping_url }}"
+    data-editor-url="{{ embed_editor_url }}"
+    data-api-url="{{ embed_api_url }}"
     data-button-label="{{ embed_button_label }}"
     data-button-bg="{{ embed_button_bg }}"
     data-button-color="{{ embed_button_text }}"
     data-button-variant="{{ embed_button_variant }}"
     data-button-size="{{ embed_button_size }}"
     data-button-icon="{{ embed_button_icon }}"
+    data-button-shadow="{{ embed_button_shadow }}"
     data-open-mode="{{ embed_open_mode }}"
     data-return-url="{{ embed_return_to }}"
+    data-mobile-full-width="{{ embed_mobile_full_attr }}"
   ></div>
 </div>
 
-{%- comment -%}Load the public shortcode loader once per page{%- endcomment -%}
 {%- unless gsb_short_code_loader_included -%}
   {%- assign gsb_short_code_loader_included = true -%}
   <script
-    src="{{ editor_script_url | default: '/gsb-shortcode.js' }}"
-    data-api-url="{{ api_url | default: '/api/embed/shortcodes' }}"
-    data-editor-url="{{ editor_url | default: '/editor' }}"
+    src="{{ embed_script_url }}"
+    data-api-url="{{ embed_api_url }}"
+    data-editor-url="{{ embed_editor_url }}"
+    data-mapping-url="{{ embed_mapping_url }}"
     defer
   ></script>
 {%- endunless -%}
