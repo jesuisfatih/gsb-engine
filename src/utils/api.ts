@@ -69,7 +69,7 @@ const normalisedBaseUrl = rawBaseUrl.replace(/\/+$/, '')
 export const $api = ofetch.create({
   baseURL: normalisedBaseUrl,
   credentials: 'include',
-  fetch: (input, init) => resolveShopifyFetch()(input as RequestInfo, init as RequestInit),
+  fetch: (input, init) => resolveShopifyFetch()(input as any, init as any),
   async onRequest({ options }) {
     const headers = new Headers(options.headers ?? {})
 
@@ -84,3 +84,4 @@ export const $api = ofetch.create({
     options.headers = headers
   },
 })
+export {}
