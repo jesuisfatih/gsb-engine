@@ -21,6 +21,37 @@ declare global {
   }
 }
 
+const PUBLIC_PATH_PREFIXES = [
+  "/api/auth/",
+  "/api/health",
+  "/api/_debug/",
+];
+
+const PUBLIC_EXACT_PATHS = new Set([
+  "/api/auth",
+  "/api/auth/shopify/session",
+  "/api/auth/shopify/callback",
+  "/api/_debug/set-sid",
+  "/api/health",
+]);
+
+function isPublicRequest(req: Request): boolean {
+  const originalUrl = (req.originalUrl ?? req.url ?? req.path ?? "").replace(/\?.*$/, "");
+  const normalised = originalUrl.endsWith("/") && originalUrl !== "/" ? originalUrl.replace(/\/+$/, "") : originalUrl;
+
+  if (PUBLIC_EXACT_PATHS.has(normalised)) return true;
+  if (PUBLIC_PATH_PREFIXES.some(prefix => normalised.startsWith(prefix))) return true;
+
+  // When mounted under "/api", req.path may not include prefix.
+  if (req.baseUrl) {
+    const combined = `${req.baseUrl}${req.path ?? ""}`.replace(/\?.*$/, "");
+    if (PUBLIC_EXACT_PATHS.has(combined)) return true;
+    if (PUBLIC_PATH_PREFIXES.some(prefix => combined.startsWith(prefix))) return true;
+  }
+
+  return false;
+}
+
 function extractToken(req: Request): string | null {
   const header = req.headers.authorization;
   if (header) {
@@ -59,6 +90,10 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
 }
 
 export function requireAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  if (isPublicRequest(req)) {
+    return next();
+  }
+
   if (req.auth) {
     return next();
   }

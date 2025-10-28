@@ -33,7 +33,7 @@ const apiKey =
   "";
 
 const apiBase =
-  (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
+  (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 
 const isAuthenticated = computed(() => sessionStore.isAuthenticated);
 
