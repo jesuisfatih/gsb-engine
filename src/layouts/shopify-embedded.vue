@@ -148,7 +148,18 @@ async function bootstrapAppBridge() {
       host: hostParam.value,
       forceRedirect: true,
     });
+if (typeof window !== "undefined") {
+  window.__shopifyApp = app;
+  window.__getSessionToken = () => getSessionToken(app);
+}
+if (typeof window !== "undefined") {
+  window.__lastShopifyToken = token;
+  console.log("[shopify-layout] session token raw:", token);
+}
 
+
+
+    
     appBridge.value = app;
     lastError.value = null;
 
