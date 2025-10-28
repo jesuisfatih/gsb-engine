@@ -63,6 +63,39 @@ const notification = useNotificationStore();
 
 const selectedProduct = computed(() => products.value.find(p => p.id === selectedProductId.value) ?? null);
 
+const fallbackProducts: ProductSummary[] = [
+  {
+    id: "sample-product",
+    title: "Sample T-Shirt",
+    slug: "sample-tshirt",
+    surfaces: [
+      { id: "tshirt-front", name: "Front" },
+      { id: "tshirt-back", name: "Back" },
+    ],
+  },
+];
+
+const fallbackConfig: BuilderConfigForm & { sizes: BuilderSizeRow[] } = {
+  sizeOption: "Size",
+  sizeUnit: "in",
+  productType: "Gang Sheet",
+  printFileNameTokens: ["Order Id", "Variant Title"],
+  useCustomButtonLabel: false,
+  customButtonLabel: null,
+  settings: {},
+  sizes: [
+    {
+      id: "sample-size",
+      label: '22" x 180"',
+      widthIn: 22,
+      heightIn: 180,
+      price: 15,
+      maxFiles: 10,
+      sortOrder: 0,
+    },
+  ],
+};
+
 function resetForm() {
   builderForm.sizeOption = "Size";
   builderForm.sizeUnit = "in";
@@ -85,7 +118,13 @@ async function loadProducts() {
   }
   catch (error) {
     console.error(error);
-    notification.error("Ürün listesi alınamadı.");
+    if (!products.value.length) {
+      products.value = fallbackProducts;
+      selectedProductId.value = products.value[0]?.id ?? null;
+      notification.info("Products could not be fetched; showing sample data.");
+    } else {
+      notification.info("Products could not be refreshed; keeping cached list.");
+    }
   }
   finally {
     loadingList.value = false;
@@ -122,8 +161,15 @@ async function loadBuilderConfig(productId: string) {
   }
   catch (error) {
     console.error(error);
-    notification.error("Ürün ayarları getirilemedi.");
-    resetForm();
+    notification.info("Product configuration could not be loaded; using defaults.");
+    builderForm.sizeOption = fallbackConfig.sizeOption;
+    builderForm.sizeUnit = fallbackConfig.sizeUnit;
+    builderForm.productType = fallbackConfig.productType;
+    builderForm.printFileNameTokens = [...fallbackConfig.printFileNameTokens];
+    builderForm.useCustomButtonLabel = fallbackConfig.useCustomButtonLabel;
+    builderForm.customButtonLabel = fallbackConfig.customButtonLabel;
+    builderForm.settings = {};
+    sizeRows.value = fallbackConfig.sizes.map(row => ({ ...row }));
   }
   finally {
     loadingConfig.value = false;
