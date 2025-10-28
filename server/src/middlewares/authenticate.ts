@@ -30,10 +30,8 @@ function extractToken(req: Request): string | null {
     }
   }
 
-  const cookieToken =
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    (req as Request & { cookies?: Record<string, string> }).cookies?.accessToken ??
-    (req as Request & { cookies?: Record<string, string> }).cookies?.sid;
+  const cookies = (req as Request & { cookies?: Record<string, string> }).cookies ?? {};
+  const cookieToken = cookies.accessToken ?? cookies.sid ?? cookies["__Host-sid"];
   if (cookieToken) return cookieToken;
 
   return null;
