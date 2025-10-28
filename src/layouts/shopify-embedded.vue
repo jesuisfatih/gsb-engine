@@ -7,9 +7,6 @@ import { authenticatedFetch, getSessionToken } from "@shopify/app-bridge-utils";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
-console.log("[shopify-layout] session token raw:", token);
-
-
 
 
 
@@ -148,18 +145,7 @@ async function bootstrapAppBridge() {
       host: hostParam.value,
       forceRedirect: true,
     });
-if (typeof window !== "undefined") {
-  window.__shopifyApp = app;
-  window.__getSessionToken = () => getSessionToken(app);
-}
-if (typeof window !== "undefined") {
-  window.__lastShopifyToken = token;
-  console.log("[shopify-layout] session token raw:", token);
-}
 
-
-
-    
     appBridge.value = app;
     lastError.value = null;
 
