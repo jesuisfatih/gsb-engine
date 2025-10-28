@@ -3,7 +3,7 @@ import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
 import createApp from "@shopify/app-bridge";
-import { authenticatedFetch, getSessionToken } from "@shopify/app-bridge-utils";
+import { getSessionToken } from "@shopify/app-bridge-utils";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
@@ -23,7 +23,6 @@ const sessionToken = ref<string>("");
 const lastError = ref<string | null>(null);
 const sessionIssuedFor = ref<string | null>(null);
 const exchangingSession = ref(false);
-const bridgeFetch = ref<ReturnType<typeof authenticatedFetch> | null>(null);
 
 const sessionStore = useSessionStore();
 const notification = useNotificationStore();
@@ -35,6 +34,15 @@ const apiKey =
 
 const apiBase =
   (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
+
+const isInIframe = computed(() => {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+});
 
 const isAuthenticated = computed(() => sessionStore.isAuthenticated);
 
@@ -119,24 +127,27 @@ async function bootstrapAppBridge() {
     return;
   }
 
+  if (!isInIframe.value && shopDomain.value && hostParam.value) {
+    console.log("[shopify-layout] Not in iframe, redirecting to Shopify admin...");
+    const redirectUrl = `https://${atob(hostParam.value)}/apps/${apiKey}/shopify/embedded${window.location.search}`;
+    window.top!.location.href = redirectUrl;
+    return;
+  }
+
   try {
+    console.log("[shopify-layout] Creating App Bridge...");
     const app = createApp({
       apiKey,
       host: hostParam.value,
-      forceRedirect: false
+      forceRedirect: true,
     });
 
     appBridge.value = app;
-    (window as any).__shopifyAppBridgeApp = app;
-
-    const authFetch = authenticatedFetch(app);
-    bridgeFetch.value = authFetch;
-    (window as any).__shopifyAuthenticatedFetch = authFetch;
-
     lastError.value = null;
-    console.debug("[shopify-embedded] requesting app bridge session token");
+    
+    console.log("[shopify-layout] Getting session token from App Bridge...");
     const token = await getSessionToken(app);
-    console.debug("[shopify-embedded] received session token", token);
+    console.log("[shopify-layout] Session token received, length:", token?.length || 0);
     sessionToken.value = token;
   } catch (error) {
     console.error("[shopify-layout] App Bridge init failed", error);
@@ -191,15 +202,19 @@ function applySessionPayload(payload: ShopifySessionResponse) {
 }
 
 async function exchangeShopifySession(token: string) {
-  if (!token) return;
+  if (!token) {
+    console.warn("[shopify-layout] No token provided, skipping session exchange");
+    return;
+  }
   if (sessionIssuedFor.value === token && isAuthenticated.value) return;
   if (exchangingSession.value) return;
 
   console.log("[shopify-layout] Starting session exchange...");
+  console.log("[shopify-layout] Token length:", token.length, "Shop:", shopDomain.value);
+  
   exchangingSession.value = true;
   try {
-    const fetchImpl = bridgeFetch.value ?? fetch;
-    const response = await fetchImpl(`${apiBase}/auth/shopify/session`, {
+    const response = await fetch(`${apiBase}/auth/shopify/session`, {
       method: "POST",
       credentials: "include",
       headers: {

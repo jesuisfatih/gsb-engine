@@ -1,11 +1,11 @@
-import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { Router } from "express";
 import { z } from "zod";
 import type { $Enums, Prisma } from "../../src/generated/prisma/client";
-import { prisma } from "../prisma";
 import { generateAccessToken } from "../auth/jwt";
-import { requireAuthMiddleware } from "../middlewares/authenticate";
 import { env } from "../env";
+import { requireAuthMiddleware } from "../middlewares/authenticate";
+import { prisma } from "../prisma";
 import { verifyShopifySessionToken, type ShopifySessionPayload } from "../shopify/sessionToken";
 
 const loginSchema = z.object({
@@ -359,6 +359,10 @@ authRouter.post("/refresh", (req, res) => {
 authRouter.post("/shopify/session", async (req, res, next) => {
   try {
     const { token, shop } = shopifySessionSchema.parse(req.body ?? {});
+    
+    console.log("[shopify-auth] Session request received");
+    console.log("[shopify-auth] Token length:", token?.length || 0, "Shop:", shop);
+    console.log("[shopify-auth] Token preview:", token?.substring(0, 50) + "...");
 
     if (!env.SHOPIFY_API_SECRET) {
       return res.status(500).json({ error: "Shopify API secret not configured" });
