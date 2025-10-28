@@ -35,6 +35,15 @@ function writeStoredToken(token: string | null) {
     window.localStorage.removeItem('gsb:accessToken')
   else
     window.localStorage.setItem('gsb:accessToken', token)
+
+  if (typeof document !== 'undefined') {
+    if (!token) {
+      document.cookie = 'accessToken=; Path=/; Max-Age=0; SameSite=None; Secure'
+    }
+    else {
+      document.cookie = `accessToken=${token}; Path=/; SameSite=None; Secure`
+    }
+  }
 }
 
 function readStoredUser(): SessionUser | null {
@@ -70,10 +79,14 @@ function updateTenantContext(tenantId?: string | null) {
     tenantCookie.value = tenantId
     if (typeof window !== 'undefined')
       window.localStorage.setItem('gsb:tenantId', tenantId)
+    if (typeof document !== 'undefined')
+      document.cookie = `tenantId=${tenantId}; Path=/; SameSite=None; Secure`
   } else {
     tenantCookie.value = null
     if (typeof window !== 'undefined')
       window.localStorage.removeItem('gsb:tenantId')
+    if (typeof document !== 'undefined')
+      document.cookie = 'tenantId=; Path=/; Max-Age=0; SameSite=None; Secure'
   }
 }
 
