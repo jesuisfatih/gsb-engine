@@ -127,7 +127,10 @@ async function bootstrapAppBridge() {
 
     appBridge.value = app;
     lastError.value = null;
-    sessionToken.value = await getSessionToken(app);
+    console.debug("[shopify-embedded] requesting app bridge session token");
+    const token = await getSessionToken(app);
+    console.debug("[shopify-embedded] received session token", token);
+    sessionToken.value = token;
   } catch (error) {
     console.error("[shopify-layout] App Bridge init failed", error);
     lastError.value = error instanceof Error ? error.message : "Unknown App Bridge error";
@@ -187,6 +190,7 @@ async function exchangeShopifySession(token: string) {
 
   exchangingSession.value = true;
   try {
+    console.debug("[shopify-embedded] exchanging session token with backend", token);
     const response = await fetch(`${apiBase}/auth/shopify/session`, {
       method: "POST",
       credentials: "include",
@@ -199,6 +203,7 @@ async function exchangeShopifySession(token: string) {
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
       const message = payload?.error ?? `HTTP ${response.status}`;
+      console.error("[shopify-embedded] session exchange failed", message, payload);
       throw new Error(message);
     }
 
@@ -206,6 +211,7 @@ async function exchangeShopifySession(token: string) {
       throw new Error("Oturum doğrulama yanıtı eksik");
     }
 
+    console.debug("[shopify-embedded] session exchange success", payload.data);
     applySessionPayload(payload.data as ShopifySessionResponse);
     sessionIssuedFor.value = token;
     lastError.value = null;
@@ -214,6 +220,7 @@ async function exchangeShopifySession(token: string) {
     if (lastError.value !== message) {
       notification.error(`Shopify oturum doğrulaması başarısız: ${message}`);
     }
+    console.error("[shopify-embedded] session exchange error", error);
     lastError.value = message;
   } finally {
     exchangingSession.value = false;
