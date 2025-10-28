@@ -1,16 +1,59 @@
 import { defineStore } from "pinia";
 import type { ProductDefinition, ProductSurface } from "../../editor/types";
 import { mmToPx } from "../../editor/utils/units";
-import { fetchCatalog, fetchSeedCatalog, fetchShopifyProducts, fetchShopifyVariants, createProduct as createProductApi, updateProduct as updateProductApi, deleteProduct as deleteProductApi, createSurface as createSurfaceApi, updateSurfaceApi, deleteSurface as deleteSurfaceApi, type ShopifyProductSummary, type ShopifyVariantSummary } from "../services/catalogService";
+import {
+  fetchCatalog,
+  fetchSeedCatalog,
+  fetchShopifyProducts,
+  fetchShopifyVariants,
+  fetchVariantSurfaceMappings,
+  upsertVariantSurfaceMapping,
+  deleteVariantSurfaceMapping,
+  createProduct as createProductApi,
+  updateProduct as updateProductApi,
+  deleteProduct as deleteProductApi,
+  createSurface as createSurfaceApi,
+  updateSurfaceApi,
+  deleteSurface as deleteSurfaceApi,
+  type ShopifyProductSummary,
+  type ShopifyVariantSummary,
+  type VariantSurfaceMappingRecord,
+} from "../services/catalogService";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 
 interface VariantMapping {
+  id: string;
+  productId: string;
   productSlug: string;
-  variantId: string;
+  productTitle?: string | null;
   surfaceId: string;
+  surfaceName?: string | null;
+  shopifyProductId?: string | null;
+  shopifyProductTitle?: string | null;
+  shopifyVariantId: string;
+  shopifyVariantTitle?: string | null;
+  options?: Record<string, unknown> | null;
+  technique?: string | null;
   color?: string | null;
   material?: string | null;
+  updatedAt?: string | Date;
+  shortcodeHandle?: string | null;
+}
+
+interface VariantMappingInput {
+  productSlug: string;
+  productId?: string;
+  surfaceId: string;
+  shopifyVariantId: string;
+  shopifyProductId?: string | null;
+  shopifyProductTitle?: string | null;
+  shopifyVariantTitle?: string | null;
+  options?: Record<string, unknown> | null;
+  technique?: string | null;
+  color?: string | null;
+  material?: string | null;
+  shortcodeHandle?: string | null;
 }
 
 function clone<T>(value: T): T {
@@ -40,22 +83,38 @@ function normalizeProduct(product: ProductDefinition): ProductDefinition {
   };
 }
 
-function variantKey(payload: { productSlug: string; surfaceId: string; color?: string | null; material?: string | null }) {
-  const color = payload.color ?? "";
-  const material = payload.material ?? "";
-  return `${payload.productSlug}::${payload.surfaceId}::${color}::${material}`;
+function normalizeVariantMapping(record: VariantSurfaceMappingRecord): VariantMapping {
+  return {
+    id: record.id,
+    productId: record.productId,
+    productSlug: record.productSlug,
+    productTitle: record.productTitle ?? null,
+    surfaceId: record.surfaceId,
+    surfaceName: record.surfaceName ?? null,
+    shopifyProductId: record.shopifyProductId ?? null,
+    shopifyProductTitle: record.shopifyProductTitle ?? null,
+    shopifyVariantId: record.shopifyVariantId,
+    shopifyVariantTitle: record.shopifyVariantTitle ?? null,
+    options: record.options ?? null,
+    technique: record.technique ?? null,
+    color: record.color ?? null,
+    material: record.material ?? null,
+    shortcodeHandle: record.shortcodeHandle ?? null,
+    updatedAt: record.updatedAt ?? undefined,
+  };
 }
 
 export const useCatalogStore = defineStore("catalog", {
   state: () => ({
-    products: [] as ProductDefinition[],
-    loading: false,
-    loaded: false,
-    error: null as string | null,
-    shopifyProducts: [] as ShopifyProductSummary[],
-    shopifyLoading: false,
-    shopifyVariants: {} as Record<string, ShopifyVariantSummary[]>,
-    variantMappings: [] as VariantMapping[],
+  products: [] as ProductDefinition[],
+  loading: false,
+  loaded: false,
+  error: null as string | null,
+  shopifyProducts: [] as ShopifyProductSummary[],
+  shopifyLoading: false,
+  shopifyVariants: {} as Record<string, ShopifyVariantSummary[]>,
+  variantMappings: [] as VariantMapping[],
+  variantMappingsLoading: false,
   }),
 
   getters: {
@@ -64,24 +123,27 @@ export const useCatalogStore = defineStore("catalog", {
     },
     variantsForProduct: state => (productId: string) => state.shopifyVariants[productId] ?? [],
     variantMappingLookup(state) {
-      const map: Record<string, string> = {};
-      for (const entry of state.variantMappings)
-        map[variantKey(entry)] = entry.variantId;
-      return map;
-    },
-    variantMappingByVariantId(state) {
       const map: Record<string, VariantMapping> = {};
       for (const entry of state.variantMappings)
-        map[entry.variantId] = entry;
+        map[entry.shopifyVariantId] = entry;
       return map;
     },
-    variantIdFor() {
-      return (payload: { productSlug: string; surfaceId: string; color?: string | null; material?: string | null }) => {
-        const key = variantKey(payload);
-        return this.variantMappingLookup[key];
-      };
+    mappingForVariant: state => (variantId: string) =>
+      state.variantMappings.find(entry => entry.shopifyVariantId === variantId) ?? null,
+    mappingForSurface: state => (payload: { productSlug: string; surfaceId: string; color?: string | null; material?: string | null }) => {
+      return state.variantMappings.find(entry => {
+        if (entry.productSlug !== payload.productSlug) return false;
+        if (entry.surfaceId !== payload.surfaceId) return false;
+        if (payload.color !== undefined && payload.color !== null) {
+          if ((entry.color ?? null) !== payload.color) return false;
+        }
+        if (payload.material !== undefined && payload.material !== null) {
+          if ((entry.material ?? null) !== payload.material) return false;
+        }
+        return true;
+      }) ?? null;
     },
-    },
+  },
 
   actions: {
     async ensureLoaded(force = false) {
@@ -108,6 +170,23 @@ export const useCatalogStore = defineStore("catalog", {
         }
       } finally {
         this.loading = false;
+      }
+    },
+
+    async loadVariantMappings(force = false) {
+      if (this.variantMappings.length && !force)
+        return this.variantMappings;
+      this.variantMappingsLoading = true;
+      try {
+        const records = await fetchVariantSurfaceMappings();
+        this.variantMappings = records.map(normalizeVariantMapping);
+        return this.variantMappings;
+      } catch (error) {
+        console.warn("[catalog] failed to load variant mappings", error);
+        this.variantMappings = [];
+        throw error;
+      } finally {
+        this.variantMappingsLoading = false;
       }
     },
 
@@ -276,16 +355,77 @@ export const useCatalogStore = defineStore("catalog", {
       }
     },
 
-    mapVariant(payload: VariantMapping) {
-      this.variantMappings = this.variantMappings.filter(v => v.variantId !== payload.variantId);
-      const existingIndex = this.variantMappings.findIndex(v => variantKey(v) === variantKey(payload));
-      if (existingIndex > -1) this.variantMappings.splice(existingIndex, 1, clone(payload));
-      else this.variantMappings.push(clone(payload));
+    async mapVariant(payload: VariantMappingInput, options: { notify?: boolean } = {}) {
+      const { notify = true } = options;
+      const notifications = useNotificationStore();
+
+      const product =
+        (payload.productId ? this.products.find(p => p.id === payload.productId) : undefined) ??
+        this.products.find(p => p.slug === payload.productSlug);
+
+      if (!product || !product.id) {
+        const message = `Product "${payload.productSlug}" bulunamadı.`;
+        if (notify)
+          notifications.error(message);
+        throw new Error(message);
+      }
+
+      const surface = product.surfaces?.find(s => s.id === payload.surfaceId);
+      if (!surface) {
+        const message = `Surface eşleşmesi (${payload.surfaceId}) bulunamadı.`;
+        if (notify)
+          notifications.error(message);
+        throw new Error(message);
+      }
+
+      try {
+        const saved = await upsertVariantSurfaceMapping({
+          productSlug: product.slug,
+          surfaceId: surface.id,
+          shopifyVariantId: payload.shopifyVariantId,
+          shopifyVariantTitle: payload.shopifyVariantTitle ?? payload.shopifyVariantId,
+          shopifyProductId: payload.shopifyProductId ?? product.shopifyProductId ?? null,
+          shopifyProductTitle: payload.shopifyProductTitle ?? product.title,
+          options: payload.options ?? null,
+          technique: payload.technique ?? null,
+          color: payload.color ?? null,
+          material: payload.material ?? null,
+          shortcodeHandle: payload.shortcodeHandle ?? null,
+        });
+
+        const normalized = normalizeVariantMapping(saved);
+        this.variantMappings = this.variantMappings.filter(entry => entry.shopifyVariantId !== normalized.shopifyVariantId);
+        this.variantMappings.push(normalized);
+
+        if (notify)
+          notifications.success("Shopify varyant eşlemesi kaydedildi.");
+
+        return normalized;
+      } catch (error: any) {
+        console.warn("[catalog] mapVariant failed", error);
+        if (notify)
+          notifications.error(error?.response?._data?.error ?? error?.message ?? "Varyant eşlemesi kaydedilemedi.");
+        throw error;
+      }
     },
 
-    removeVariantMapping(payload: { productSlug: string; surfaceId: string; color?: string | null; material?: string | null }) {
-      const key = variantKey(payload);
-      this.variantMappings = this.variantMappings.filter(v => variantKey(v) !== key);
+    async removeVariantMapping(variantId: string, options: { notify?: boolean } = {}) {
+      const { notify = true } = options;
+      const notifications = useNotificationStore();
+      const snapshot = [...this.variantMappings];
+      this.variantMappings = this.variantMappings.filter(entry => entry.shopifyVariantId !== variantId);
+
+      try {
+        await deleteVariantSurfaceMapping(variantId);
+        if (notify)
+          notifications.info("Varyant eşlemesi kaldırıldı.");
+      } catch (error: any) {
+        console.warn("[catalog] removeVariantMapping failed", error);
+        this.variantMappings = snapshot;
+        if (notify)
+          notifications.error(error?.response?._data?.error ?? error?.message ?? "Varyant eşlemesi kaldırılamadı.");
+        throw error;
+      }
     },
   },
 });

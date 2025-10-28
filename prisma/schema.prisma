@@ -103,6 +103,7 @@ model Tenant {
   shortcodes       Shortcode[]
   jobs             Job[]
   orders           Order[]
+  variantMappings  VariantSurfaceMapping[]
   pricingRules     PricingRule[]
   discounts        Discount[]
   taxProfiles      TaxProfile[]
@@ -183,6 +184,7 @@ model Product {
   templates      Template[]
   shortcodes     Shortcode[]
   builderConfigs ProductBuilderConfig[]
+  variantMappings VariantSurfaceMapping[]
 
   @@unique([tenantId, slug])
 }
@@ -207,6 +209,7 @@ model Surface {
   products  Product[]        @relation("ProductDefaultSurface")
   designs   DesignDocument[]
   templates Template[]
+  variantMappings VariantSurfaceMapping[]
 
   @@index([productId])
 }
@@ -226,6 +229,32 @@ model Variant {
   product Product @relation(fields: [productId], references: [id])
 
   @@index([productId])
+}
+
+model VariantSurfaceMapping {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  productId           String
+  surfaceId           String
+  shopifyProductId    String?
+  shopifyProductTitle String?
+  shopifyVariantId    String
+  shopifyVariantTitle String?
+  options             Json?
+  technique           String?
+  color               String?
+  material            String?
+  shortcodeHandle     String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  surface Surface @relation(fields: [surfaceId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, shopifyVariantId])
+  @@index([tenantId, productId])
+  @@index([shopifyVariantId])
 }
 
 model ProductBuilderConfig {

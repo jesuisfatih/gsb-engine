@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
 
+const variantParamSchema = z.object({
+  variantId: z.string().trim().min(1),
+});
+
 const logSchema = z.object({
   status: z.enum(["success", "error", "timeout", "unavailable"]).default("error"),
   errorCode: z.string().trim().max(64).optional(),
@@ -41,6 +45,39 @@ embedRouter.get("/shortcodes/:handle", async (req, res, next) => {
       });
 
     res.json({ data: record });
+  } catch (error) {
+    next(error);
+  }
+});
+
+embedRouter.get("/catalog/mappings/:variantId", async (req, res, next) => {
+  try {
+    const { prisma } = req.context;
+    const { variantId } = variantParamSchema.parse(req.params);
+
+    const mapping = await prisma.variantSurfaceMapping.findFirst({
+      where: { shopifyVariantId: variantId },
+      include: {
+        product: { select: { id: true, slug: true, title: true } },
+        surface: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!mapping) {
+      return res.status(404).json({ error: "Variant mapping not found" });
+    }
+
+    res.json({
+      data: {
+        productId: mapping.productId,
+        productSlug: mapping.product?.slug ?? null,
+        productTitle: mapping.product?.title ?? null,
+        surfaceId: mapping.surfaceId,
+        surfaceName: mapping.surface?.name ?? null,
+        technique: mapping.technique ?? null,
+        shortcodeHandle: mapping.shortcodeHandle ?? null,
+      },
+    });
   } catch (error) {
     next(error);
   }

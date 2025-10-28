@@ -75,6 +75,76 @@ const listAssetsQuery = z.object({
   type: z.string().optional().default("gallery.image"),
 });
 
+const handlePattern = /^[a-z0-9-]+$/i;
+
+const variantMappingInputSchema = z.object({
+  productSlug: z.string().min(1),
+  surfaceId: z.string().min(1),
+  shopifyVariantId: z.string().min(1),
+  shopifyVariantTitle: z.string().optional().nullable(),
+  shopifyProductId: z.string().optional().nullable(),
+  shopifyProductTitle: z.string().optional().nullable(),
+  technique: z.string().optional().nullable(),
+  color: z.string().optional().nullable(),
+  material: z.string().optional().nullable(),
+  options: z.record(z.any()).optional().nullable(),
+  shortcodeHandle: z
+    .string()
+    .trim()
+    .min(3)
+    .max(64)
+    .regex(handlePattern, "Handle may only contain letters, numbers, and hyphen")
+    .optional()
+    .nullable(),
+});
+
+const variantMappingsPayloadSchema = z.object({
+  mappings: z.array(variantMappingInputSchema).min(1),
+});
+
+const variantIdParamSchema = z.object({
+  variantId: z.string().min(1),
+});
+
+type VariantMappingWithRelations = Prisma.VariantSurfaceMappingGetPayload<{
+  include: {
+    product: { select: { id: true; slug: true; title: true } };
+    surface: { select: { id: true; name: true } };
+  };
+}>;
+
+function toVariantMappingResponse(record: VariantMappingWithRelations) {
+  if (!record.product || !record.surface) {
+    throw new Error("Variant mapping is missing relational data");
+  }
+
+  return {
+    id: record.id,
+    productId: record.productId,
+    productSlug: record.product.slug,
+    productTitle: record.product.title,
+    surfaceId: record.surfaceId,
+    surfaceName: record.surface.name,
+    shopifyProductId: record.shopifyProductId ?? null,
+    shopifyProductTitle: record.shopifyProductTitle ?? null,
+    shopifyVariantId: record.shopifyVariantId,
+    shopifyVariantTitle: record.shopifyVariantTitle ?? null,
+    options: record.options ?? null,
+    technique: record.technique ?? null,
+    color: record.color ?? null,
+    material: record.material ?? null,
+    shortcodeHandle: record.shortcodeHandle ?? null,
+    updatedAt: record.updatedAt,
+  };
+}
+
+function normaliseShortcodeHandle(value?: string | null) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.toLowerCase();
+}
+
 const defaultProductConfig = {
   sizeOption: "Size",
   sizeUnit: "in",
@@ -443,6 +513,180 @@ merchantConfigRouter.get("/catalog/products", async (req, res, next) => {
     res.json({ data: products });
   }
   catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.get("/catalog/mappings", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const mappings = await prisma.variantSurfaceMapping.findMany({
+      where: { tenantId },
+      include: {
+        product: { select: { id: true, slug: true, title: true } },
+        surface: { select: { id: true, name: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    res.json({
+      data: mappings.map(toVariantMappingResponse),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.put("/catalog/mappings", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const payload = variantMappingsPayloadSchema.parse(req.body ?? {});
+    const results: VariantMappingWithRelations[] = [];
+
+    const requestedHandles = new Set<string>();
+    for (const item of payload.mappings) {
+      const normalised = normaliseShortcodeHandle(item.shortcodeHandle ?? undefined);
+      if (normalised) {
+        requestedHandles.add(normalised);
+      }
+    }
+
+    if (requestedHandles.size) {
+      const list = await prisma.shortcode.findMany({
+        where: {
+          tenantId,
+          handle: { in: Array.from(requestedHandles) },
+        },
+        select: { handle: true },
+      });
+      const knownHandles = new Set(list.map(entry => entry.handle));
+      const missing = Array.from(requestedHandles).filter(handle => !knownHandles.has(handle));
+      if (missing.length) {
+        res.status(422).json({
+          error: `Shortcode${missing.length > 1 ? "s" : ""} ${missing.join(", ")} not found for this merchant.`,
+        });
+        return;
+      }
+    }
+
+    for (const item of payload.mappings) {
+      const shortcodeHandle = normaliseShortcodeHandle(item.shortcodeHandle ?? undefined);
+      const primaryProduct = await prisma.product.findFirst({
+        where: { slug: item.productSlug, tenantId },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          shopifyProductId: true,
+          surfaces: {
+            select: { id: true, name: true },
+          },
+        },
+      });
+
+      const fallbackProduct = await prisma.product.findFirst({
+        where: { slug: item.productSlug, tenantId: null },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          shopifyProductId: true,
+          surfaces: {
+            select: { id: true, name: true },
+          },
+        },
+      });
+
+      const product = primaryProduct ?? fallbackProduct;
+      if (!product) {
+        res.status(404).json({ error: `Product "${item.productSlug}" not found.` });
+        return;
+      }
+
+      const surface = product.surfaces.find(s => s.id === item.surfaceId);
+      if (!surface) {
+        res.status(404).json({ error: `Surface ${item.surfaceId} does not belong to product "${product.slug}".` });
+        return;
+      }
+
+      const saved = await prisma.variantSurfaceMapping.upsert({
+        where: {
+          tenantId_shopifyVariantId: {
+            tenantId,
+            shopifyVariantId: item.shopifyVariantId,
+          },
+        },
+        update: {
+          productId: product.id,
+          surfaceId: surface.id,
+          shopifyProductId: item.shopifyProductId ?? product.shopifyProductId ?? null,
+          shopifyProductTitle: item.shopifyProductTitle ?? product.title,
+          shopifyVariantTitle: item.shopifyVariantTitle ?? item.shopifyVariantId,
+          options: item.options ?? null,
+          technique: item.technique ?? null,
+          color: item.color ?? null,
+          material: item.material ?? null,
+          shortcodeHandle,
+        },
+        create: {
+          tenantId,
+          productId: product.id,
+          surfaceId: surface.id,
+          shopifyProductId: item.shopifyProductId ?? product.shopifyProductId ?? null,
+          shopifyProductTitle: item.shopifyProductTitle ?? product.title,
+          shopifyVariantId: item.shopifyVariantId,
+          shopifyVariantTitle: item.shopifyVariantTitle ?? item.shopifyVariantId,
+          options: item.options ?? null,
+          technique: item.technique ?? null,
+          color: item.color ?? null,
+          material: item.material ?? null,
+          shortcodeHandle,
+        },
+        include: {
+          product: { select: { id: true, slug: true, title: true } },
+          surface: { select: { id: true, name: true } },
+        },
+      });
+
+      results.push(saved);
+    }
+
+    res.json({
+      data: results.map(toVariantMappingResponse),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+merchantConfigRouter.delete("/catalog/mappings/:variantId", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const { variantId } = variantIdParamSchema.parse(req.params);
+
+    try {
+      await prisma.variantSurfaceMapping.delete({
+        where: {
+          tenantId_shopifyVariantId: {
+            tenantId,
+            shopifyVariantId: variantId,
+          },
+        },
+      });
+    } catch (deleteError: any) {
+      if (!(deleteError instanceof Prisma.PrismaClientKnownRequestError && deleteError.code === "P2025")) {
+        throw deleteError;
+      }
+    }
+
+    res.status(204).end();
+  } catch (error) {
     next(error);
   }
 });

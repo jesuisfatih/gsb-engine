@@ -19,6 +19,39 @@ export interface ShopifyVariantSummary {
   options: Record<string, string>;
 }
 
+export interface VariantSurfaceMappingRecord {
+  id: string;
+  productId: string;
+  productSlug: string;
+  productTitle?: string | null;
+  surfaceId: string;
+  surfaceName?: string | null;
+  shopifyProductId?: string | null;
+  shopifyProductTitle?: string | null;
+  shopifyVariantId: string;
+  shopifyVariantTitle?: string | null;
+  options?: Record<string, unknown> | null;
+  technique?: string | null;
+  color?: string | null;
+  material?: string | null;
+  updatedAt?: string | null;
+  shortcodeHandle?: string | null;
+}
+
+export interface VariantSurfaceMappingInput {
+  productSlug: string;
+  surfaceId: string;
+  shopifyVariantId: string;
+  shopifyVariantTitle?: string | null;
+  shopifyProductId?: string | null;
+  shopifyProductTitle?: string | null;
+  options?: Record<string, unknown> | null;
+  technique?: string | null;
+  color?: string | null;
+  material?: string | null;
+  shortcodeHandle?: string | null;
+}
+
 type Nullable<T> = { [K in keyof T]: T[K] | null };
 
 function generateId(prefix: string) {
@@ -274,6 +307,28 @@ export async function updateSurfaceApi(productId: string, surface: ProductSurfac
 
 export async function deleteSurface(productId: string, surfaceId: string): Promise<void> {
   await $api(`/catalog/${encodeURIComponent(productId)}/surfaces/${encodeURIComponent(surfaceId)}`, { method: "DELETE" });
+}
+
+export async function fetchVariantSurfaceMappings(): Promise<VariantSurfaceMappingRecord[]> {
+  const response = await $api<{ data: VariantSurfaceMappingRecord[] }>("/merchant/config/catalog/mappings");
+  return response.data ?? [];
+}
+
+export async function upsertVariantSurfaceMapping(payload: VariantSurfaceMappingInput): Promise<VariantSurfaceMappingRecord> {
+  const response = await $api<{ data: VariantSurfaceMappingRecord[] }>("/merchant/config/catalog/mappings", {
+    method: "PUT",
+    body: { mappings: [payload] },
+  });
+  const [record] = response.data ?? [];
+  if (!record)
+    throw new Error("Variant mapping response is empty.");
+  return record;
+}
+
+export async function deleteVariantSurfaceMapping(shopifyVariantId: string): Promise<void> {
+  await $api(`/merchant/config/catalog/mappings/${encodeURIComponent(shopifyVariantId)}`, {
+    method: "DELETE",
+  });
 }
 
 export async function fetchShopifyProducts(): Promise<ShopifyProductSummary[]> {
