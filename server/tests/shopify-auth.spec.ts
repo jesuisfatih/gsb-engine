@@ -92,4 +92,48 @@ describe("Shopify embedded auth", () => {
     expect(response.status).toBe(401);
     expect(response.body?.error).toBeDefined();
   });
+
+  it("auto provisions tenant and merchant admin when shop is unknown", async () => {
+    const slugSuffix = nanoid(6).toLowerCase();
+    const shopDomain = `fresh-shop-${slugSuffix}.myshopify.com`;
+
+    const secret = process.env.SHOPIFY_API_SECRET ?? "test_secret";
+    const token = jwt.sign(
+      {
+        dest: `https://${shopDomain}`,
+        aud: process.env.SHOPIFY_API_KEY,
+      },
+      secret,
+      { algorithm: "HS256", expiresIn: "5m" },
+    );
+
+    const response = await request(app)
+      .post("/api/auth/shopify/session")
+      .send({ token });
+
+    expect(response.status).toBe(200);
+    const payload = response.body?.data;
+    expect(payload?.tenantId).toBeTruthy();
+    expect(payload?.user?.role).toBe("merchant-admin");
+    expect(String(payload?.shopDomain)).toBe(shopDomain);
+
+    const tenantId = payload?.tenantId as string;
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: {
+        users: {
+          include: { user: true },
+        },
+      },
+    });
+
+    expect(tenant).toBeTruthy();
+    expect(
+      tenant?.settings && (tenant.settings as Record<string, any>)?.shopify?.domain,
+    ).toBe(shopDomain);
+
+    const adminMembership = tenant?.users.find(member => member.role === "MERCHANT_ADMIN");
+    expect(adminMembership).toBeTruthy();
+    expect(adminMembership?.user?.email).toBeTruthy();
+  });
 });
