@@ -232,14 +232,20 @@ async function exchangeShopifySession(token: string) {
   
   exchangingSession.value = true;
   try {
-    const fetcher = shopifyFetch.value ?? fetch;
+    const wrappedFetch = shopifyFetch.value;
+    const fetcher = wrappedFetch ?? fetch;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+    if (!wrappedFetch) {
+      console.warn("[shopify-layout] Shopify authenticated fetch unavailable, falling back to window.fetch");
+    }
     const response = await fetcher(`${apiBase}/auth/shopify/session`, {
       method: "POST",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ shop: shopDomain.value }),
+      headers,
+      body: JSON.stringify({ token, shop: shopDomain.value }),
     });
 
     const payload = await response.json().catch(() => null);
