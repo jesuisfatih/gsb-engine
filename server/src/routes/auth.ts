@@ -1,12 +1,12 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 import type { $Enums, Prisma } from "../../src/generated/prisma/client";
 import { prisma } from "../prisma";
 import { generateAccessToken } from "../auth/jwt";
 import { requireAuthMiddleware } from "../middlewares/authenticate";
 import { env } from "../env";
+import { verifyShopifySessionToken, type ShopifySessionPayload } from "../shopify/sessionToken";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -48,13 +48,6 @@ function mapTenants(
     isActive: m.tenant.id === activeTenantId,
   }));
 }
-
-type ShopifySessionPayload = {
-  iss?: string;
-  dest?: string;
-  aud?: string;
-  exp?: number;
-};
 
 function extractShopDomain(payload: ShopifySessionPayload, fallback?: string) {
   const candidates = [payload.dest, payload.iss, fallback].filter(Boolean) as string[];
@@ -371,20 +364,13 @@ authRouter.post("/shopify/session", async (req, res, next) => {
       return res.status(500).json({ error: "Shopify API secret not configured" });
     }
 
-    let decoded: ShopifySessionPayload | null = null;
-    try {
-      decoded = jwt.verify(token, env.SHOPIFY_API_SECRET, { algorithms: ["HS256"] }) as ShopifySessionPayload;
-    } catch (error) {
-      if (env.SHOPIFY_VALIDATE_SESSION_SIGNATURE) {
-        console.warn("[shopify-auth] session token verification failed", error);
-        return res.status(401).json({ error: "Invalid Shopify session token" });
-      }
-
-      console.warn("[shopify-auth] signature verification failed, falling back to decoded payload (validation disabled)", error);
-      decoded = jwt.decode(token, { json: true }) as ShopifySessionPayload | null;
-      if (!decoded) {
-        return res.status(401).json({ error: "Invalid Shopify session token" });
-      }
+    const verification = await verifyShopifySessionToken(token, {
+      validateSignature: env.SHOPIFY_VALIDATE_SESSION_SIGNATURE,
+      apiSecret: env.SHOPIFY_API_SECRET,
+    });
+    const decoded = verification.payload;
+    if (!verification.verified) {
+      console.warn("[shopify-auth] session token accepted without signature verification (fallback mode)");
     }
 
     if (env.SHOPIFY_API_KEY && decoded.aud && decoded.aud !== env.SHOPIFY_API_KEY) {
