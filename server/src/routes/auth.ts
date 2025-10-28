@@ -361,11 +361,12 @@ authRouter.post("/shopify/session", async (req, res, next) => {
     const { token: bodyToken, shop } = shopifySessionSchema.parse(req.body ?? {});
     const authHeader = req.get("authorization") || req.get("Authorization") || "";
     const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-    const token = (bodyToken ?? "").trim() || bearerToken;
+    const token = bearerToken || (bodyToken ?? "").trim();
+    const tokenSource = bearerToken ? "header" : "body";
 
     console.log("[shopify-auth] Session request received");
     console.log("[shopify-auth] Token length:", token?.length || 0, "Shop:", shop);
-    console.log("[shopify-auth] Token preview:", token ? `${token.substring(0, 24)}...${token.substring(token.length - 6)}` : "none");
+    console.log("[shopify-auth] Token preview:", token ? `${token.substring(0, 24)}...${token.substring(token.length - 6)}` : "none", "source:", tokenSource);
     if (!token) {
       console.warn("[shopify-auth] Session exchange missing token in body/header");
       return res.status(400).json({ error: "Missing Shopify session token" });

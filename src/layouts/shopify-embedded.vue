@@ -233,17 +233,13 @@ async function exchangeShopifySession(token: string) {
   exchangingSession.value = true;
   try {
     const fetcher = shopifyFetch.value ?? fetch;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
     const response = await fetcher(`${apiBase}/auth/shopify/session`, {
       method: "POST",
       credentials: "include",
-      headers,
-      body: JSON.stringify({ token, shop: shopDomain.value }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ shop: shopDomain.value }),
     });
 
     const payload = await response.json().catch(() => null);
