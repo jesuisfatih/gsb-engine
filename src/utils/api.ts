@@ -20,9 +20,17 @@ function resolveAccessToken(): string | null {
   if (typeof window === 'undefined')
     return null
 
-  const cookieToken = readCookieValue('accessToken')
-  if (cookieToken)
-    return cookieToken
+  const accessToken = readCookieValue('accessToken')
+  if (accessToken)
+    return accessToken
+
+  const sid = readCookieValue('sid')
+  if (sid)
+    return sid
+
+  const hostSid = readCookieValue('__Host-sid')
+  if (hostSid)
+    return hostSid
 
   return window.localStorage.getItem('gsb:accessToken')
 }
