@@ -39,8 +39,11 @@ function resolveTenantId(): string | undefined {
   return stored ?? undefined
 }
 
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+const normalisedBaseUrl = rawBaseUrl.replace(/\/+$/, '')
+
 export const $api = ofetch.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: normalisedBaseUrl,
   credentials: 'include',
   async onRequest({ options }) {
     const headers = new Headers(options.headers ?? {})

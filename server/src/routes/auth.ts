@@ -479,11 +479,12 @@ authRouter.post("/shopify/session", async (req, res, next) => {
     });
 
     const secureCookie = env.NODE_ENV !== "development";
-    const maxAgeMs = 15 * 60 * 1000;
+    const maxAgeSeconds = 15 * 60;
     const cookieHeaders: string[] = [
-      `__Host-sid=${accessToken}; Path=/; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age=${maxAgeMs};`,
-      `tenantId=${tenant.id}; Path=/; Secure; SameSite=None; Partitioned; Max-Age=${maxAgeMs};`,
+      `__Host-sid=${accessToken}; Path=/; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age=${maxAgeSeconds}`,
+      `tenantId=${tenant.id}; Path=/; Secure; SameSite=None; Partitioned; Max-Age=${maxAgeSeconds}`,
     ];
+    console.log("[shopify-auth] setting session cookies", cookieHeaders);
     res.setHeader("Set-Cookie", cookieHeaders);
 
     return res.json({
