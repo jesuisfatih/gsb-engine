@@ -12,5 +12,5 @@ redirect_urls = [
 [webhooks]
 api_version = "2025-10"
 
-# Modern token exchange flow kullan (legacy false!)
-use_legacy_install_flow = false
+# Legacy OAuth flow - access token almak için GEREKLİ!
+use_legacy_install_flow = true
