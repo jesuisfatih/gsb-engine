@@ -594,6 +594,39 @@ authRouter.post("/shopify/session", async (req, res, next) => {
 
     const roleId = resolveRole(primaryMembership.role);
 
+    // TOKEN EXCHANGE: Get Shopify access token
+    console.log("[shopify-auth] Performing token exchange for shop:", shopDomain);
+    let shopifyAccessToken: string | null = null;
+    try {
+      const tokenExchangeUrl = `https://${shopDomain}/admin/oauth/access_token`;
+      const tokenExchangeResponse = await fetch(tokenExchangeUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          client_id: env.SHOPIFY_API_KEY,
+          client_secret: env.SHOPIFY_API_SECRET,
+          grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+          subject_token: token,
+          subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
+          requested_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
+        }),
+      });
+
+      if (tokenExchangeResponse.ok) {
+        const tokenData = await tokenExchangeResponse.json() as { access_token: string; scope?: string };
+        shopifyAccessToken = tokenData.access_token;
+        console.log("[shopify-auth] Token exchange successful! Access token obtained.");
+      } else {
+        const errorText = await tokenExchangeResponse.text();
+        console.warn("[shopify-auth] Token exchange failed:", tokenExchangeResponse.status, errorText);
+      }
+    } catch (error) {
+      console.error("[shopify-auth] Token exchange error:", error);
+    }
+
     const currentSettings = (tenant.settings as Record<string, unknown> | null) ?? {};
     const currentShopify = (currentSettings.shopify as Record<string, unknown> | undefined) ?? {};
     const nextShopify: Record<string, unknown> = {
@@ -601,6 +634,13 @@ authRouter.post("/shopify/session", async (req, res, next) => {
       domain: shopDomain,
       lastSessionAt: new Date().toISOString(),
     };
+    
+    // Save Shopify access token if obtained
+    if (shopifyAccessToken) {
+      nextShopify.accessToken = shopifyAccessToken;
+      console.log("[shopify-auth] Access token saved to settings");
+    }
+    
     if (decoded.exp) {
       nextShopify.sessionExpiresAt = new Date(decoded.exp * 1000).toISOString();
     }
