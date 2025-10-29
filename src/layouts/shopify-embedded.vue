@@ -2,8 +2,6 @@
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
-import createApp from "@shopify/app-bridge";
-import { authenticatedFetch, getSessionToken } from "@shopify/app-bridge-utils";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
@@ -21,7 +19,23 @@ type NavSection = {
 
 const route = useRoute();
 
-const appBridge = ref<ReturnType<typeof createApp> | null>(null);
+type ShopifyGlobal = {
+  fetch?: typeof fetch;
+  toast?: { show: (message: string, options?: Record<string, any>) => void };
+  sessionToken?: { get: () => Promise<string> };
+  idToken?: () => Promise<string>;
+};
+
+declare global {
+  interface Window {
+    shopify?: ShopifyGlobal;
+    __shopify?: ShopifyGlobal;
+    __getShopifyToken?: () => Promise<string>;
+    __lastShopifyToken?: string;
+  }
+}
+
+const shopifyApi = ref<ShopifyGlobal | null>(null);
 const sessionToken = ref<string>("");
 const shopifyFetch = ref<typeof fetch | null>(null);
 const lastError = ref<string | null>(null);
@@ -123,6 +137,34 @@ const activeNavName = computed(() => (typeof route.name === "string" ? route.nam
 const currentTitle = computed(() => (route.meta?.embeddedTitle as string | undefined) ?? (route.meta?.title as string | undefined) ?? "Workspace");
 const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | undefined);
 
+function waitForShopifyApi(timeout = 10000): Promise<ShopifyGlobal> {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const poll = () => {
+      if (typeof window !== "undefined" && window.shopify) {
+        resolve(window.shopify);
+        return;
+      }
+      if (Date.now() - start > timeout) {
+        reject(new Error("Shopify App Bridge did not initialise in time"));
+        return;
+      }
+      setTimeout(poll, 100);
+    };
+    poll();
+  });
+}
+
+async function getShopifySessionToken(api: ShopifyGlobal): Promise<string> {
+  if (api.sessionToken && typeof api.sessionToken.get === "function") {
+    return api.sessionToken.get();
+  }
+  if (typeof api.idToken === "function") {
+    return api.idToken();
+  }
+  throw new Error("Shopify session token API not available");
+}
+
 async function bootstrapAppBridge() {
   if (!apiKey || !hostParam.value) {
     lastError.value = !apiKey
@@ -139,34 +181,20 @@ async function bootstrapAppBridge() {
   }
 
   try {
-    console.log("[shopify-layout] Creating App Bridge...");
-    const app = createApp({
-      apiKey,
-      host: hostParam.value,
-      forceRedirect: true,
-    });
+    console.log("[shopify-layout] Waiting for Shopify App Bridge...");
+    const api = await waitForShopifyApi();
 
-    if (typeof window !== "undefined") {
-      window.__shopifyApp = app;
-      window.__getShopifyToken = () => getSessionToken(app);
-    }
-
-    appBridge.value = app;
+    shopifyApi.value = api;
     lastError.value = null;
 
-    try {
-      const authenticated = authenticatedFetch(app);
-      shopifyFetch.value = authenticated;
-      if (typeof window !== "undefined") {
-        window.__shopifyAuthenticatedFetch = authenticated;
-      }
-      console.log("[shopify-layout] Authenticated fetch initialised");
-    } catch (fetchError) {
-      console.warn("[shopify-layout] Failed to initialise authenticatedFetch", fetchError);
+    shopifyFetch.value = api.fetch ? api.fetch.bind(api) : fetch;
+    if (typeof window !== "undefined") {
+      window.__shopify = api;
+      window.__getShopifyToken = () => getShopifySessionToken(api);
     }
     
     console.log("[shopify-layout] Getting session token from App Bridge...");
-    const token = await getSessionToken(app);
+    const token = await getShopifySessionToken(api);
     if (typeof window !== "undefined") {
       window.__lastShopifyToken = token;
       console.log("[shopify-layout] session token raw:", token);
@@ -301,7 +329,7 @@ watch(
   },
 );
 
-provide("shopifyAppBridge", appBridge);
+provide("shopifyAppBridge", shopifyApi);
 provide("shopifySessionToken", sessionToken);
 provide("shopifyShopDomain", shopDomain);
 </script>
@@ -676,4 +704,3 @@ provide("shopifyShopDomain", shopDomain);
   }
 }
 </style>
-
