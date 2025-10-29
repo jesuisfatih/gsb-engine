@@ -356,6 +356,21 @@ authRouter.post("/refresh", (req, res) => {
   return res.json({ accessToken: token });
 });
 
+// GET endpoint for debugging - should not be used
+authRouter.get("/shopify/session", async (req, res) => {
+  console.log("[shopify-auth] ❌ GET request received - should be POST");
+  console.log("[shopify-auth] Headers:", JSON.stringify(req.headers, null, 2));
+  console.log("[shopify-auth] Query:", JSON.stringify(req.query, null, 2));
+  console.log("[shopify-auth] URL:", req.url);
+  return res.status(405).json({ 
+    error: "Method not allowed. Use POST instead.",
+    hint: "Frontend should send POST request with session token",
+    received: "GET",
+    expected: "POST",
+    correctEndpoint: "POST /api/auth/shopify/session"
+  });
+});
+
 authRouter.post("/shopify/session", async (req, res, next) => {
   try {
     const { token: bodyToken, shop } = shopifySessionSchema.parse(req.body ?? {});
