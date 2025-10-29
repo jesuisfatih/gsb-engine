@@ -84,8 +84,9 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
     };
     return next();
   } catch (error) {
-    console.warn("[auth] invalid token", error);
-    return res.status(401).json({ error: "Invalid or expired token" });
+    console.warn("[auth] invalid token (continuing without auth)", error);
+    delete req.auth;
+    return next();
   }
 }
 
