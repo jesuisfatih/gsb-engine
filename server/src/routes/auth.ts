@@ -356,6 +356,24 @@ authRouter.post("/refresh", (req, res) => {
   return res.json({ accessToken: token });
 });
 
+// OAuth callback endpoint for app installation
+authRouter.get("/callback", async (req, res) => {
+  console.log("[shopify-auth] OAuth callback received");
+  console.log("[shopify-auth] Query params:", req.query);
+  
+  const { shop, host } = req.query;
+  
+  if (!shop || typeof shop !== "string") {
+    return res.status(400).send("Missing shop parameter");
+  }
+  
+  // Redirect to embedded app with shop and host params
+  const redirectUrl = `/shopify/embedded?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host as string)}` : ""}`;
+  console.log("[shopify-auth] Redirecting to:", redirectUrl);
+  
+  return res.redirect(redirectUrl);
+});
+
 // GET endpoint for debugging - should not be used
 authRouter.get("/shopify/session", async (req, res) => {
   console.log("[shopify-auth] ❌ GET request received - should be POST");
