@@ -1,0 +1,92 @@
+{% comment %}
+  Gang Sheet Builder App Embed
+  This loads globally across all pages
+{% endcomment %}
+
+<script
+  src="https://app.gsb-engine.dev/gsb-shortcode.js"
+  data-api-url="https://app.gsb-engine.dev/api/embed/shortcodes"
+  data-editor-url="https://app.gsb-engine.dev/editor"
+  data-mapping-url="https://app.gsb-engine.dev/api/embed/catalog/mappings"
+  data-button-label="{{ block.settings.button_label }}"
+  data-button-bg="{{ block.settings.button_color }}"
+  data-button-color="{{ block.settings.button_text_color }}"
+  data-button-variant="{{ block.settings.button_variant }}"
+  data-button-size="{{ block.settings.button_size }}"
+  data-open-mode="{{ block.settings.open_mode }}"
+  data-mobile-full-width="{{ block.settings.mobile_full_width }}"
+  data-fallback-shortcode="{{ block.settings.fallback_shortcode }}"
+  defer
+></script>
+
+{% schema %}
+{
+  "name": "GSB Loader",
+  "target": "body",
+  "settings": [
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button Text",
+      "default": "Customize"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button Color",
+      "default": "#4c1d95"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Text Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "select",
+      "id": "button_variant",
+      "label": "Button Style",
+      "default": "pill",
+      "options": [
+        { "value": "pill", "label": "Pill" },
+        { "value": "rounded", "label": "Rounded" },
+        { "value": "square", "label": "Square" }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "button_size",
+      "label": "Button Size",
+      "default": "md",
+      "options": [
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "open_mode",
+      "label": "Open Mode",
+      "default": "navigate",
+      "options": [
+        { "value": "navigate", "label": "Same Tab" },
+        { "value": "popup", "label": "Popup" }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "mobile_full_width",
+      "label": "Mobile Full Width",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "fallback_shortcode",
+      "label": "Fallback Shortcode",
+      "info": "Used when no variant mapping exists"
+    }
+  ]
+}
+{% endschema %}
+
