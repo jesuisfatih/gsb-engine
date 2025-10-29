@@ -41,6 +41,14 @@ const dateRange = ref<[string, string] | null>(null);
 const sortBy = ref<"createdAt" | "updatedAt" | "name">("updatedAt");
 const sortOrder = ref<"asc" | "desc">("desc");
 const showFilters = ref(false);
+const actionLoading = ref<Record<string, boolean>>({});
+const rejectDialog = ref(false);
+const rejectDesignId = ref<string | null>(null);
+const rejectReason = ref("");
+const templateDialog = ref(false);
+const templateDesignId = ref<string | null>(null);
+const templateTitle = ref("");
+const templateTags = ref<string[]>([]);
 
 const isLoading = computed(() => designsStore.loading);
 const designs = computed(() => designsStore.items);
@@ -101,6 +109,119 @@ function clearFilters() {
   dateRange.value = null;
   sortBy.value = "updatedAt";
   sortOrder.value = "desc";
+}
+
+// Action handlers
+async function approveDesign(designId: string) {
+  actionLoading.value[designId] = true;
+  try {
+    await designsStore.approveDesign(designId);
+    notification.success("Design approved!");
+  } catch (error: any) {
+    console.error("[designs] Approve failed:", error);
+    notification.error(error?.message || "Failed to approve design");
+  } finally {
+    actionLoading.value[designId] = false;
+  }
+}
+
+function openRejectDialog(designId: string) {
+  rejectDesignId.value = designId;
+  rejectReason.value = "";
+  rejectDialog.value = true;
+}
+
+async function submitReject() {
+  if (!rejectDesignId.value || !rejectReason.value.trim()) {
+    notification.warning("Please provide a rejection reason.");
+    return;
+  }
+
+  const designId = rejectDesignId.value;
+  actionLoading.value[designId] = true;
+
+  try {
+    await designsStore.rejectDesign(designId, rejectReason.value.trim());
+    notification.success("Design rejected");
+    rejectDialog.value = false;
+    rejectDesignId.value = null;
+    rejectReason.value = "";
+  } catch (error: any) {
+    console.error("[designs] Reject failed:", error);
+    notification.error(error?.message || "Failed to reject design");
+  } finally {
+    actionLoading.value[designId] = false;
+  }
+}
+
+async function downloadPNG(designId: string) {
+  actionLoading.value[designId] = true;
+  try {
+    await designsStore.downloadPNG(designId);
+    notification.success("PNG downloaded!");
+  } catch (error: any) {
+    console.error("[designs] PNG download failed:", error);
+    notification.error(error?.message || "Failed to download PNG");
+  } finally {
+    actionLoading.value[designId] = false;
+  }
+}
+
+async function downloadPDF(designId: string) {
+  actionLoading.value[designId] = true;
+  try {
+    await designsStore.downloadPDF(designId);
+    notification.success("PDF downloaded!");
+  } catch (error: any) {
+    console.error("[designs] PDF download failed:", error);
+    notification.error(error?.message || "Failed to download PDF");
+  } finally {
+    actionLoading.value[designId] = false;
+  }
+}
+
+async function duplicateDesign(designId: string) {
+  actionLoading.value[designId] = true;
+  try {
+    await designsStore.duplicateDesign(designId);
+    notification.success("Design duplicated!");
+  } catch (error: any) {
+    console.error("[designs] Duplicate failed:", error);
+    notification.error(error?.message || "Failed to duplicate design");
+  } finally {
+    actionLoading.value[designId] = false;
+  }
+}
+
+function openTemplateDialog(designId: string) {
+  templateDesignId.value = designId;
+  templateTitle.value = "";
+  templateTags.value = [];
+  templateDialog.value = true;
+}
+
+async function submitTemplate() {
+  if (!templateDesignId.value || !templateTitle.value.trim()) {
+    notification.warning("Please provide a template title.");
+    return;
+  }
+
+  const designId = templateDesignId.value;
+  actionLoading.value[designId] = true;
+
+  try {
+    await designsStore.convertToTemplate(designId, templateTitle.value.trim(), templateTags.value);
+    notification.success("Template created successfully!");
+    templateDialog.value = false;
+    templateDesignId.value = null;
+    templateTitle.value = "";
+    templateTags.value = [];
+  } catch (error: any) {
+    console.error("[designs] Convert to template failed:", error);
+    notification.error(error?.message || "Failed to create template");
+  } finally {
+    actionLoading.value[designId] = false;
+  }
 }
 
 onMounted(() => {
@@ -225,14 +346,161 @@ onMounted(() => {
             <td>{{ design.surface ?? '�' }}</td>
             <td>{{ formatUpdated(design.updatedAt) }}</td>
             <td class="actions">
-              <VBtn icon="tabler-external-link" variant="text" size="small" />
-              <VBtn icon="tabler-copy" variant="text" size="small" />
-              <VBtn icon="tabler-dots" variant="text" size="small" />
+              <VMenu>
+                <template #activator="{ props }">
+                  <VBtn 
+                    icon="tabler-dots" 
+                    variant="text" 
+                    size="small"
+                    :loading="actionLoading[design.id]"
+                    v-bind="props"
+                  />
+                </template>
+                
+                <VList>
+                  <!-- Approve (if SUBMITTED) -->
+                  <VListItem
+                    v-if="design.status === 'SUBMITTED'"
+                    prepend-icon="tabler-check"
+                    title="Approve"
+                    @click="approveDesign(design.id)"
+                  />
+                  
+                  <!-- Reject (if SUBMITTED or APPROVED) -->
+                  <VListItem
+                    v-if="design.status === 'SUBMITTED' || design.status === 'APPROVED'"
+                    prepend-icon="tabler-x"
+                    title="Reject"
+                    @click="openRejectDialog(design.id)"
+                  />
+                  
+                  <VDivider />
+                  
+                  <!-- Download PNG -->
+                  <VListItem
+                    prepend-icon="tabler-photo"
+                    title="Download PNG"
+                    @click="downloadPNG(design.id)"
+                  />
+                  
+                  <!-- Download PDF -->
+                  <VListItem
+                    prepend-icon="tabler-file-type-pdf"
+                    title="Download PDF"
+                    @click="downloadPDF(design.id)"
+                  />
+                  
+                  <VDivider />
+                  
+                  <!-- Duplicate -->
+                  <VListItem
+                    prepend-icon="tabler-copy"
+                    title="Duplicate"
+                    @click="duplicateDesign(design.id)"
+                  />
+                  
+                  <!-- Save as Template -->
+                  <VListItem
+                    prepend-icon="tabler-template"
+                    title="Save as Template"
+                    @click="openTemplateDialog(design.id)"
+                  />
+                </VList>
+              </VMenu>
             </td>
           </tr>
         </tbody>
       </table>
     </section>
+
+    <!-- Reject Dialog -->
+    <VDialog v-model="rejectDialog" max-width="500">
+      <VCard>
+        <VCardTitle class="text-h5">
+          Reject Design
+        </VCardTitle>
+        <VCardText>
+          <p class="mb-4">
+            Please provide a reason for rejecting this design. The customer will be notified.
+          </p>
+          <VTextarea
+            v-model="rejectReason"
+            label="Rejection Reason"
+            placeholder="Enter reason (e.g., low resolution, incorrect dimensions)..."
+            rows="4"
+            variant="outlined"
+            :rules="[v => !!v || 'Reason is required']"
+          />
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn 
+            variant="text"
+            @click="rejectDialog = false"
+          >
+            Cancel
+          </VBtn>
+          <VBtn 
+            color="error"
+            variant="flat"
+            :loading="rejectDesignId ? actionLoading[rejectDesignId] : false"
+            :disabled="!rejectReason.trim()"
+            @click="submitReject"
+          >
+            Reject Design
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Convert to Template Dialog -->
+    <VDialog v-model="templateDialog" max-width="600">
+      <VCard>
+        <VCardTitle class="text-h5">
+          Save as Template
+        </VCardTitle>
+        <VCardText>
+          <p class="mb-4">
+            Convert this design into a reusable template that can be assigned to products.
+          </p>
+          <VTextField
+            v-model="templateTitle"
+            label="Template Title"
+            placeholder="e.g., Summer Collection T-shirt"
+            variant="outlined"
+            class="mb-4"
+            :rules="[v => !!v || 'Title is required']"
+          />
+          <VCombobox
+            v-model="templateTags"
+            label="Tags"
+            placeholder="Add tags for categorization"
+            variant="outlined"
+            multiple
+            chips
+            hint="Press enter to add a tag"
+          />
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn 
+            variant="text"
+            @click="templateDialog = false"
+          >
+            Cancel
+          </VBtn>
+          <VBtn 
+            color="primary"
+            variant="flat"
+            :loading="templateDesignId ? actionLoading[templateDesignId] : false"
+            :disabled="!templateTitle.trim()"
+            @click="submitTemplate"
+          >
+            Create Template
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 

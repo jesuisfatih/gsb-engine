@@ -18,6 +18,11 @@ const templatesStore = useMerchantTemplatesStore();
 
 const searchTerm = ref("");
 const selectedCategory = ref("All");
+const fileInput = ref<HTMLInputElement | null>(null);
+const importing = ref(false);
+const deleteDialog = ref(false);
+const templateToDelete = ref<string | null>(null);
+const actionLoading = ref<Record<string, boolean>>({});
 
 const isLoading = computed(() => templatesStore.loading);
 
@@ -55,12 +60,92 @@ async function loadTemplates() {
     await templatesStore.fetchTemplates();
   } catch (error) {
     console.error(error);
-    notification.error("Template listesi yuklenemedi.");
+    notification.error("Template listesi yÃ¼klenemedi.");
   }
 }
 
 function selectCategory(label: string) {
   selectedCategory.value = label;
+}
+
+// Import JSON handler
+function triggerImport() {
+  fileInput.value?.click();
+}
+
+async function handleFileImport(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  importing.value = true;
+  try {
+    const text = await file.text();
+    const jsonData = JSON.parse(text);
+    
+    await templatesStore.importFromJSON(jsonData);
+    notification.success(`Template "${jsonData.title || 'Untitled'}" imported successfully!`);
+  } catch (error: any) {
+    console.error("[templates] Import failed:", error);
+    notification.error(error?.message || "Failed to import template. Invalid JSON format.");
+  } finally {
+    importing.value = false;
+    // Reset file input
+    if (target) target.value = "";
+  }
+}
+
+// Export JSON handler
+async function exportTemplate(templateId: string) {
+  actionLoading.value[templateId] = true;
+  try {
+    await templatesStore.exportToJSON(templateId);
+    notification.success("Template exported successfully!");
+  } catch (error: any) {
+    console.error("[templates] Export failed:", error);
+    notification.error(error?.message || "Failed to export template");
+  } finally {
+    actionLoading.value[templateId] = false;
+  }
+}
+
+// Duplicate template handler
+async function duplicateTemplate(templateId: string) {
+  actionLoading.value[templateId] = true;
+  try {
+    await templatesStore.duplicateTemplate(templateId);
+    notification.success("Template duplicated successfully!");
+  } catch (error: any) {
+    console.error("[templates] Duplicate failed:", error);
+    notification.error(error?.message || "Failed to duplicate template");
+  } finally {
+    actionLoading.value[templateId] = false;
+  }
+}
+
+// Delete template handler
+function confirmDelete(templateId: string) {
+  templateToDelete.value = templateId;
+  deleteDialog.value = true;
+}
+
+async function deleteTemplate() {
+  if (!templateToDelete.value) return;
+  
+  const templateId = templateToDelete.value;
+  actionLoading.value[templateId] = true;
+  
+  try {
+    await templatesStore.deleteTemplate(templateId);
+    notification.success("Template deleted successfully!");
+    deleteDialog.value = false;
+    templateToDelete.value = null;
+  } catch (error: any) {
+    console.error("[templates] Delete failed:", error);
+    notification.error(error?.message || "Failed to delete template");
+  } finally {
+    actionLoading.value[templateId] = false;
+  }
 }
 
 onMounted(() => {
@@ -77,8 +162,30 @@ onMounted(() => {
           <p>Drag templates into your gang sheet builder or publish them to customers.</p>
         </div>
         <div class="toolbar">
-          <VBtn prepend-icon="tabler-cloud-upload" variant="outlined">Import JSON</VBtn>
-          <VBtn color="primary" prepend-icon="tabler-plus">New template</VBtn>
+          <!-- Hidden file input -->
+          <input
+            ref="fileInput"
+            type="file"
+            accept="application/json,.json"
+            style="display: none"
+            @change="handleFileImport"
+          />
+          
+          <VBtn 
+            prepend-icon="tabler-cloud-upload" 
+            variant="outlined"
+            :loading="importing"
+            @click="triggerImport"
+          >
+            Import JSON
+          </VBtn>
+          <VBtn 
+            color="primary" 
+            prepend-icon="tabler-plus"
+            to="/editor"
+          >
+            New template
+          </VBtn>
         </div>
       </header>
 
@@ -122,7 +229,7 @@ onMounted(() => {
           </div>
           <div class="template-body">
             <h3>{{ template.title }}</h3>
-            <p>{{ template.description || '—' }}</p>
+            <p>{{ template.description || 'ï¿½' }}</p>
             <div v-if="template.tags?.length" class="tags">
               <VChip
                 v-for="tag in template.tags"
@@ -136,15 +243,80 @@ onMounted(() => {
             </div>
           </div>
           <div class="template-actions">
-            <VBtn icon="tabler-eye" variant="text" />
-            <VBtn icon="tabler-copy" variant="text" />
-            <VBtn icon="tabler-dots" variant="text" />
+            <VBtn 
+              icon="tabler-download" 
+              variant="text"
+              size="small"
+              :loading="actionLoading[template.id]"
+              @click="exportTemplate(template.id)"
+            >
+              <VIcon icon="tabler-download" />
+              <VTooltip activator="parent" location="top">
+                Export JSON
+              </VTooltip>
+            </VBtn>
+            
+            <VBtn 
+              icon="tabler-copy" 
+              variant="text"
+              size="small"
+              :loading="actionLoading[template.id]"
+              @click="duplicateTemplate(template.id)"
+            >
+              <VIcon icon="tabler-copy" />
+              <VTooltip activator="parent" location="top">
+                Duplicate
+              </VTooltip>
+            </VBtn>
+            
+            <VBtn 
+              icon="tabler-trash" 
+              variant="text"
+              size="small"
+              color="error"
+              :loading="actionLoading[template.id]"
+              @click="confirmDelete(template.id)"
+            >
+              <VIcon icon="tabler-trash" />
+              <VTooltip activator="parent" location="top">
+                Delete
+              </VTooltip>
+            </VBtn>
           </div>
         </article>
       </div>
 
       <p v-else class="empty-state">No templates match the current filters.</p>
     </section>
+
+    <!-- Delete Confirmation Dialog -->
+    <VDialog v-model="deleteDialog" max-width="500">
+      <VCard>
+        <VCardTitle class="text-h5">
+          Delete Template?
+        </VCardTitle>
+        <VCardText>
+          Are you sure you want to delete this template? This action cannot be undone.
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn 
+            variant="text"
+            @click="deleteDialog = false"
+          >
+            Cancel
+          </VBtn>
+          <VBtn 
+            color="error"
+            variant="flat"
+            :loading="templateToDelete ? actionLoading[templateToDelete] : false"
+            @click="deleteTemplate"
+          >
+            Delete
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 

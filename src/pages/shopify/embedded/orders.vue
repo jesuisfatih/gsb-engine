@@ -25,6 +25,11 @@ const notification = useNotificationStore();
 const activeTab = ref<"unfulfilled" | "fulfilled" | "all">("unfulfilled");
 const statusFilter = ref<"Any" | OrderStatus>("Any");
 const searchTerm = ref("");
+const selectedOrderIds = ref<Set<string>>(new Set());
+const bulkActionLoading = ref(false);
+const refundDialog = ref(false);
+const refundOrderId = ref<string | null>(null);
+const refundReason = ref("");
 
 const unfulfilledSet = new Set<OrderStatus>(["Created", "Queued", "In production", "On hold"]);
 const fulfilledSet = new Set<OrderStatus>(["Completed"]);
@@ -251,6 +256,102 @@ watch(filteredOrders, (list) => {
   }
 });
 
+// Bulk Actions
+const isAllSelected = computed(() => {
+  return filteredOrders.value.length > 0 && filteredOrders.value.every(o => selectedOrderIds.value.has(o.id));
+});
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedOrderIds.value.clear();
+  } else {
+    filteredOrders.value.forEach(o => selectedOrderIds.value.add(o.id));
+  }
+}
+
+function toggleSelectOrder(orderId: string) {
+  if (selectedOrderIds.value.has(orderId)) {
+    selectedOrderIds.value.delete(orderId);
+  } else {
+    selectedOrderIds.value.add(orderId);
+  }
+}
+
+async function bulkDownload() {
+  if (selectedOrderIds.value.size === 0) {
+    notification.warning("Please select at least one order.");
+    return;
+  }
+
+  bulkActionLoading.value = true;
+  try {
+    await ordersStore.bulkDownloadDesigns(Array.from(selectedOrderIds.value));
+    notification.success(`Downloaded ${selectedOrderIds.value.size} order(s) successfully!`);
+    selectedOrderIds.value.clear();
+  } catch (error: any) {
+    console.error("[orders] Bulk download failed:", error);
+    notification.error(error?.message || "Failed to download orders");
+  } finally {
+    bulkActionLoading.value = false;
+  }
+}
+
+async function bulkMarkShipped() {
+  if (selectedOrderIds.value.size === 0) {
+    notification.warning("Please select at least one order.");
+    return;
+  }
+
+  bulkActionLoading.value = true;
+  try {
+    await ordersStore.markAsShipped(Array.from(selectedOrderIds.value));
+    notification.success(`Marked ${selectedOrderIds.value.size} order(s) as shipped!`);
+    selectedOrderIds.value.clear();
+  } catch (error: any) {
+    console.error("[orders] Bulk mark shipped failed:", error);
+    notification.error(error?.message || "Failed to mark orders as shipped");
+  } finally {
+    bulkActionLoading.value = false;
+  }
+}
+
+async function togglePriority(orderId: string, priority: boolean) {
+  try {
+    await ordersStore.togglePriority(orderId, priority);
+    notification.success(priority ? "Marked as priority!" : "Priority removed");
+  } catch (error: any) {
+    console.error("[orders] Toggle priority failed:", error);
+    notification.error(error?.message || "Failed to update priority");
+  }
+}
+
+function openRefundDialog(orderId: string) {
+  refundOrderId.value = orderId;
+  refundReason.value = "";
+  refundDialog.value = true;
+}
+
+async function submitRefund() {
+  if (!refundOrderId.value || !refundReason.value.trim()) {
+    notification.warning("Please provide a refund reason.");
+    return;
+  }
+
+  bulkActionLoading.value = true;
+  try {
+    await ordersStore.requestRefund(refundOrderId.value, refundReason.value.trim());
+    notification.success("Refund request submitted successfully!");
+    refundDialog.value = false;
+    refundOrderId.value = null;
+    refundReason.value = "";
+  } catch (error: any) {
+    console.error("[orders] Refund request failed:", error);
+    notification.error(error?.message || "Failed to submit refund request");
+  } finally {
+    bulkActionLoading.value = false;
+  }
+}
+
 onMounted(async () => {
   try {
     await ordersStore.fetchOrders();
@@ -299,24 +400,66 @@ onMounted(async () => {
         </div>
 
         <div class="toolbar">
-          <VTextField
-            v-model="searchTerm"
-            hide-details
-            density="comfortable"
-            placeholder="Search orders"
-            prepend-inner-icon="tabler-search"
-            variant="outlined"
-            class="search"
-          />
-          <VSelect
-            v-model="statusFilter"
-            :items="statusOptions"
-            hide-details
-            density="comfortable"
-            label="Status"
-            variant="outlined"
-            class="status-filter"
-          />
+          <!-- Bulk Actions (show when orders selected) -->
+          <div v-if="selectedOrderIds.size > 0" class="bulk-actions">
+            <VChip color="primary" variant="tonal">
+              {{ selectedOrderIds.size }} selected
+            </VChip>
+            
+            <VBtn
+              prepend-icon="tabler-download"
+              color="primary"
+              variant="tonal"
+              :loading="bulkActionLoading"
+              @click="bulkDownload"
+            >
+              Download
+            </VBtn>
+            
+            <VBtn
+              prepend-icon="tabler-truck-delivery"
+              color="success"
+              variant="tonal"
+              :loading="bulkActionLoading"
+              @click="bulkMarkShipped"
+            >
+              Mark Shipped
+            </VBtn>
+            
+            <VBtn
+              icon="tabler-x"
+              variant="text"
+              size="small"
+              @click="selectedOrderIds.clear()"
+            >
+              <VIcon icon="tabler-x" />
+              <VTooltip activator="parent">
+                Clear selection
+              </VTooltip>
+            </VBtn>
+          </div>
+          
+          <!-- Regular toolbar (show when no selection) -->
+          <template v-else>
+            <VTextField
+              v-model="searchTerm"
+              hide-details
+              density="comfortable"
+              placeholder="Search orders"
+              prepend-inner-icon="tabler-search"
+              variant="outlined"
+              class="search"
+            />
+            <VSelect
+              v-model="statusFilter"
+              :items="statusOptions"
+              hide-details
+              density="comfortable"
+              label="Status"
+              variant="outlined"
+              class="status-filter"
+            />
+          </template>
         </div>
       </header>
 
@@ -324,6 +467,14 @@ onMounted(async () => {
         <table class="data-table order-table">
           <thead>
             <tr>
+              <th class="checkbox-col">
+                <VCheckbox
+                  :model-value="isAllSelected"
+                  hide-details
+                  density="compact"
+                  @update:model-value="toggleSelectAll"
+                />
+              </th>
               <th />
               <th>Order</th>
               <th>Customer</th>
@@ -335,7 +486,7 @@ onMounted(async () => {
           </thead>
           <tbody>
             <tr v-if="isListLoading" class="empty-row">
-              <td colspan="7">
+              <td colspan="8">
                 <div class="empty-cell">
                   <VProgressCircular indeterminate size="20" color="primary" />
                   <span>Loading orders…</span>
@@ -343,7 +494,7 @@ onMounted(async () => {
               </td>
             </tr>
             <tr v-else-if="!filteredOrders.length" class="empty-row">
-              <td colspan="7">
+              <td colspan="8">
                 <div class="empty-cell">
                   <p class="empty-title">No orders found</p>
                   <p class="empty-body">Try adjusting the filters or sync with Shopify.</p>
@@ -357,11 +508,21 @@ onMounted(async () => {
               :class="['order-row', { 'is-selected': order.id === selectedOrderId }]"
               role="button"
               tabindex="0"
-              @click="handleRowClick(order.id)"
-              @keydown.enter.prevent="handleRowClick(order.id)"
-              @keydown.space.prevent="handleRowClick(order.id)"
             >
-              <td class="toggle">
+              <td class="checkbox-col" @click.stop>
+                <VCheckbox
+                  :model-value="selectedOrderIds.has(order.id)"
+                  hide-details
+                  density="compact"
+                  @update:model-value="toggleSelectOrder(order.id)"
+                />
+              </td>
+              <td 
+                class="toggle"
+                @click="handleRowClick(order.id)"
+                @keydown.enter.prevent="handleRowClick(order.id)"
+                @keydown.space.prevent="handleRowClick(order.id)"
+              >
                 <VBtn icon="tabler-chevron-right" variant="text" density="compact" />
               </td>
               <td>
@@ -548,6 +709,46 @@ onMounted(async () => {
         </div>
       </template>
     </section>
+
+    <!-- Refund Dialog -->
+    <VDialog v-model="refundDialog" max-width="500">
+      <VCard>
+        <VCardTitle class="text-h5">
+          Request Refund
+        </VCardTitle>
+        <VCardText>
+          <p class="mb-4">
+            This will initiate a refund request for the selected order. Please provide a reason for the refund.
+          </p>
+          <VTextarea
+            v-model="refundReason"
+            label="Refund Reason"
+            placeholder="Enter reason for refund (e.g., customer request, quality issue)..."
+            rows="4"
+            variant="outlined"
+            :rules="[v => !!v || 'Reason is required']"
+          />
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn 
+            variant="text"
+            @click="refundDialog = false"
+          >
+            Cancel
+          </VBtn>
+          <VBtn 
+            color="error"
+            variant="flat"
+            :loading="bulkActionLoading"
+            :disabled="!refundReason.trim()"
+            @click="submitRefund"
+          >
+            Submit Refund
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 
@@ -608,6 +809,19 @@ onMounted(async () => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex: 1;
+}
+
+.checkbox-col {
+  width: 48px;
+  padding: 8px !important;
   align-items: center;
 }
 

@@ -173,5 +173,59 @@ export const useMerchantOrdersStore = defineStore("merchant-orders", {
         this.loadingDetail = false;
       }
     },
+
+    async bulkDownloadDesigns(orderIds: string[]) {
+      // Request bulk download ZIP from backend
+      const response = await $api<{ data: { url: string } }>("/orders/bulk-download", {
+        method: "POST",
+        body: { orderIds },
+      });
+
+      if (response.data?.url) {
+        // Trigger browser download
+        const link = document.createElement("a");
+        link.href = response.data.url;
+        link.download = `orders-${Date.now()}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      return response.data;
+    },
+
+    async markAsShipped(orderIds: string[]) {
+      await $api("/orders/bulk-ship", {
+        method: "POST",
+        body: { orderIds },
+      });
+
+      // Refresh orders list
+      await this.fetchOrders();
+    },
+
+    async togglePriority(orderId: string, priority: boolean) {
+      await $api(`/orders/${orderId}/priority`, {
+        method: "PATCH",
+        body: { priority },
+      });
+
+      // Update local state
+      const order = this.entries.find(e => e.id === orderId);
+      if (order) {
+        // Assuming we add a priority field to OrderSummary
+        (order as any).priority = priority;
+      }
+    },
+
+    async requestRefund(orderId: string, reason: string) {
+      await $api(`/orders/${orderId}/refund`, {
+        method: "POST",
+        body: { reason },
+      });
+
+      // Refresh orders
+      await this.refreshOrders();
+    },
   },
 });

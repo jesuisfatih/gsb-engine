@@ -91,5 +91,87 @@ export const useMerchantDesignsStore = defineStore("merchant-designs", {
         this.loading = false;
       }
     },
+
+    async approveDesign(designId: string) {
+      await $api(`/designs/${designId}/approve`, {
+        method: "POST",
+      });
+
+      // Update local state
+      const design = this.items.find(d => d.id === designId);
+      if (design) {
+        design.status = "APPROVED";
+      }
+    },
+
+    async rejectDesign(designId: string, reason: string) {
+      await $api(`/designs/${designId}/reject`, {
+        method: "POST",
+        body: { reason },
+      });
+
+      // Update local state
+      const design = this.items.find(d => d.id === designId);
+      if (design) {
+        design.status = "REJECTED";
+      }
+    },
+
+    async downloadPNG(designId: string) {
+      const response = await $api<{ data: { url: string } }>(`/designs/${designId}/export/png`, {
+        method: "POST",
+      });
+
+      if (response.data?.url) {
+        // Trigger browser download
+        const link = document.createElement("a");
+        link.href = response.data.url;
+        link.download = `design-${designId}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      return response.data;
+    },
+
+    async downloadPDF(designId: string) {
+      const response = await $api<{ data: { url: string } }>(`/designs/${designId}/export/pdf`, {
+        method: "POST",
+      });
+
+      if (response.data?.url) {
+        // Trigger browser download
+        const link = document.createElement("a");
+        link.href = response.data.url;
+        link.download = `design-${designId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      return response.data;
+    },
+
+    async duplicateDesign(designId: string) {
+      const response = await $api<{ data: DesignSummary }>(`/designs/${designId}/duplicate`, {
+        method: "POST",
+      });
+
+      if (response.data) {
+        this.items.unshift(response.data);
+      }
+
+      return response.data;
+    },
+
+    async convertToTemplate(designId: string, title: string, tags: string[]) {
+      const response = await $api<{ data: { id: string } }>(`/designs/${designId}/convert-to-template`, {
+        method: "POST",
+        body: { title, tags },
+      });
+
+      return response.data;
+    },
   },
 });

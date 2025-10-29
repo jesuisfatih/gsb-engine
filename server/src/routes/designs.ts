@@ -501,3 +501,248 @@ designsRouter.post("/:id/submit", async (req, res, next) => {
     next(error);
   }
 });
+
+// POST /api/designs/:id/approve - Approve design
+designsRouter.post("/:id/approve", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!tenantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const designId = req.params.id;
+
+    const design = await prisma.designDocument.findFirst({
+      where: { id: designId, tenantId },
+    });
+
+    if (!design) {
+      return res.status(404).json({ error: "Design not found" });
+    }
+
+    await prisma.designDocument.update({
+      where: { id: designId },
+      data: {
+        status: "APPROVED",
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/designs/:id/reject - Reject design
+designsRouter.post("/:id/reject", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!tenantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { reason } = z.object({
+      reason: z.string().min(1).max(500),
+    }).parse(req.body);
+
+    const designId = req.params.id;
+
+    const design = await prisma.designDocument.findFirst({
+      where: { id: designId, tenantId },
+    });
+
+    if (!design) {
+      return res.status(404).json({ error: "Design not found" });
+    }
+
+    const metadata = (design.metrics as Record<string, unknown>) || {};
+    metadata.rejectionReason = reason;
+    metadata.rejectedAt = new Date().toISOString();
+
+    await prisma.designDocument.update({
+      where: { id: designId },
+      data: {
+        status: "REJECTED",
+        metrics: metadata,
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/designs/:id/export/png - Export design as PNG
+designsRouter.post("/:id/export/png", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!tenantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const designId = req.params.id;
+
+    const design = await prisma.designDocument.findFirst({
+      where: { id: designId, tenantId },
+    });
+
+    if (!design) {
+      return res.status(404).json({ error: "Design not found" });
+    }
+
+    // Return preview URL if available, otherwise TODO: generate PNG
+    const url = design.previewUrl || `/api/designs/${designId}/preview.png`;
+
+    res.json({ data: { url } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/designs/:id/export/pdf - Export design as PDF
+designsRouter.post("/:id/export/pdf", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!tenantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const designId = req.params.id;
+
+    const design = await prisma.designDocument.findFirst({
+      where: { id: designId, tenantId },
+    });
+
+    if (!design) {
+      return res.status(404).json({ error: "Design not found" });
+    }
+
+    // TODO: Generate print-ready PDF
+    // For now, return a placeholder URL
+    const url = `/api/designs/${designId}/print.pdf`;
+
+    res.json({ data: { url } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/designs/:id/duplicate - Duplicate design
+designsRouter.post("/:id/duplicate", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!tenantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const designId = req.params.id;
+
+    const existing = await prisma.designDocument.findFirst({
+      where: { id: designId, tenantId },
+      include: { outputs: true },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: "Design not found" });
+    }
+
+    // Create duplicate
+    const duplicate = await prisma.designDocument.create({
+      data: {
+        tenantId: existing.tenantId,
+        orderId: existing.orderId,
+        productId: existing.productId,
+        surfaceId: existing.surfaceId,
+        name: `${existing.name || "Untitled"} (Copy)`,
+        description: existing.description,
+        snapshot: existing.snapshot,
+        previewUrl: existing.previewUrl,
+        sheetWidthMm: existing.sheetWidthMm,
+        sheetHeightMm: existing.sheetHeightMm,
+        metrics: existing.metrics,
+        status: "DRAFT",
+      },
+    });
+
+    res.status(201).json({
+      data: {
+        id: duplicate.id,
+        title: duplicate.name ?? "Untitled",
+        status: duplicate.status,
+        createdAt: duplicate.createdAt.toISOString(),
+        updatedAt: duplicate.updatedAt.toISOString(),
+        orderNumber: null,
+        customer: null,
+        surface: null,
+        product: null,
+        previewUrl: duplicate.previewUrl,
+        dimensions: duplicate.sheetWidthMm && duplicate.sheetHeightMm
+          ? {
+              widthMm: duplicate.sheetWidthMm,
+              heightMm: duplicate.sheetHeightMm,
+            }
+          : null,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/designs/:id/convert-to-template - Convert design to template
+designsRouter.post("/:id/convert-to-template", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!tenantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { title, tags } = z.object({
+      title: z.string().min(1).max(255),
+      tags: z.array(z.string()).optional().default([]),
+    }).parse(req.body);
+
+    const designId = req.params.id;
+
+    const design = await prisma.designDocument.findFirst({
+      where: { id: designId, tenantId },
+    });
+
+    if (!design) {
+      return res.status(404).json({ error: "Design not found" });
+    }
+
+    // Create template from design
+    const template = await prisma.template.create({
+      data: {
+        tenantId,
+        name: title,
+        description: design.description || `Template created from design ${design.name}`,
+        isPublic: false,
+        payload: {
+          items: (design.snapshot as any)?.items || [],
+          target: {
+            productSlug: "custom",
+            surfaceId: design.surfaceId || "custom",
+          },
+          thumbDataUrl: design.previewUrl,
+        },
+      },
+    });
+
+    // Add tags
+    if (tags.length > 0) {
+      await prisma.templateTag.createMany({
+        data: tags.map(tag => ({ templateId: template.id, tag })),
+        skipDuplicates: true,
+      });
+    }
+
+    res.json({ data: { id: template.id } });
+  } catch (error) {
+    next(error);
+  }
+});

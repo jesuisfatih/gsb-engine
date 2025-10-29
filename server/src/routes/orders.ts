@@ -361,3 +361,166 @@ ordersRouter.get("/:orderId", async (req, res, next) => {
     next(error);
   }
 });
+
+// POST /api/orders/bulk-download - Bulk download designs as ZIP
+ordersRouter.post("/bulk-download", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const { orderIds } = z.object({
+      orderIds: z.array(z.string().uuid()).min(1),
+    }).parse(req.body);
+
+    // Fetch all designs for selected orders
+    const orders = await prisma.order.findMany({
+      where: {
+        id: { in: orderIds },
+        tenantId,
+      },
+      include: {
+        designs: {
+          include: {
+            outputs: {
+              where: {
+                kind: { in: ["PDF", "PNG", "SVG"] },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Collect all output URLs
+    const files: Array<{ url: string; filename: string }> = [];
+    orders.forEach(order => {
+      order.designs.forEach((design, dIdx) => {
+        design.outputs.forEach((output, oIdx) => {
+          const ext = output.kind.toLowerCase();
+          const filename = `${order.shopifyOrderId || order.id}_design${dIdx + 1}_${oIdx + 1}.${ext}`;
+          files.push({ url: output.url, filename });
+        });
+      });
+    });
+
+    if (files.length === 0) {
+      return res.status(404).json({ error: "No downloadable files found for selected orders" });
+    }
+
+    // TODO: Create ZIP file and return download URL
+    // For now, return the list of files
+    // In production, use archiver or jszip to create a zip
+    res.json({
+      data: {
+        url: `/api/orders/download-zip?files=${encodeURIComponent(JSON.stringify(files))}`,
+        fileCount: files.length,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/orders/bulk-ship - Mark multiple orders as shipped
+ordersRouter.post("/bulk-ship", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const { orderIds } = z.object({
+      orderIds: z.array(z.string().uuid()).min(1),
+    }).parse(req.body);
+
+    // Update all jobs for these orders to COMPLETED status
+    await prisma.job.updateMany({
+      where: {
+        order: {
+          id: { in: orderIds },
+          tenantId,
+        },
+      },
+      data: {
+        status: "COMPLETED",
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({ success: true, count: orderIds.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/orders/:orderId/priority - Toggle priority flag
+ordersRouter.patch("/:orderId/priority", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const { orderId } = orderIdParams.parse(req.params);
+    const { priority } = z.object({
+      priority: z.boolean(),
+    }).parse(req.body);
+
+    // Update order metadata to store priority flag
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, tenantId },
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const metadata = (order.metadata as Record<string, unknown>) || {};
+    metadata.priority = priority;
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { metadata },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/orders/:orderId/refund - Request refund
+ordersRouter.post("/:orderId/refund", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const { orderId } = orderIdParams.parse(req.params);
+    const { reason } = z.object({
+      reason: z.string().min(1).max(500),
+    }).parse(req.body);
+
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, tenantId },
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    // TODO: Integrate with Shopify Refund API
+    // For now, just log the refund request
+    console.log(`[orders] Refund request for order ${orderId}: ${reason}`);
+
+    // Update order metadata
+    const metadata = (order.metadata as Record<string, unknown>) || {};
+    metadata.refundRequested = true;
+    metadata.refundReason = reason;
+    metadata.refundRequestedAt = new Date().toISOString();
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { metadata },
+    });
+
+    res.json({ success: true, message: "Refund request submitted" });
+  } catch (error) {
+    next(error);
+  }
+});
