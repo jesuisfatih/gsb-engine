@@ -496,21 +496,38 @@ authRouter.post("/shopify/session", async (req, res, next) => {
       data: { settings: nextSettings },
     });
 
-    const secureCookie = env.NODE_ENV !== "development";
+    // Cookie configuration for Shopify embedded apps
+    const isProduction = env.NODE_ENV === "production";
+    const secureCookie = isProduction;
     const maxAgeSeconds = 15 * 60;
     const sessionCookieName = secureCookie ? "__Host-sid" : "sid";
+    
+    // For Shopify embedded apps, we MUST use SameSite=None with Secure in production
+    // In development, use Lax for easier testing
     const sameSiteValue = secureCookie ? "None" : "Lax";
+    
     const sessionAttributes = ["Path=/", `SameSite=${sameSiteValue}`, `Max-Age=${maxAgeSeconds}`, "HttpOnly"];
     const tenantAttributes = ["Path=/", `SameSite=${sameSiteValue}`, `Max-Age=${maxAgeSeconds}`];
+    
     if (secureCookie) {
-      sessionAttributes.push("Secure", "Partitioned");
-      tenantAttributes.push("Secure", "Partitioned");
+      sessionAttributes.push("Secure");
+      tenantAttributes.push("Secure");
+      // Partitioned cookies for better third-party cookie support
+      sessionAttributes.push("Partitioned");
+      tenantAttributes.push("Partitioned");
     }
+    
     const cookieHeaders: string[] = [
       `${sessionCookieName}=${accessToken}; ${sessionAttributes.join("; ")}`,
       `tenantId=${tenant.id}; ${tenantAttributes.join("; ")}`,
     ];
-    console.log("[shopify-auth] setting session cookies", cookieHeaders);
+    
+    console.log("[shopify-auth] Setting session cookies:");
+    console.log("[shopify-auth] - Environment:", env.NODE_ENV);
+    console.log("[shopify-auth] - Secure:", secureCookie);
+    console.log("[shopify-auth] - SameSite:", sameSiteValue);
+    console.log("[shopify-auth] - Cookie headers:", cookieHeaders);
+    
     res.setHeader("Set-Cookie", cookieHeaders);
 
     return res.json({

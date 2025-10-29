@@ -134,11 +134,12 @@ const activeNavName = computed(() => (typeof route.name === "string" ? route.nam
 const currentTitle = computed(() => (route.meta?.embeddedTitle as string | undefined) ?? (route.meta?.title as string | undefined) ?? "Workspace");
 const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | undefined);
 
-function waitForShopifyApi(timeout = 10000): Promise<ShopifyGlobal> {
+function waitForShopifyApi(timeout = 15000): Promise<ShopifyGlobal> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const poll = () => {
       if (typeof window !== "undefined" && window.shopify) {
+        console.log("[shopify-layout] App Bridge API detected:", Object.keys(window.shopify));
         resolve(window.shopify);
         return;
       }
@@ -146,49 +147,79 @@ function waitForShopifyApi(timeout = 10000): Promise<ShopifyGlobal> {
         reject(new Error("Shopify App Bridge did not initialise in time"));
         return;
       }
-      setTimeout(poll, 100);
+      setTimeout(poll, 150);
     };
     poll();
   });
 }
 
 async function getShopifySessionToken(api: ShopifyGlobal): Promise<string> {
+  console.log("[shopify-layout] Attempting to get session token...");
+  console.log("[shopify-layout] Available API methods:", Object.keys(api));
+  
+  // Try modern API first (sessionToken.get)
   if (api.sessionToken && typeof api.sessionToken.get === "function") {
+    console.log("[shopify-layout] Using sessionToken.get()");
     return api.sessionToken.get();
   }
+  
+  // Try legacy API (idToken)
   if (typeof api.idToken === "function") {
+    console.log("[shopify-layout] Using idToken()");
     return api.idToken();
   }
+  
+  console.error("[shopify-layout] No session token API available. API structure:", api);
   throw new Error("Shopify session token API not available");
 }
 
 async function bootstrapAppBridge() {
-  if (!apiKey || !hostParam.value) {
-    lastError.value = !apiKey
-      ? "Missing Shopify API key"
-      : "Missing host query parameter";
+  console.log("[shopify-layout] Starting App Bridge bootstrap...");
+  console.log("[shopify-layout] API Key:", apiKey ? `${apiKey.substring(0, 8)}...` : "MISSING");
+  console.log("[shopify-layout] Host param:", hostParam.value ? "present" : "MISSING");
+  console.log("[shopify-layout] Shop domain:", shopDomain.value);
+  console.log("[shopify-layout] Is in iframe:", isInIframe.value);
+  
+  if (!apiKey) {
+    lastError.value = "Missing Shopify API key - check VITE_SHOPIFY_API_KEY env variable";
+    console.error("[shopify-layout]", lastError.value);
+    return;
+  }
+  
+  if (!hostParam.value) {
+    lastError.value = "Missing host query parameter";
+    console.error("[shopify-layout]", lastError.value);
     return;
   }
 
   if (!isInIframe.value && shopDomain.value && hostParam.value) {
     console.log("[shopify-layout] Not in iframe, redirecting to Shopify admin...");
-    const redirectUrl = `https://${atob(hostParam.value)}/apps/${apiKey}/shopify/embedded${window.location.search}`;
-    window.top!.location.href = redirectUrl;
+    try {
+      const decodedHost = atob(hostParam.value);
+      const redirectUrl = `https://${decodedHost}/apps/${apiKey}/shopify/embedded${window.location.search}`;
+      console.log("[shopify-layout] Redirect URL:", redirectUrl);
+      window.top!.location.href = redirectUrl;
+    } catch (error) {
+      console.error("[shopify-layout] Failed to decode host parameter:", error);
+      lastError.value = "Invalid host parameter";
+    }
     return;
   }
 
   try {
-    console.log("[shopify-layout] Waiting for Shopify App Bridge...");
+    console.log("[shopify-layout] Waiting for Shopify App Bridge to initialize...");
     const api = await waitForShopifyApi();
 
     shopifyApi.value = api;
     lastError.value = null;
 
     shopifyFetch.value = api.fetch ? api.fetch.bind(api) : fetch;
+    console.log("[shopify-layout] Shopify fetch available:", !!api.fetch);
 
     console.log("[shopify-layout] Getting session token from App Bridge...");
     const token = await getShopifySessionToken(api);
     console.log("[shopify-layout] Session token received, length:", token?.length || 0);
+    console.log("[shopify-layout] Token preview:", token ? `${token.substring(0, 30)}...${token.substring(token.length - 10)}` : "none");
     sessionToken.value = token;
   } catch (error) {
     console.error("[shopify-layout] App Bridge init failed", error);

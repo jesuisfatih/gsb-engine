@@ -13,7 +13,7 @@ import vuetify from 'vite-plugin-vuetify'
 import svgLoader from 'vite-svg-loader'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     // Docs: https://github.com/posva/unplugin-vue-router
     // ℹ️ This plugin should be placed before vue plugin
@@ -90,9 +90,19 @@ export default defineConfig({
       ],
     }),
     svgLoader(),
-
+    {
+      name: 'html-transform',
+      transformIndexHtml(html) {
+        return html.replace(
+          /%VITE_SHOPIFY_APP_API_KEY%/g,
+          process.env.VITE_SHOPIFY_APP_API_KEY || process.env.VITE_SHOPIFY_API_KEY || ''
+        )
+      },
+    },
   ],
-  define: { 'process.env': {} },
+  define: { 
+    'process.env': {},
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -123,4 +133,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
