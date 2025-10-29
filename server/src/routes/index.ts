@@ -15,6 +15,7 @@ import { merchantConfigRouter } from "./merchant-config";
 import { ordersRouter } from "./orders";
 import { uploadRouter } from "./upload";
 import { shopifyRouter } from "./shopify";
+import { webhooksRouter } from "./webhooks";
 
 export function createApiRouter() {
   const router = Router();
@@ -35,6 +36,7 @@ export function createApiRouter() {
   router.use("/proxy", proxyRouter);
   router.use("/upload", uploadRouter);
   router.use("/shopify", shopifyRouter);
+  router.use("/webhooks", webhooksRouter);
 
   return router;
 }

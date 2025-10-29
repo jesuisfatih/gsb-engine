@@ -37,6 +37,15 @@ const updateDesignSchema = baseDesignPayload.partial().extend({
 const listDesignsQuery = z.object({
   status: z.enum(DESIGN_STATUS_VALUES).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+  search: z.string().optional(),
+  productId: z.string().uuid().optional(),
+  surfaceId: z.string().uuid().optional(),
+  orderId: z.string().uuid().optional(),
+  fromDate: z.coerce.date().optional(),
+  toDate: z.coerce.date().optional(),
+  sortBy: z.enum(["createdAt", "updatedAt", "name"]).default("updatedAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export const designsRouter = Router();
@@ -160,12 +169,37 @@ designsRouter.get("/", async (req, res, next) => {
     const where: Prisma.DesignDocumentWhereInput = {
       tenantId,
       status: query.status ?? undefined,
+      productId: query.productId ?? undefined,
+      surfaceId: query.surfaceId ?? undefined,
     };
+
+    // Search by name or description
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: "insensitive" } },
+        { description: { contains: query.search, mode: "insensitive" } },
+      ];
+    }
+
+    // Date range filter
+    if (query.fromDate || query.toDate) {
+      where.createdAt = {};
+      if (query.fromDate) where.createdAt.gte = query.fromDate;
+      if (query.toDate) where.createdAt.lte = query.toDate;
+    }
+
+    // Order filter
+    if (query.orderId) {
+      where.orders = {
+        some: { id: query.orderId },
+      };
+    }
 
     const [designs, total] = await Promise.all([
       prisma.designDocument.findMany({
         where,
-        orderBy: { updatedAt: "desc" },
+        orderBy: { [query.sortBy]: query.sortOrder },
+        skip: query.offset,
         take: query.limit,
         include: {
           orders: {
@@ -180,6 +214,9 @@ designsRouter.get("/", async (req, res, next) => {
           surface: {
             select: { name: true },
           },
+          product: {
+            select: { title: true },
+          },
         },
       }),
       prisma.designDocument.count({ where }),
@@ -191,15 +228,30 @@ designsRouter.get("/", async (req, res, next) => {
         id: design.id,
         title: design.name ?? "Untitled design",
         status: design.status,
+        createdAt: design.createdAt.toISOString(),
         updatedAt: design.updatedAt.toISOString(),
         orderNumber: order?.shopifyOrderId ?? order?.id ?? null,
         customer: order?.customerName ?? order?.customerEmail ?? null,
         surface: design.surface?.name ?? null,
+        product: design.product?.title ?? null,
         previewUrl: design.previewUrl ?? null,
+        dimensions: design.sheetWidthMm && design.sheetHeightMm
+          ? { widthMm: design.sheetWidthMm, heightMm: design.sheetHeightMm }
+          : null,
       };
     });
 
-    res.json({ data: { items, total } });
+    res.json({ 
+      data: { 
+        items, 
+        total,
+        pagination: {
+          limit: query.limit,
+          offset: query.offset,
+          hasMore: query.offset + query.limit < total,
+        },
+      } 
+    });
   } catch (error) {
     next(error);
   }

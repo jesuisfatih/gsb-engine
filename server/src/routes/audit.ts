@@ -14,12 +14,21 @@ const querySchema = z.object({
 
 export const auditRouter = Router();
 
+function requireTenant(res: any, tenantId?: string): tenantId is string {
+  if (!tenantId) {
+    res.status(400).json({ error: "Missing tenant context" });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * GET /api/audit - List audit logs with filters
+ */
 auditRouter.get("/", async (req, res, next) => {
   try {
     const { prisma, tenantId } = req.context;
-    if (!tenantId) {
-      return res.status(400).json({ error: "Missing tenant context" });
-    }
+    if (!requireTenant(res, tenantId)) return;
 
     const query = querySchema.parse(req.query);
     const where: Prisma.AuditLogWhereInput = { tenantId };
@@ -35,23 +44,164 @@ auditRouter.get("/", async (req, res, next) => {
       };
     }
 
-    const logs = await prisma.auditLog.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: query.limit,
-      include: {
-        actor: {
-          select: {
-            id: true,
-            email: true,
-            displayName: true,
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: query.limit,
+        include: {
+          actor: {
+            select: {
+              id: true,
+              email: true,
+              displayName: true,
+            },
           },
         },
-      },
-    });
+      }),
+      prisma.auditLog.count({ where }),
+    ]);
 
-    res.json({ data: logs });
+    res.json({ data: { logs, total } });
   } catch (error) {
     next(error);
   }
 });
+
+/**
+ * GET /api/audit/stats - Audit statistics
+ */
+auditRouter.get("/stats", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [total, last24h, last7d, byEntity, byEvent] = await Promise.all([
+      prisma.auditLog.count({ where: { tenantId } }),
+      
+      prisma.auditLog.count({
+        where: { tenantId, createdAt: { gte: last24Hours } },
+      }),
+      
+      prisma.auditLog.count({
+        where: { tenantId, createdAt: { gte: last7Days } },
+      }),
+      
+      prisma.auditLog.groupBy({
+        by: ["entity"],
+        where: { tenantId },
+        _count: true,
+        orderBy: { _count: { entity: "desc" } },
+        take: 10,
+      }),
+      
+      prisma.auditLog.groupBy({
+        by: ["event"],
+        where: { tenantId },
+        _count: true,
+        orderBy: { _count: { event: "desc" } },
+        take: 10,
+      }),
+    ]);
+
+    const entityCounts = byEntity.reduce((acc, item) => {
+      acc[item.entity] = item._count;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const eventCounts = byEvent.reduce((acc, item) => {
+      acc[item.event] = item._count;
+      return acc;
+    }, {} as Record<string, number>);
+
+    res.json({
+      data: {
+        total,
+        last24Hours: last24h,
+        last7Days: last7d,
+        byEntity: entityCounts,
+        byEvent: eventCounts,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/audit/entities - List unique entity types
+ */
+auditRouter.get("/entities", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const entities = await prisma.auditLog.findMany({
+      where: { tenantId },
+      distinct: ["entity"],
+      select: { entity: true },
+      orderBy: { entity: "asc" },
+    });
+
+    res.json({ data: entities.map(e => e.entity) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/audit/events - List unique event types
+ */
+auditRouter.get("/events", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const events = await prisma.auditLog.findMany({
+      where: { tenantId },
+      distinct: ["event"],
+      select: { event: true },
+      orderBy: { event: "asc" },
+    });
+
+    res.json({ data: events.map(e => e.event) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Helper function to log audit events (export for use in other routes)
+ */
+export async function logAuditEvent(
+  prisma: any,
+  data: {
+    tenantId: string;
+    entity: string;
+    entityId: string;
+    event: string;
+    actorUserId?: string;
+    metadata?: Record<string, any>;
+    ipAddress?: string;
+  }
+) {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        tenantId: data.tenantId,
+        entity: data.entity,
+        entityId: data.entityId,
+        event: data.event,
+        actorUserId: data.actorUserId,
+        metadata: data.metadata || {},
+        ipAddress: data.ipAddress,
+      },
+    });
+  } catch (error) {
+    console.error("[audit] Failed to log event:", error);
+    // Don't throw - audit logging should not break the main flow
+  }
+}
