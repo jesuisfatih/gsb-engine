@@ -29,9 +29,6 @@ type ShopifyGlobal = {
 declare global {
   interface Window {
     shopify?: ShopifyGlobal;
-    __shopify?: ShopifyGlobal;
-    __getShopifyToken?: () => Promise<string>;
-    __lastShopifyToken?: string;
   }
 }
 
@@ -188,17 +185,9 @@ async function bootstrapAppBridge() {
     lastError.value = null;
 
     shopifyFetch.value = api.fetch ? api.fetch.bind(api) : fetch;
-    if (typeof window !== "undefined") {
-      window.__shopify = api;
-      window.__getShopifyToken = () => getShopifySessionToken(api);
-    }
-    
+
     console.log("[shopify-layout] Getting session token from App Bridge...");
     const token = await getShopifySessionToken(api);
-    if (typeof window !== "undefined") {
-      window.__lastShopifyToken = token;
-      console.log("[shopify-layout] session token raw:", token);
-    }
     console.log("[shopify-layout] Session token received, length:", token?.length || 0);
     sessionToken.value = token;
   } catch (error) {
