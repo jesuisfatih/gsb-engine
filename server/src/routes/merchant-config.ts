@@ -525,14 +525,37 @@ merchantConfigRouter.get("/catalog/mappings", async (req, res, next) => {
     const mappings = await prisma.variantSurfaceMapping.findMany({
       where: { tenantId },
       include: {
-        product: { select: { id: true, slug: true, title: true } },
-        surface: { select: { id: true, name: true } },
+        product: { 
+          select: { id: true, slug: true, title: true, deletedAt: true },
+        },
+        surface: { 
+          select: { id: true, name: true, deletedAt: true },
+        },
       },
       orderBy: { updatedAt: "desc" },
     });
 
+    // Filter out mappings with missing or deleted relations
+    const validMappings = mappings.filter(m => 
+      m.product && m.surface && 
+      !m.product.deletedAt && !m.surface.deletedAt
+    );
+    
+    // Log orphaned mappings for cleanup
+    const orphaned = mappings.filter(m => 
+      !m.product || !m.surface || 
+      m.product.deletedAt || m.surface.deletedAt
+    );
+    if (orphaned.length > 0) {
+      console.warn(`[merchant-config] Found ${orphaned.length} orphaned/deleted variant mappings for tenant ${tenantId}`);
+    }
+
     res.json({
-      data: mappings.map(toVariantMappingResponse),
+      data: validMappings.map(m => toVariantMappingResponse({
+        ...m,
+        product: { id: m.product!.id, slug: m.product!.slug, title: m.product!.title },
+        surface: { id: m.surface!.id, name: m.surface!.name },
+      })),
     });
   } catch (error) {
     next(error);
