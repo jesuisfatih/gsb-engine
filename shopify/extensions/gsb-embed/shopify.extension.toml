@@ -1,11 +1,3 @@
 api_version = "2024-10"
-type = "theme"
 name = "Gang Sheet Builder"
-handle = "gang-sheet-builder"
-
-[build]
-automatically_update_urls_on_dev = true
-
-[capabilities]
-block_templates = true
-app_embed = true
+type = "theme"
