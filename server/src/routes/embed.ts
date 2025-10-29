@@ -15,6 +15,50 @@ const logSchema = z.object({
 
 export const embedRouter = Router();
 
+// GET /api/embed/shortcodes?handle=... (query param version for storefront script)
+embedRouter.get("/shortcodes", async (req, res, next) => {
+  try {
+    const { prisma } = req.context;
+    const handle = req.query.handle;
+    
+    if (!handle || typeof handle !== 'string') {
+      return res.status(400).json({ error: "Missing or invalid 'handle' query parameter" });
+    }
+
+    const normalized = handle.toLowerCase();
+    const record = await prisma.shortcode.findUnique({
+      where: { handle: normalized },
+    });
+    
+    if (!record) {
+      return res.status(404).json({ error: "Shortcode not found" });
+    }
+
+    const referrer = req.get("referer") ?? undefined;
+    const userAgent = req.get("user-agent") ?? undefined;
+
+    prisma.shortcodeUsage
+      .create({
+        data: {
+          shortcodeId: record.id,
+          tenantId: record.tenantId,
+          handle: normalized,
+          referrer,
+          userAgent,
+          status: "success",
+        },
+      })
+      .catch(error => {
+        console.warn("[shortcodes] usage logging failed", error);
+      });
+
+    res.json({ data: record });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/embed/shortcodes/:handle (path param version for backwards compat)
 embedRouter.get("/shortcodes/:handle", async (req, res, next) => {
   try {
     const { prisma } = req.context;
@@ -50,6 +94,57 @@ embedRouter.get("/shortcodes/:handle", async (req, res, next) => {
   }
 });
 
+// GET /api/embed/catalog/mappings?shopifyProductId=...&shopifyVariantId=...
+embedRouter.get("/catalog/mappings", async (req, res, next) => {
+  try {
+    const { prisma } = req.context;
+    const shopifyProductId = req.query.shopifyProductId as string | undefined;
+    const shopifyVariantId = req.query.shopifyVariantId as string | undefined;
+
+    if (!shopifyProductId && !shopifyVariantId) {
+      return res.status(400).json({ 
+        error: "Missing query parameters: provide shopifyProductId or shopifyVariantId" 
+      });
+    }
+
+    const where: any = {};
+    if (shopifyVariantId) {
+      where.shopifyVariantId = shopifyVariantId;
+    } else if (shopifyProductId) {
+      where.shopifyProductId = shopifyProductId;
+    }
+
+    const mapping = await prisma.variantSurfaceMapping.findFirst({
+      where,
+      include: {
+        product: { select: { id: true, slug: true, title: true } },
+        surface: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!mapping) {
+      return res.status(404).json({ error: "Variant mapping not found" });
+    }
+
+    res.json({
+      data: {
+        productId: mapping.productId,
+        productSlug: mapping.product?.slug ?? null,
+        productTitle: mapping.product?.title ?? null,
+        surfaceId: mapping.surfaceId,
+        surfaceName: mapping.surface?.name ?? null,
+        technique: mapping.technique ?? null,
+        color: mapping.color ?? null,
+        material: mapping.material ?? null,
+        shortcodeHandle: mapping.shortcodeHandle ?? null,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/embed/catalog/mappings/:variantId (path param version for backwards compat)
 embedRouter.get("/catalog/mappings/:variantId", async (req, res, next) => {
   try {
     const { prisma } = req.context;

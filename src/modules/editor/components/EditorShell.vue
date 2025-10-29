@@ -2,6 +2,7 @@
 import { computed, ref, watch, onBeforeUnmount, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useTheme } from "vuetify";
+import { useRoute } from "vue-router";
 import "../styles/fonts.css";
 import CostPanel from "./CostPanel.vue";
 import EditorToolbar from "./EditorToolbar.vue";
@@ -20,6 +21,7 @@ import { useConfigStore } from "@core/stores/config";
 import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
 import { useAutosaveManager } from "../composables/useAutosaveManager";
 
+const route = useRoute();
 const modeStore = useEditorModeStore();
 const editorStore = useEditorStore();
 const gangStore = useGangSheetStore();
@@ -32,9 +34,70 @@ const { theme } = storeToRefs(configStore);
 const { global } = useTheme();
 const isDarkTheme = computed(() => Boolean(global.current.value.dark));
 
-onMounted(() => {
-  catalogStore.ensureLoaded().catch(err => console.warn("[catalog] load failed", err));
+onMounted(async () => {
+  // Load catalog first
+  await catalogStore.ensureLoaded().catch(err => console.warn("[catalog] load failed", err));
   gangStore.ensureLoaded().catch(err => console.warn("[gang-sheet] load failed", err));
+
+  // Check for URL params to auto-load product/surface
+  const productSlug = route.query.product as string | undefined;
+  const surfaceId = route.query.surface as string | undefined;
+  const color = route.query.color as string | undefined;
+  const material = route.query.material as string | undefined;
+  const technique = route.query.technique as string | undefined;
+  const shopifyProduct = route.query.shopifyProduct as string | undefined;
+  const shopifyVariant = route.query.shopifyVariant as string | undefined;
+
+  console.log("[editor] URL params:", { productSlug, surfaceId, color, material, technique, shopifyProduct, shopifyVariant });
+
+  if (productSlug) {
+    const product = catalogStore.sortedProducts.find(p => p.slug === productSlug);
+    if (product) {
+      console.log("[editor] Auto-loading product:", product.title);
+      
+      // Set active product
+      editorStore.setProduct(productSlug);
+
+      // Find and set surface
+      let targetSurface = product.surfaces?.[0]; // Default to first surface
+      
+      if (surfaceId) {
+        const foundSurface = product.surfaces?.find(s => s.id === surfaceId);
+        if (foundSurface) {
+          targetSurface = foundSurface;
+        }
+      }
+
+      if (targetSurface) {
+        console.log("[editor] Auto-loading surface:", targetSurface.name);
+        editorStore.setSurface(targetSurface.id);
+      }
+
+      // Apply additional filters if provided
+      if (color) {
+        editorStore.color = color;
+      }
+      if (technique) {
+        editorStore.setPrintTech(technique as any);
+      }
+
+      // Store Shopify context for checkout (save to localStorage for now)
+      if (shopifyProduct || shopifyVariant) {
+        const shopifyContext = {
+          productGid: shopifyProduct,
+          variantId: shopifyVariant,
+          returnUrl: route.query.returnTo as string | undefined,
+        };
+        console.log("[editor] Storing Shopify context:", shopifyContext);
+        // Store in localStorage for checkout
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('gsb-shopify-context', JSON.stringify(shopifyContext));
+        }
+      }
+    } else {
+      console.warn("[editor] Product not found:", productSlug);
+    }
+  }
 });
 
 const isGangMode = computed(() => activeMode.value === "gang");
@@ -358,7 +421,7 @@ function changeMode(mode: "dtf" | "gang") {
           <strong v-if="preflightState === 'clear'">Ready for production</strong>
           <strong v-else>
             {{ blockerCount }} blocker<span v-if="blockerCount !== 1">s</span>
-            · {{ warningCount }} warning<span v-if="warningCount !== 1">s</span>
+            ï¿½ {{ warningCount }} warning<span v-if="warningCount !== 1">s</span>
           </strong>
           <span class="pill-detail">
             {{ preflightDetailMessage ?? "All layout constraints satisfied." }}
@@ -425,7 +488,7 @@ function changeMode(mode: "dtf" | "gang") {
           </button>
         </div>
         <span v-if="lastSavedLabel" class="save-indicator">{{ lastSavedLabel }}</span>
-        <span v-else class="save-indicator">Status · {{ designStatusLabel }}</span>
+        <span v-else class="save-indicator">Status ï¿½ {{ designStatusLabel }}</span>
       </div>
     </header>
 
@@ -548,7 +611,7 @@ function changeMode(mode: "dtf" | "gang") {
               :disabled="submitting || blockerCount > 0"
               @click="handleSubmitCheckout"
             >
-              {{ submitting ? "Submitting…" : "Send to Checkout" }}
+              {{ submitting ? "Submittingï¿½" : "Send to Checkout" }}
             </button>
           </div>
         </div>

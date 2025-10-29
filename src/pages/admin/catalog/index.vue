@@ -4,8 +4,12 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
 import type { ProductDefinition, ProductSurface } from "@/modules/editor/types";
 import { pxToMm, mmToPx } from "@/modules/editor/utils/units";
+import { $api } from "@/utils/api";
+import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 
 definePage({ meta: { layout: "default", action: "manage", subject: "ProductCatalog" } });
+
+const notification = useNotificationStore();
 
 const catalog = useCatalogStore();
 const selectedSlug = ref<string>("");
@@ -181,13 +185,55 @@ async function fileToDataUrl(file: File): Promise<string> {
 async function handlePreviewUpload(files: File[] | File | null) {
   const list = Array.isArray(files) ? files : files ? [files] : [];
   if (!list.length) return;
-  surfaceForm.previewImage = await fileToDataUrl(list[0]);
+  
+  try {
+    const file = list[0];
+    const dataUrl = await fileToDataUrl(file);
+    
+    // Upload to server
+    const response = await $api<{ data: { url: string } }>("/upload/base64", {
+      method: "POST",
+      body: {
+        filename: file.name,
+        mimeType: file.type,
+        data: dataUrl,
+        folder: "assets",
+      },
+    });
+    
+    surfaceForm.previewImage = response.data.url;
+    notification.success("Preview image uploaded!");
+  } catch (error: any) {
+    console.error("[catalog] Preview upload failed:", error);
+    notification.error(error?.message || "Failed to upload preview image");
+  }
 }
 
 async function handleMaskUpload(files: File[] | File | null) {
   const list = Array.isArray(files) ? files : files ? [files] : [];
   if (!list.length) return;
-  surfaceForm.maskPath = await fileToDataUrl(list[0]);
+  
+  try {
+    const file = list[0];
+    const dataUrl = await fileToDataUrl(file);
+    
+    // Upload to server
+    const response = await $api<{ data: { url: string } }>("/upload/base64", {
+      method: "POST",
+      body: {
+        filename: file.name,
+        mimeType: file.type,
+        data: dataUrl,
+        folder: "assets",
+      },
+    });
+    
+    surfaceForm.maskPath = response.data.url;
+    notification.success("Mask image uploaded!");
+  } catch (error: any) {
+    console.error("[catalog] Mask upload failed:", error);
+    notification.error(error?.message || "Failed to upload mask image");
+  }
 }
 
 async function persistSurface() {

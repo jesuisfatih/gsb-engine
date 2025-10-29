@@ -17,7 +17,7 @@ const route = useRoute();
 
 onMounted(() => {
   router.replace({
-    name: "shopify-embedded-welcome",
+    name: "shopify-embedded-dashboard",
     query: route.query,
   });
 });

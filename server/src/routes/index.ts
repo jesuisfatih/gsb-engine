@@ -13,6 +13,7 @@ import { templatesRouter } from "./templates";
 import { billingRouter } from "./billing";
 import { merchantConfigRouter } from "./merchant-config";
 import { ordersRouter } from "./orders";
+import { uploadRouter } from "./upload";
 
 export function createApiRouter() {
   const router = Router();
@@ -31,6 +32,7 @@ export function createApiRouter() {
   router.use("/billing", billingRouter);
   router.use("/merchant/config", merchantConfigRouter);
   router.use("/proxy", proxyRouter);
+  router.use("/upload", uploadRouter);
 
   return router;
 }

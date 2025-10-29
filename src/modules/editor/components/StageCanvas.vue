@@ -23,6 +23,7 @@ const gangTopbarRef = ref<HTMLDivElement | null>(null);
 const isPanning = ref(false);
 const draggingOver = ref(false);
 const imageMap = ref<Record<string, HTMLImageElement | null>>({});
+const productBackgroundImage = ref<HTMLImageElement | null>(null);
 
 const viewport = reactive({ w: 0, h: 0 });
 const zoom = ref(1);
@@ -368,6 +369,31 @@ watch(
   },
   { deep: true }
 );
+// Load product background image when surface changes
+watch(
+  () => store.activeSurface?.previewImage,
+  (previewImageUrl) => {
+    if (!previewImageUrl) {
+      productBackgroundImage.value = null;
+      nextTick(() => stage.value?.batchDraw?.());
+      return;
+    }
+
+    console.log('[canvas] Loading product background:', previewImageUrl);
+    loadHTMLImageFromURL(previewImageUrl)
+      .then(img => {
+        productBackgroundImage.value = img;
+        console.log('[canvas] Product background loaded:', img.width, 'x', img.height);
+        nextTick(() => stage.value?.batchDraw?.());
+      })
+      .catch(err => {
+        console.error('[canvas] Failed to load product background:', err);
+        productBackgroundImage.value = null;
+      });
+  },
+  { immediate: true }
+);
+
 onMounted(() => ensureImagesLoaded());
 
 watch(
@@ -1185,6 +1211,22 @@ watch(() => store.selectedId, id => {
 
       <v-layer>
         <v-group :config="{ x: sheetOffset.x, y: sheetOffset.y, scaleX: sheetScale, scaleY: sheetScale, listening: false }">
+          <!-- Background product image -->
+          <v-image
+            v-if="productBackgroundImage"
+            :config="{
+              id: 'product-background',
+              x: 0,
+              y: 0,
+              width: store.sheetWpx,
+              height: store.sheetHpx,
+              image: productBackgroundImage,
+              opacity: 0.8,
+              listening: false,
+            }"
+          />
+          
+          <!-- Base rectangle (white background or gang pattern) -->
           <v-rect
             :config="{
               id: 'sheet-base',
@@ -1194,11 +1236,13 @@ watch(() => store.selectedId, id => {
               height: store.sheetHpx,
               stroke: '#d0d0d0',
               strokeWidth: 1 / sheetScale,
-              fill: isGangMode && gangPattern ? undefined : '#fff',
+              fill: productBackgroundImage ? 'rgba(255,255,255,0.3)' : (isGangMode && gangPattern ? undefined : '#fff'),
               fillPatternImage: isGangMode && gangPattern ? gangPattern : undefined,
               fillPatternRepeat: isGangMode && gangPattern ? 'repeat' : undefined,
             }"
           />
+          
+          <!-- Safe area guide -->
           <v-rect
             v-if="safe.width > 0 && safe.height > 0"
             :config="{

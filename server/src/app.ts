@@ -22,6 +22,9 @@ export function createApp() {
   app.use(contextMiddleware);
   app.use(morgan("tiny"));
 
+  // Serve uploaded files (static)
+  app.use("/uploads", express.static("uploads"));
+
   app.use("/api/auth", authRouter);
   app.use("/api/health", healthRouter);
   app.use("/api/embed", embedRouter);

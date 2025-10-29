@@ -1,432 +1,318 @@
-(function() {
-  const ATTR = "data-gsb-shortcode";
-  const script = document.currentScript;
-  const dataset = script ? script.dataset : {};
-  const editorUrl = dataset.editorUrl || "/editor";
-  const apiBase = dataset.apiUrl || "/api/embed/shortcodes";
-  const mappingBase = dataset.mappingUrl || "/api/embed/catalog/mappings";
-  const buttonLabel = dataset.buttonLabel || "Edit design";
-  const buttonClass = dataset.buttonClass || "";
-  const buttonBg = dataset.buttonBg || "#4c1d95";
-  const buttonColor = dataset.buttonColor || "#ffffff";
-  const buttonVariant = (dataset.buttonVariant || "pill").toLowerCase();
-  const buttonSize = (dataset.buttonSize || "md").toLowerCase();
-  const buttonIcon = dataset.buttonIcon || "";
-  const buttonIconPosition = (dataset.buttonIconPosition || "left").toLowerCase();
-  const buttonShadow = dataset.buttonShadow || "";
-  const fullWidth = dataset.buttonFullWidth === "true";
-  const mobileFullWidth = dataset.mobileFullWidth !== "false";
-  const mobileBreakpoint = parseInt(dataset.mobileBreakpoint || "640", 10);
-  const openMode = dataset.openMode || "navigate";
-  const logApiBase = dataset.logUrl || apiBase;
+/**
+ * GSB Shortcode Button Loader
+ * Transforms <div data-gsb-shortcode="..."> placeholders into interactive customize buttons
+ * that open the editor with the appropriate product/surface configuration.
+ *
+ * Usage: <script src="/gsb-shortcode.js" defer></script>
+ */
 
-  const mappingCache = new Map();
+(function () {
+  'use strict';
+
+  // Configuration from script tag data attributes or defaults
+  const script = document.currentScript || document.querySelector('script[src*="gsb-shortcode"]');
+  const config = {
+    editorUrl: script?.dataset?.editorUrl || '/editor',
+    apiUrl: script?.dataset?.apiUrl || '/api/embed/shortcodes',
+    mappingUrl: script?.dataset?.mappingUrl || '/api/embed/catalog/mappings',
+    buttonLabel: script?.dataset?.buttonLabel || 'Customize & Add to cart',
+    buttonClass: script?.dataset?.buttonClass || '',
+    buttonBg: script?.dataset?.buttonBg || '#4c1d95',
+    buttonColor: script?.dataset?.buttonColor || '#ffffff',
+    openMode: script?.dataset?.openMode || 'navigate', // 'navigate' | 'popup'
+  };
+
+  // Shortcode cache to avoid redundant API calls
   const shortcodeCache = new Map();
-  const stateMap = new WeakMap();
+  const productMappingCache = new Map();
 
-  function toAbsolute(url) {
-    if (!url) return "";
-    if (/^https?:/i.test(url)) return url;
-    if (url.startsWith("//")) return window.location.protocol + url;
-    if (url.startsWith("/")) return window.location.origin + url;
-    return `${window.location.origin}/${url.replace(/^\\//, "")}`;
-  }
-
-  function trimHandle(value) {
-    if (!value) return null;
-    const trimmed = String(value).trim();
-    return trimmed.length ? trimmed.toLowerCase() : null;
-  }
-
-  function normaliseVariantId(value) {
-    if (!value) return null;
-    const raw = String(value).trim();
-    if (!raw) return null;
-    if (raw.startsWith("gid://")) return raw;
-    const numeric = raw.replace(/[^\d]/g, "");
-    if (!numeric) return null;
-    return `gid://shopify/ProductVariant/${numeric}`;
-  }
-
-  function cleanEndpoint(base, suffix) {
-    const absolute = toAbsolute(base || "");
-    const trimmed = absolute.endsWith("/") ? absolute.slice(0, -1) : absolute;
-    return `${trimmed}/${suffix}`;
-  }
-
-  function sizeConfig() {
-    switch (buttonSize) {
-      case "sm":
-        return { padding: "8px 12px", fontSize: "0.875rem" };
-      case "lg":
-        return { padding: "14px 24px", fontSize: "1.05rem" };
-      default:
-        return { padding: "12px 18px", fontSize: "1rem" };
+  /**
+   * Fetch shortcode data from API
+   */
+  async function fetchShortcode(handle) {
+    if (shortcodeCache.has(handle)) {
+      return shortcodeCache.get(handle);
     }
-  }
 
-  function borderRadiusConfig() {
-    switch (buttonVariant) {
-      case "square":
-        return "8px";
-      case "rounded":
-        return "16px";
-      case "pill":
-      default:
-        return "999px";
-    }
-  }
-
-  function shouldFullWidth(container) {
-    if (fullWidth) return true;
-    if (!container) return false;
-    const containerWidth = container.offsetWidth;
-    if (containerWidth && containerWidth < 180) return true;
-    if (mobileFullWidth && typeof window !== "undefined" && window.matchMedia) {
-      return window.matchMedia(`(max-width: ${mobileBreakpoint || 640}px)`).matches;
-    }
-    return false;
-  }
-
-  function applyResponsiveWidth(btn, container) {
-    const isFull = shouldFullWidth(container);
-    if (isFull) {
-      btn.style.width = "100%";
-      btn.style.display = "flex";
-    } else if (!fullWidth) {
-      btn.style.width = "auto";
-    }
-  }
-
-  function logFailure(handle, details) {
-    const targetHandle = handle || "unknown";
     try {
-      const endpoint = cleanEndpoint(logApiBase, `${encodeURIComponent(targetHandle)}/log`);
-      const payload = JSON.stringify({
-        status: "error",
-        errorCode: details && details.code ? String(details.code) : undefined,
-        errorMessage: details && details.message ? String(details.message).slice(0, 500) : undefined,
-        meta: details && details.meta ? details.meta : undefined,
-      });
-      if (navigator.sendBeacon) {
-        const blob = new Blob([payload], { type: "application/json" });
-        navigator.sendBeacon(endpoint, blob);
-      } else {
-        fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: payload,
-          credentials: "include",
-        }).catch(() => {});
-      }
-    } catch (loggingError) {
-      if (typeof console !== "undefined") {
-        console.warn("[gsb-shortcode] failed to record error", loggingError);
-      }
-    }
-  }
-
-  function createButton(container, context) {
-    const { handle, variantId, mapping } = context;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.dataset.gsbHandle = handle;
-    if (variantId) btn.dataset.gsbVariantId = variantId;
-
-    if (buttonClass) {
-      btn.className = buttonClass;
-      btn.textContent = buttonLabel;
-    } else {
-      const config = sizeConfig();
-      btn.textContent = "";
-      btn.style.padding = config.padding;
-      btn.style.borderRadius = borderRadiusConfig();
-      btn.style.border = "none";
-      btn.style.background = buttonBg;
-      btn.style.color = buttonColor;
-      btn.style.fontFamily = "inherit";
-      btn.style.cursor = "pointer";
-      btn.style.fontWeight = "600";
-      btn.style.display = "inline-flex";
-      btn.style.alignItems = "center";
-      btn.style.justifyContent = "center";
-      btn.style.gap = "8px";
-      btn.style.fontSize = config.fontSize;
-      if (buttonShadow) {
-        btn.style.boxShadow = buttonShadow;
-      }
-
-      if (buttonIcon) {
-        const icon = document.createElement("span");
-        icon.textContent = buttonIcon;
-        icon.setAttribute("aria-hidden", "true");
-        if (buttonIconPosition === "right") {
-          btn.appendChild(document.createTextNode(buttonLabel));
-          btn.appendChild(icon);
-        } else {
-          btn.appendChild(icon);
-          btn.appendChild(document.createTextNode(buttonLabel));
-        }
-      } else {
-        btn.textContent = buttonLabel;
-      }
-    }
-
-    btn.addEventListener("click", () => {
-      const targetEditor = toAbsolute(editorUrl);
-      if (!targetEditor) return;
-      const params = new URLSearchParams();
-      params.set("shortcode", handle);
-      params.set("returnUrl", window.location.href);
-      if (variantId) params.set("variantId", variantId);
-      if (mapping && mapping.productSlug) params.set("productSlug", mapping.productSlug);
-      if (mapping && mapping.surfaceId) params.set("surfaceId", mapping.surfaceId);
-      if (mapping && mapping.technique) params.set("technique", mapping.technique);
-      const joiner = targetEditor.includes("?") ? "&" : "?";
-      const href = `${targetEditor}${joiner}${params.toString()}`;
-      if (openMode === "popup") {
-        window.open(href, "_blank", "noopener,width=1440,height=900");
-      } else {
-        window.location.href = href;
-      }
-    });
-
-    return btn;
-  }
-
-  function renderContainer(container, context) {
-    const { handle, info, mapping } = context;
-    container.innerHTML = "";
-    const title = info?.productTitle || mapping?.productTitle;
-    if (title) {
-      const label = document.createElement("span");
-      label.textContent = title;
-      label.style.display = "block";
-      label.style.marginBottom = "6px";
-      label.style.fontWeight = "600";
-      container.appendChild(label);
-    }
-    const button = createButton(container, context);
-    container.appendChild(button);
-    applyResponsiveWidth(button, container);
-    if (typeof ResizeObserver !== "undefined" && !buttonClass) {
-      const resizeObserver = new ResizeObserver(() => applyResponsiveWidth(button, container));
-      resizeObserver.observe(container);
-    }
-  }
-
-  function hydrateShortcode(container, context) {
-    const { handle } = context;
-    const cached = shortcodeCache.get(handle);
-    if (cached) {
-      container.dataset.gsbShortcodeStatus = "ready";
-      renderContainer(container, { ...context, info: cached });
-      return;
-    }
-
-    const endpoint = cleanEndpoint(apiBase, encodeURIComponent(handle));
-    fetch(endpoint, { credentials: "include" })
-      .then(response => {
-        if (!response.ok) throw new Error(`Shortcode lookup failed (${response.status})`);
-        return response.json();
-      })
-      .then(payload => {
-        const info = payload && payload.data ? payload.data : null;
-        if (info) {
-          shortcodeCache.set(handle, info);
-        }
-        container.dataset.gsbShortcodeStatus = "ready";
-        renderContainer(container, { ...context, info });
-      })
-      .catch(error => {
-        container.dataset.gsbShortcodeStatus = "error";
-        container.textContent = "Design customization unavailable.";
-        container.style.color = "#991b1b";
-        logFailure(handle, {
-          code: "FETCH_ERROR",
-          message: error?.message || `Failed to hydrate shortcode ${handle}`,
-          meta: { variantId: context.variantId || undefined },
-        });
-      });
-  }
-
-  async function fetchVariantMapping(container, variantId) {
-    if (!variantId) return null;
-    if (mappingCache.has(variantId)) return mappingCache.get(variantId);
-
-    const base = container?.dataset?.gsbMappingUrl || mappingBase;
-    if (!base) return null;
-    const endpoint = cleanEndpoint(base, encodeURIComponent(variantId));
-    try {
-      const response = await fetch(endpoint, { credentials: "include" });
-      if (response.status === 404) {
-        mappingCache.set(variantId, null);
+      const response = await fetch(`${config.apiUrl}?handle=${encodeURIComponent(handle)}`);
+      if (!response.ok) {
+        console.warn(`[GSB] Shortcode not found: ${handle}`);
         return null;
       }
-      if (!response.ok) throw new Error(`Mapping lookup failed (${response.status})`);
-      const payload = await response.json();
-      const record = payload && payload.data ? payload.data : null;
-      mappingCache.set(variantId, record);
-      return record;
+
+      const data = await response.json();
+      const shortcode = data.data || data;
+      shortcodeCache.set(handle, shortcode);
+      return shortcode;
     } catch (error) {
-      console.warn("[gsb-shortcode] mapping lookup failed", error);
-      logFailure(null, {
-        code: "MAPPING_ERROR",
-        message: error?.message || "Variant mapping lookup failed",
-        meta: { variantId },
-      });
-      mappingCache.set(variantId, null);
+      console.error('[GSB] Error fetching shortcode:', error);
       return null;
     }
   }
 
-  async function resolveContext(container) {
-    const state = stateMap.get(container) || {};
-    const attrHandle = trimHandle(container.getAttribute(ATTR));
-    const datasetVariant = normaliseVariantId(container.dataset.gsbVariantId || state.variantId || "");
+  /**
+   * Fetch product mapping for Shopify product/variant
+   */
+  async function fetchProductMapping(shopifyProductId, shopifyVariantId) {
+    const cacheKey = `${shopifyProductId}:${shopifyVariantId}`;
+    if (productMappingCache.has(cacheKey)) {
+      return productMappingCache.get(cacheKey);
+    }
 
-    state.variantId = datasetVariant || null;
-    stateMap.set(container, state);
+    try {
+      const params = new URLSearchParams();
+      if (shopifyProductId) params.append('shopifyProductId', shopifyProductId);
+      if (shopifyVariantId) params.append('shopifyVariantId', shopifyVariantId);
 
-    let mapping = null;
-    let handle = attrHandle;
-
-    if (datasetVariant) {
-      mapping = await fetchVariantMapping(container, datasetVariant);
-      const mappedHandle = trimHandle(mapping?.shortcodeHandle);
-      if (mappedHandle) {
-        handle = mappedHandle;
-        container.setAttribute(ATTR, mappedHandle);
+      const response = await fetch(`${config.mappingUrl}?${params}`);
+      if (!response.ok) {
+        console.warn('[GSB] No mapping found for product/variant');
+        return null;
       }
-    }
 
-    if (!handle) {
-      handle = state.lastResolvedHandle || null;
+      const data = await response.json();
+      const mapping = data.data || data;
+      productMappingCache.set(cacheKey, mapping);
+      return mapping;
+    } catch (error) {
+      console.error('[GSB] Error fetching product mapping:', error);
+      return null;
     }
-
-    return {
-      handle,
-      mapping,
-      variantId: datasetVariant || null,
-    };
   }
 
-  async function refreshContainer(container) {
-    const state = stateMap.get(container) || {};
-    if (state.refreshing) {
-      state.pending = true;
-      stateMap.set(container, state);
+  /**
+   * Build editor URL with query params
+   */
+  function buildEditorUrl(shortcode, element) {
+    const params = new URLSearchParams();
+
+    // From shortcode
+    if (shortcode) {
+      if (shortcode.productSlug) params.append('product', shortcode.productSlug);
+      if (shortcode.surfaceId) params.append('surface', shortcode.surfaceId);
+      if (shortcode.technique) params.append('technique', shortcode.technique);
+      if (shortcode.color) params.append('color', shortcode.color);
+      if (shortcode.material) params.append('material', shortcode.material);
+    }
+
+    // From element data attributes
+    const shopifyProductGid = element.dataset.gsbProductGid;
+    const shopifyVariantId = element.dataset.gsbVariantId;
+    const returnTo = element.dataset.gsbReturnTo || window.location.href;
+
+    if (shopifyProductGid) params.append('shopifyProduct', shopifyProductGid);
+    if (shopifyVariantId) params.append('shopifyVariant', shopifyVariantId);
+    if (returnTo) params.append('returnTo', returnTo);
+
+    return `${config.editorUrl}?${params}`;
+  }
+
+  /**
+   * Create customize button
+   */
+  function createButton(element, shortcode) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.classList.add('gsb-customize-button');
+
+    // Apply custom classes
+    if (config.buttonClass) {
+      config.buttonClass.split(' ').forEach(cls => button.classList.add(cls));
+    }
+
+    // Button label (can be overridden per element)
+    const label = element.dataset.buttonLabel || config.buttonLabel;
+    button.textContent = label;
+
+    // Button icon (optional)
+    const icon = element.dataset.buttonIcon;
+    if (icon) {
+      const iconEl = document.createElement('span');
+      iconEl.classList.add('gsb-button-icon');
+      iconEl.textContent = icon;
+      button.prepend(iconEl);
+    }
+
+    // Apply inline styles (if no custom class)
+    if (!config.buttonClass) {
+      const bg = element.dataset.buttonBg || config.buttonBg;
+      const color = element.dataset.buttonColor || config.buttonColor;
+      const variant = element.dataset.buttonVariant || 'pill';
+      const size = element.dataset.buttonSize || 'md';
+      const shadow = element.dataset.buttonShadow || '';
+
+      button.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: ${size === 'sm' ? '0.5rem 1rem' : size === 'lg' ? '0.875rem 2rem' : '0.75rem 1.5rem'};
+        font-size: ${size === 'sm' ? '0.875rem' : size === 'lg' ? '1.125rem' : '1rem'};
+        font-weight: 600;
+        line-height: 1.5;
+        color: ${color};
+        background-color: ${bg};
+        border: none;
+        border-radius: ${variant === 'pill' ? '9999px' : variant === 'rounded' ? '0.375rem' : '0'};
+        cursor: pointer;
+        transition: all 0.2s ease;
+        ${shadow ? `box-shadow: ${shadow};` : ''}
+        width: ${element.dataset.mobileFullWidth === 'true' ? '100%' : 'auto'};
+      `;
+
+      // Hover effect
+      button.addEventListener('mouseenter', () => {
+        button.style.opacity = '0.9';
+        button.style.transform = 'translateY(-1px)';
+      });
+      button.addEventListener('mouseleave', () => {
+        button.style.opacity = '1';
+        button.style.transform = 'translateY(0)';
+      });
+    }
+
+    // Click handler
+    const openMode = element.dataset.openMode || config.openMode;
+    const editorUrl = buildEditorUrl(shortcode, element);
+
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+
+      if (openMode === 'popup') {
+        const width = 1200;
+        const height = 800;
+        const left = (screen.width - width) / 2;
+        const top = (screen.height - height) / 2;
+        window.open(
+          editorUrl,
+          'gsb-editor',
+          `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        );
+      } else {
+        window.location.href = editorUrl;
+      }
+    });
+
+    return button;
+  }
+
+  /**
+   * Process a single shortcode placeholder
+   */
+  async function processElement(element) {
+    // Skip if already processed
+    if (element.dataset.gsbProcessed === 'true') {
       return;
     }
 
-    state.refreshing = true;
-    state.pending = false;
-    container.dataset.gsbShortcodeStatus = "loading";
-    stateMap.set(container, state);
+    element.dataset.gsbProcessed = 'true';
 
-    try {
-      const context = await resolveContext(container);
-      const handle = context.handle;
-      if (!handle) {
-        container.dataset.gsbShortcodeStatus = "error";
-        container.textContent = "Design customization unavailable.";
-        container.style.color = "#991b1b";
-        logFailure(null, {
-          code: "NO_HANDLE",
-          message: "No shortcode handle could be resolved for the selected variant.",
-          meta: { variantId: context.variantId || undefined },
-        });
+    // Get shortcode handle
+    const handle = element.dataset.gsbShortcode;
+    const shopifyProductGid = element.dataset.gsbProductGid;
+    const shopifyVariantId = element.dataset.gsbVariantId;
+
+    let shortcode = null;
+
+    // Fetch shortcode data if handle provided
+    if (handle) {
+      shortcode = await fetchShortcode(handle);
+    }
+
+    // Fallback: try to find mapping via Shopify product/variant
+    if (!shortcode && (shopifyProductGid || shopifyVariantId)) {
+      const mapping = await fetchProductMapping(shopifyProductGid, shopifyVariantId);
+      if (mapping) {
+        shortcode = {
+          productSlug: mapping.productSlug,
+          surfaceId: mapping.surfaceId,
+          technique: mapping.technique,
+          color: mapping.color,
+          material: mapping.material,
+        };
+      }
+    }
+
+    // If still no shortcode/mapping, show fallback or hide
+    if (!shortcode) {
+      const fallbackHandle = element.dataset.fallbackShortcode;
+      if (fallbackHandle) {
+        shortcode = await fetchShortcode(fallbackHandle);
+      }
+      if (!shortcode) {
+        // No shortcode found - hide element or show fallback cart button
+        element.style.display = 'none';
+        console.warn('[GSB] No shortcode or mapping found for element:', element);
         return;
       }
+    }
 
-      state.lastResolvedHandle = handle;
-      stateMap.set(container, state);
-      hydrateShortcode(container, context);
-    } finally {
-      state.refreshing = false;
-      const pending = state.pending;
-      state.pending = false;
-      stateMap.set(container, state);
-      if (pending) {
-        refreshContainer(container);
+    // Create and insert button
+    const button = createButton(element, shortcode);
+    element.innerHTML = '';
+    element.appendChild(button);
+
+    // Hide standard cart button if requested
+    if (element.dataset.hideCartButton === 'true') {
+      const cartButtonSelectors = [
+        'button[name="add"]',
+        '.product-form__submit',
+        '[type="submit"][name="add"]',
+        '.btn--add-to-cart',
+      ];
+
+      for (const selector of cartButtonSelectors) {
+        const cartButton = element.closest('form, .product-form')?.querySelector(selector);
+        if (cartButton) {
+          cartButton.style.display = 'none';
+        }
       }
     }
   }
 
-  function broadcastVariant(form, variantId) {
-    const normalised = normaliseVariantId(variantId);
-    if (!normalised) return;
-    const targets = form.querySelectorAll(`[${ATTR}]`);
-    targets.forEach(container => {
-      container.dataset.gsbVariantId = normalised;
-      refreshContainer(container);
-    });
-  }
+  /**
+   * Initialize all shortcode placeholders
+   */
+  function init() {
+    const elements = document.querySelectorAll('[data-gsb-shortcode]');
+    elements.forEach(processElement);
 
-  function attachVariantObserver(container) {
-    const form = container.closest("form");
-    if (!form) return;
+    // Watch for dynamically added elements (e.g., AJAX-loaded products)
+    if (typeof MutationObserver !== 'undefined') {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === 1) { // Element node
+              if (node.hasAttribute?.('data-gsb-shortcode')) {
+                processElement(node);
+              }
+              // Check children
+              const children = node.querySelectorAll?.('[data-gsb-shortcode]');
+              children?.forEach(processElement);
+            }
+          });
+        });
+      });
 
-    const input = form.querySelector('[name="id"]');
-
-    if (input) {
-      const updateFromInput = () => {
-        const variantId = input.value || input.getAttribute("value");
-        broadcastVariant(form, variantId);
-      };
-      input.addEventListener("change", updateFromInput);
-      input.addEventListener("input", updateFromInput);
-      const observer = new MutationObserver(updateFromInput);
-      observer.observe(input, { attributes: true, attributeFilter: ["value"] });
-      updateFromInput();
-    }
-
-    if (!form.dataset.gsbVariantListenersAttached) {
-      const handleVariantEvent = event => {
-        const detail = event.detail || {};
-        const variant = detail.variant || detail.selectedVariant || detail;
-        const variantId =
-          variant?.id ||
-          variant?.admin_graphql_api_id ||
-          variant?.variantId ||
-          detail?.variantId ||
-          detail?.currentVariantId;
-        if (variantId) {
-          broadcastVariant(form, variantId);
-        }
-      };
-      form.addEventListener("variant:change", handleVariantEvent);
-      form.addEventListener("shopify:variant:change", handleVariantEvent);
-      form.dataset.gsbVariantListenersAttached = "true";
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
     }
   }
 
-  function initContainer(container) {
-    if (container.dataset.gsbInitialised === "true") return;
-    container.dataset.gsbInitialised = "true";
-    const normalisedVariant = normaliseVariantId(container.dataset.gsbVariantId || "");
-    if (normalisedVariant) {
-      container.dataset.gsbVariantId = normalisedVariant;
-    }
-    stateMap.set(container, {});
-    refreshContainer(container);
-    attachVariantObserver(container);
-  }
-
-  function initAll(root) {
-    const scope = root && root.querySelectorAll ? root : document;
-    const targets = scope.querySelectorAll(`[${ATTR}]`);
-    targets.forEach(initContainer);
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initAll(document));
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    initAll(document);
+    init();
   }
 
-  document.addEventListener("shopify:section:load", event => {
-    if (event && event.target) initAll(event.target);
-  });
-  document.addEventListener("shopify:section:reorder", () => initAll(document));
+  // Expose API for manual initialization
+  window.GSB = {
+    init,
+    processElement,
+    config,
+  };
 })();
