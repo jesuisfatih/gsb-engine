@@ -22,8 +22,6 @@ shopifyRouter.get("/products", async (req, res, next) => {
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: {
-        shopifyDomain: true,
-        shopifyAccessToken: true,
         settings: true,
       },
     });
@@ -33,11 +31,9 @@ shopifyRouter.get("/products", async (req, res, next) => {
       return res.status(404).json({ error: "Tenant not found" });
     }
 
-    // Check for credentials in both fields and settings
-    const shopifyDomain = tenant.shopifyDomain || 
-      (tenant.settings as any)?.shopify?.domain;
-    const shopifyAccessToken = tenant.shopifyAccessToken || 
-      (tenant.settings as any)?.shopify?.accessToken;
+    // Get credentials from settings JSON
+    const shopifyDomain = (tenant.settings as any)?.shopify?.domain;
+    const shopifyAccessToken = (tenant.settings as any)?.shopify?.accessToken;
 
     if (!shopifyDomain || !shopifyAccessToken) {
       console.warn("[shopify] Missing Shopify credentials for tenant:", tenantId);
@@ -109,23 +105,25 @@ shopifyRouter.get("/products/:productId/variants", async (req, res, next) => {
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: {
-        shopifyDomain: true,
-        shopifyAccessToken: true,
+        settings: true,
       },
     });
 
-    if (!tenant?.shopifyDomain || !tenant?.shopifyAccessToken) {
+    const shopifyDomain = (tenant?.settings as any)?.shopify?.domain;
+    const shopifyAccessToken = (tenant?.settings as any)?.shopify?.accessToken;
+
+    if (!shopifyDomain || !shopifyAccessToken) {
       return res.status(400).json({ 
         error: "Shopify integration not configured for this tenant" 
       });
     }
 
     // Fetch product variants from Shopify Admin API
-    const shopifyUrl = `https://${tenant.shopifyDomain}/admin/api/2024-04/products/${numericId}.json`;
+    const shopifyUrl = `https://${shopifyDomain}/admin/api/2024-04/products/${numericId}.json`;
     
     const shopifyResponse = await fetch(shopifyUrl, {
       headers: {
-        "X-Shopify-Access-Token": tenant.shopifyAccessToken,
+        "X-Shopify-Access-Token": shopifyAccessToken,
         "Content-Type": "application/json",
       },
     });
