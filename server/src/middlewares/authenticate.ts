@@ -52,42 +52,49 @@ function isPublicRequest(req: Request): boolean {
   return false;
 }
 
-function extractToken(req: Request): string | null {
+function extractTokens(req: Request): { headerToken: string | null; cookieToken: string | null } {
   const header = req.headers.authorization;
   if (header) {
     const [scheme, token] = header.split(" ");
     if (scheme && token && scheme.toLowerCase() === "bearer") {
-      return token;
+      return { headerToken: token, cookieToken: extractCookieToken(req) };
     }
   }
 
-  const cookies = (req as Request & { cookies?: Record<string, string> }).cookies ?? {};
-  const cookieToken = cookies.accessToken ?? cookies.sid ?? cookies["__Host-sid"];
-  if (cookieToken) return cookieToken;
+  return { headerToken: null, cookieToken: extractCookieToken(req) };
+}
 
-  return null;
+function extractCookieToken(req: Request): string | null {
+  const cookies = (req as Request & { cookies?: Record<string, string> }).cookies ?? {};
+  return cookies.accessToken ?? cookies.sid ?? cookies["__Host-sid"] ?? null;
 }
 
 export function optionalAuthMiddleware(req: Request, res: Response, next: NextFunction) {
-  const rawToken = extractToken(req);
-  if (!rawToken) return next();
+  const { headerToken, cookieToken } = extractTokens(req);
+  const publicRequest = isPublicRequest(req);
+  const candidates = [headerToken, cookieToken].filter((value): value is string => Boolean(value));
+  if (candidates.length === 0) return next();
 
-  try {
-    const payload = verifyAccessToken(rawToken);
-    req.auth = {
-      userId: payload.sub,
-      email: payload.email,
-      displayName: payload.displayName,
-      tenantMemberships: payload.tenantMemberships ?? [],
-      defaultTenantId: payload.defaultTenantId,
-      token: payload,
-    };
-    return next();
-  } catch (error) {
-    console.warn("[auth] invalid token (continuing without auth)", error);
-    delete req.auth;
-    return next();
+  for (const rawToken of candidates) {
+    try {
+      const payload = verifyAccessToken(rawToken);
+      req.auth = {
+        userId: payload.sub,
+        email: payload.email,
+        displayName: payload.displayName,
+        tenantMemberships: payload.tenantMemberships ?? [],
+        defaultTenantId: payload.defaultTenantId,
+        token: payload,
+      };
+      return next();
+    } catch (error) {
+      console.warn("[auth] invalid token", error);
+    }
   }
+
+  delete req.auth;
+  if (publicRequest) return next();
+  return res.status(401).json({ error: "Invalid or expired token" });
 }
 
 export function requireAuthMiddleware(req: Request, res: Response, next: NextFunction) {
