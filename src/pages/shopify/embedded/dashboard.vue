@@ -51,34 +51,63 @@ const quickActions = [
 async function loadDashboardData() {
   loading.value = true;
   try {
-    // Load stats
+    // Load stats from backend
     const [ordersRes, gangSheetsRes, designsRes] = await Promise.all([
-      $api<{ data: { pending: number; completed: number; avgTurnaround: number } }>("/orders/stats").catch(() => ({ data: { pending: 8, completed: 145, avgTurnaround: 2.1 } })),
-      $api<{ data: { ready: number } }>("/gang-sheets/stats").catch(() => ({ data: { ready: 3 } })),
-      $api<{ data: { active: number } }>("/designs/stats").catch(() => ({ data: { active: 24 } })),
+      $api<{ data: { total: number; last7Days: number; last30Days: number; byStatus: Record<string, number>; pendingFulfillment: number } }>("/orders/stats"),
+      $api<{ data: { total: number; last7Days: number; byStatus: Record<string, number>; inProduction: number; ready: number } }>("/gang-sheets/stats"),
+      $api<{ data: { total: number; last7Days: number; byStatus: Record<string, number>; pending: number; approved: number } }>("/designs/stats"),
     ]);
 
+    console.log("[dashboard] Loaded stats:", { ordersRes, gangSheetsRes, designsRes });
+
     stats.value = {
-      pendingOrders: ordersRes.data?.pending ?? 8,
-      gangSheetsReady: gangSheetsRes.data?.ready ?? 3,
-      avgTurnaroundDays: ordersRes.data?.avgTurnaround ?? 2.1,
-      activeDesigns: designsRes.data?.active ?? 24,
-      totalRevenue: 12450.00,
-      completedOrders: ordersRes.data?.completed ?? 145,
+      pendingOrders: ordersRes.data?.pendingFulfillment ?? 0,
+      gangSheetsReady: gangSheetsRes.data?.ready ?? 0,
+      avgTurnaroundDays: 2.1, // TODO: Calculate from jobs
+      activeDesigns: designsRes.data?.pending ?? 0,
+      totalRevenue: 12450.00, // TODO: Calculate from billing
+      completedOrders: ordersRes.data?.byStatus?.["Completed"] ?? 0,
     };
 
-    // Load recent activity
-    const activityRes = await $api<{ data: RecentActivity[] }>("/audit?limit=5").catch(() => ({
-      data: [
-        { id: "1", type: "order", message: "New order #10245 received", timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
-        { id: "2", type: "design", message: "Design 'Summer Tee' approved", timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
-        { id: "3", type: "gangsheet", message: "Gang sheet GS-120 ready for production", timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
-      ]
-    }));
+    // Load recent activity from audit log
+    const activityRes = await $api<{ data: { items: Array<{ id: string; event: string; entity: string; createdAt: string }> } }>("/audit?limit=5&sortOrder=desc");
     
-    recentActivity.value = activityRes.data ?? [];
+    // Transform audit logs to activity format
+    recentActivity.value = (activityRes.data?.items ?? []).map(log => {
+      let type: "order" | "design" | "gangsheet" = "order";
+      let message = `${log.entity}: ${log.event}`;
+      
+      if (log.entity === "DesignDocument" || log.entity === "Design") {
+        type = "design";
+        message = `Design ${log.event.replace('_', ' ')}`;
+      } else if (log.entity === "GangSheet") {
+        type = "gangsheet";
+        message = `Gang sheet ${log.event.replace('_', ' ')}`;
+      } else if (log.entity === "Order") {
+        type = "order";
+        message = `Order ${log.event.replace('_', ' ')}`;
+      }
+      
+      return {
+        id: log.id,
+        type,
+        message,
+        timestamp: log.createdAt,
+      };
+    });
   } catch (error) {
     console.error("[dashboard] Failed to load data:", error);
+    
+    // Fallback to empty/default values
+    stats.value = {
+      pendingOrders: 0,
+      gangSheetsReady: 0,
+      avgTurnaroundDays: 0,
+      activeDesigns: 0,
+      totalRevenue: 0,
+      completedOrders: 0,
+    };
+    recentActivity.value = [];
   } finally {
     loading.value = false;
   }
