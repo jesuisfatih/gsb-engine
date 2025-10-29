@@ -361,10 +361,96 @@ authRouter.get("/callback", async (req, res) => {
   console.log("[shopify-auth] OAuth callback received");
   console.log("[shopify-auth] Query params:", req.query);
   
-  const { shop, host } = req.query;
+  const { shop, code, host, hmac, state } = req.query;
   
   if (!shop || typeof shop !== "string") {
     return res.status(400).send("Missing shop parameter");
+  }
+
+  // If we have a code, this is the OAuth callback - exchange it for an access token
+  if (code && typeof code === "string") {
+    try {
+      console.log("[shopify-auth] Exchanging OAuth code for access token...");
+      
+      // Exchange code for access token
+      const tokenUrl = `https://${shop}/admin/oauth/access_token`;
+      const tokenResponse = await fetch(tokenUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: env.SHOPIFY_API_KEY,
+          client_secret: env.SHOPIFY_API_SECRET,
+          code,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        console.error("[shopify-auth] Failed to exchange OAuth code:", tokenResponse.status);
+        return res.status(502).send("Failed to complete Shopify OAuth");
+      }
+
+      const tokenData = await tokenResponse.json() as { access_token: string; scope: string };
+      console.log("[shopify-auth] Access token received for shop:", shop);
+
+      // Find or create tenant for this shop
+      const shopDomain = shop;
+      const slugCandidate = sanitizeSlug(shopDomain);
+      const slugHints = Array.from(
+        new Set(
+          [env.SHOPIFY_DEFAULT_TENANT_SLUG?.trim()?.toLowerCase(), slugCandidate].filter(Boolean) as string[],
+        ),
+      );
+
+      let tenant = await prisma.tenant.findFirst({
+        where: {
+          settings: { path: ["shopify", "domain"], equals: shopDomain },
+        },
+      });
+
+      if (!tenant) {
+        for (const slug of slugHints) {
+          const candidate = await prisma.tenant.findUnique({ where: { slug } });
+          if (candidate) {
+            tenant = candidate;
+            break;
+          }
+        }
+      }
+
+      if (!tenant) {
+        tenant = await provisionTenantForShop(shopDomain, slugHints);
+      }
+
+      if (!tenant) {
+        return res.status(500).send("Failed to provision tenant");
+      }
+
+      // Update tenant with Shopify credentials
+      const currentSettings = (tenant.settings as Record<string, unknown> | null) ?? {};
+      const nextSettings = {
+        ...currentSettings,
+        shopify: {
+          domain: shopDomain,
+          accessToken: tokenData.access_token,
+          scope: tokenData.scope,
+          installedAt: new Date().toISOString(),
+        },
+      };
+
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          shopifyDomain: shopDomain,
+          shopifyAccessToken: tokenData.access_token,
+          settings: nextSettings,
+        },
+      });
+
+      console.log("[shopify-auth] Tenant updated with Shopify credentials");
+    } catch (error) {
+      console.error("[shopify-auth] OAuth error:", error);
+      return res.status(500).send("OAuth exchange failed");
+    }
   }
   
   // Redirect to embedded app with shop and host params

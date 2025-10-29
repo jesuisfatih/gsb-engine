@@ -49,6 +49,59 @@ const statusUpdateSchema = z.object({
 
 export const gangSheetRouter = Router();
 
+function requireTenant(res: Response, tenantId?: string): tenantId is string {
+  if (!tenantId) {
+    res.status(400).json({ error: "Missing tenant context" });
+    return false;
+  }
+  return true;
+}
+
+// GET /api/gang-sheets/stats - Dashboard statistics
+gangSheetRouter.get("/stats", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const [total, last7Days, byStatus] = await Promise.all([
+      // Total gang sheets
+      prisma.gangSheet.count({ where: { tenantId } }),
+      
+      // Gang sheets in last 7 days
+      prisma.gangSheet.count({
+        where: {
+          tenantId,
+          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+      
+      // Group by status
+      prisma.gangSheet.groupBy({
+        by: ["status"],
+        where: { tenantId },
+        _count: true,
+      }),
+    ]);
+
+    const statusCounts = byStatus.reduce((acc, item) => {
+      acc[item.status || "draft"] = item._count;
+      return acc;
+    }, {} as Record<string, number>);
+
+    res.json({
+      data: {
+        total,
+        last7Days,
+        byStatus: statusCounts,
+        inProduction: (statusCounts["queued"] || 0) + (statusCounts["in_production"] || 0),
+        ready: statusCounts["ready"] || 0,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 function ensureTenant(res: Response, tenantId?: string): tenantId is string {
   if (!tenantId) {
     res.status(400).json({ error: "Missing tenant context" });

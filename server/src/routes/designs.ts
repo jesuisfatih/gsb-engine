@@ -41,6 +41,59 @@ const listDesignsQuery = z.object({
 
 export const designsRouter = Router();
 
+function requireTenant(res: any, tenantId?: string): tenantId is string {
+  if (!tenantId) {
+    res.status(400).json({ error: "Missing tenant context" });
+    return false;
+  }
+  return true;
+}
+
+// GET /api/designs/stats - Dashboard statistics
+designsRouter.get("/stats", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const [total, last7Days, byStatus] = await Promise.all([
+      // Total designs
+      prisma.designDocument.count({ where: { tenantId } }),
+      
+      // Designs in last 7 days
+      prisma.designDocument.count({
+        where: {
+          tenantId,
+          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+      
+      // Group by status
+      prisma.designDocument.groupBy({
+        by: ["status"],
+        where: { tenantId },
+        _count: true,
+      }),
+    ]);
+
+    const statusCounts = byStatus.reduce((acc, item) => {
+      acc[item.status] = item._count;
+      return acc;
+    }, {} as Record<string, number>);
+
+    res.json({
+      data: {
+        total,
+        last7Days,
+        byStatus: statusCounts,
+        pending: (statusCounts["DRAFT"] || 0) + (statusCounts["SUBMITTED"] || 0),
+        approved: statusCounts["APPROVED"] || 0,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 function mapDesignCreate(tenantId: string, userId: string | undefined, payload: z.infer<typeof createDesignSchema>): Prisma.DesignDocumentCreateInput {
   const now = new Date();
   const snapshot = payload.snapshot ?? {};

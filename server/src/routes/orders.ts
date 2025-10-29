@@ -20,6 +20,61 @@ function requireTenant(res: Parameters<typeof ordersRouter.get>[1]["res"], tenan
   return true;
 }
 
+// GET /api/orders/stats - Dashboard statistics
+ordersRouter.get("/stats", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const [total, last7Days, last30Days, statuses] = await Promise.all([
+      // Total orders
+      prisma.order.count({ where: { tenantId } }),
+      
+      // Orders in last 7 days
+      prisma.order.count({
+        where: {
+          tenantId,
+          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+      
+      // Orders in last 30 days
+      prisma.order.count({
+        where: {
+          tenantId,
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+      
+      // Status breakdown
+      prisma.order.findMany({
+        where: { tenantId },
+        include: {
+          jobs: { select: { status: true } },
+        },
+      }),
+    ]);
+
+    const statusCounts = statuses.reduce((acc, order) => {
+      const status = deriveStatus(order.jobs);
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    res.json({
+      data: {
+        total,
+        last7Days,
+        last30Days,
+        byStatus: statusCounts,
+        pendingFulfillment: (statusCounts["Created"] || 0) + (statusCounts["Queued"] || 0) + (statusCounts["In production"] || 0),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 function deriveStatus(jobs: { status: string }[]) {
   if (!jobs.length) return "Created";
   const priority = ["IN_PROGRESS", "ON_HOLD", "QUEUED", "COMPLETED", "FAILED", "CANCELLED"];
