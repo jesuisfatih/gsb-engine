@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import type { Prisma } from "../../../src/generated/prisma/client";
 
 const placeholderSchema = z.object({
   key: z.string().min(1),
@@ -30,6 +31,16 @@ const templateInputSchema = z.object({
   defaultPrintTech: z.string().optional().nullable(),
   items: z.array(z.any()),
   placeholders: z.array(placeholderSchema).optional().default([]),
+});
+
+const listTemplatesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+  search: z.string().optional(), // Search by title or description
+  tag: z.string().optional(), // Filter by tag
+  productSlug: z.string().optional(), // Filter by target product
+  sortBy: z.enum(["createdAt", "name"]).default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
 interface TemplateProjection {
@@ -99,17 +110,92 @@ function ensureTemplateAccess(record: any, tenantId: string | null) {
 templatesRouter.get("/", async (req, res, next) => {
   try {
     const { prisma, tenantId } = req.context;
-    const where = tenantId
+    const query = listTemplatesQuerySchema.parse(req.query);
+
+    // Base where clause for tenant access
+    const baseWhere = tenantId
       ? { OR: [{ tenantId }, { tenantId: null, isPublic: true }] }
       : { tenantId: null, isPublic: true };
 
-    const templates = await prisma.template.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
+    const where: Prisma.TemplateWhereInput = { ...baseWhere };
+
+    // Search by title or description
+    if (query.search) {
+      where.AND = [
+        baseWhere,
+        {
+          OR: [
+            { name: { contains: query.search, mode: "insensitive" } },
+            { description: { contains: query.search, mode: "insensitive" } },
+          ],
+        },
+      ];
+    }
+
+    // Filter by tag
+    if (query.tag) {
+      where.tags = {
+        some: {
+          tag: query.tag,
+        },
+      };
+    }
+
+    // Filter by product slug (stored in payload.target.productSlug)
+    if (query.productSlug) {
+      where.payload = {
+        path: ["target", "productSlug"],
+        equals: query.productSlug,
+      };
+    }
+
+    const [templates, total] = await Promise.all([
+      prisma.template.findMany({
+        where,
+        orderBy: { [query.sortBy]: query.sortOrder },
+        skip: query.offset,
+        take: query.limit,
+        include: { tags: true },
+      }),
+      prisma.template.count({ where }),
+    ]);
+
+    res.json({ 
+      data: {
+        items: templates.map(mapTemplate),
+        total,
+        pagination: {
+          limit: query.limit,
+          offset: query.offset,
+          hasMore: query.offset + query.limit < total,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+templatesRouter.get("/:id", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    const templateId = req.params.id;
+
+    const template = await prisma.template.findUnique({
+      where: { id: templateId },
       include: { tags: true },
     });
 
-    res.json({ data: templates.map(mapTemplate) });
+    if (!template) {
+      return res.status(404).json({ error: "Template not found" });
+    }
+
+    const access = ensureTemplateAccess(template, tenantId ?? null);
+    if (access === "forbidden") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    res.json({ data: mapTemplate(template) });
   } catch (error) {
     next(error);
   }
@@ -135,6 +221,57 @@ templatesRouter.post("/", async (req, res, next) => {
     if (uniqueTags.length) {
       await prisma.templateTag.createMany({
         data: uniqueTags.map(tag => ({ templateId: created.id, tag })),
+        skipDuplicates: true,
+      });
+    }
+
+    const record = await prisma.template.findUnique({
+      where: { id: created.id },
+      include: { tags: true },
+    });
+
+    res.status(201).json({ data: mapTemplate(record) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /:id/duplicate - Duplicate a template
+templatesRouter.post("/:id/duplicate", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    const templateId = req.params.id;
+
+    const existing = await prisma.template.findUnique({
+      where: { id: templateId },
+      include: { tags: true },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: "Template not found" });
+    }
+
+    const access = ensureTemplateAccess(existing, tenantId ?? null);
+    if (access === "forbidden") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Create duplicate with " (Copy)" suffix
+    const duplicateName = `${existing.name} (Copy)`;
+    const created = await prisma.template.create({
+      data: {
+        tenantId: tenantId ?? null,
+        isPublic: false,
+        name: duplicateName,
+        description: existing.description,
+        payload: existing.payload,
+      },
+    });
+
+    // Copy tags
+    if (existing.tags.length) {
+      await prisma.templateTag.createMany({
+        data: existing.tags.map(tag => ({ templateId: created.id, tag: tag.tag })),
         skipDuplicates: true,
       });
     }

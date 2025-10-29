@@ -4,6 +4,7 @@ import { definePage } from "unplugin-vue-router/runtime";
 import { formatDate } from "@/@core/utils/formatters";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import { useMerchantDesignsStore } from "@/modules/merchant/store/designsStore";
+import type { DesignFilters } from "@/modules/merchant/store/designsStore";
 
 definePage({
   meta: {
@@ -36,22 +37,14 @@ const statusChips: Record<string, { label: string; color: string }> = {
 
 const selectedStatus = ref(statusOptions[0]);
 const searchTerm = ref("");
+const dateRange = ref<[string, string] | null>(null);
+const sortBy = ref<"createdAt" | "updatedAt" | "name">("updatedAt");
+const sortOrder = ref<"asc" | "desc">("desc");
+const showFilters = ref(false);
 
 const isLoading = computed(() => designsStore.loading);
-
-const filteredDesigns = computed(() => {
-  const term = searchTerm.value.trim().toLowerCase();
-  return designsStore.items.filter(design => {
-    const customer = design.customer ? design.customer.toLowerCase() : "";
-    const orderNumber = design.orderNumber ? design.orderNumber.toLowerCase() : "";
-    const matchesSearch =
-      !term ||
-      design.title.toLowerCase().includes(term) ||
-      customer.includes(term) ||
-      orderNumber.includes(term);
-    return matchesSearch;
-  });
-});
+const designs = computed(() => designsStore.items);
+const totalDesigns = computed(() => designsStore.total);
 
 function formatStatus(designStatus: string) {
   return statusChips[designStatus] ?? { label: designStatus, color: "info" };
@@ -69,17 +62,46 @@ function formatUpdated(value: string) {
 
 async function loadDesigns() {
   try {
-    const status = selectedStatus.value.value === "ALL" ? undefined : selectedStatus.value.value;
-    await designsStore.fetchDesigns({ status, limit: 50 });
+    const filters: DesignFilters = {
+      limit: 50,
+      offset: 0,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value,
+    };
+
+    // Status filter
+    if (selectedStatus.value.value !== "ALL") {
+      filters.status = selectedStatus.value.value;
+    }
+
+    // Search filter
+    if (searchTerm.value.trim()) {
+      filters.search = searchTerm.value.trim();
+    }
+
+    // Date range filter
+    if (dateRange.value && dateRange.value.length === 2) {
+      filters.fromDate = dateRange.value[0];
+      filters.toDate = dateRange.value[1];
+    }
+
+    await designsStore.fetchDesigns(filters);
   } catch (error) {
     console.error(error);
-    notification.error("Design listesi yuklenemedi.");
+    notification.error("Design listesi yÃ¼klenemedi.");
   }
 }
 
-watch(selectedStatus, () => {
+// Watch for filter changes
+watch([selectedStatus, searchTerm, dateRange, sortBy, sortOrder], () => {
   void loadDesigns();
-});
+}, { deep: true });
+
+function clearFilters() {
+  dateRange.value = null;
+  sortBy.value = "updatedAt";
+  sortOrder.value = "desc";
+}
 
 onMounted(() => {
   void loadDesigns();
@@ -113,9 +135,50 @@ onMounted(() => {
             prepend-inner-icon="tabler-search"
             variant="outlined"
           />
-          <VBtn prepend-icon="tabler-filter" variant="text">Filters</VBtn>
+          <VBtn prepend-icon="tabler-filter" variant="text" @click="showFilters = !showFilters">
+            Filters
+          </VBtn>
         </div>
       </header>
+
+      <!-- Advanced Filters -->
+      <VExpandTransition>
+        <div v-if="showFilters" class="filters-panel">
+          <VRow dense>
+            <VCol cols="12" md="6">
+              <VSelect
+                v-model="sortBy"
+                :items="[
+                  { label: 'Created Date', value: 'createdAt' },
+                  { label: 'Updated Date', value: 'updatedAt' },
+                  { label: 'Name', value: 'name' },
+                ]"
+                label="Sort by"
+                density="comfortable"
+                variant="outlined"
+                hide-details
+              />
+            </VCol>
+            <VCol cols="12" md="6">
+              <VSelect
+                v-model="sortOrder"
+                :items="[
+                  { label: 'Newest first', value: 'desc' },
+                  { label: 'Oldest first', value: 'asc' },
+                ]"
+                label="Order"
+                density="comfortable"
+                variant="outlined"
+                hide-details
+              />
+            </VCol>
+          </VRow>
+          <div class="filter-actions">
+            <VBtn variant="text" @click="clearFilters">Clear filters</VBtn>
+            <VBtn color="primary" @click="showFilters = false">Apply</VBtn>
+          </div>
+        </div>
+      </VExpandTransition>
 
       <table class="data-table">
         <thead>
@@ -136,10 +199,10 @@ onMounted(() => {
           </tr>
         </tbody>
         <tbody v-else>
-          <tr v-if="!filteredDesigns.length" class="empty-row">
+          <tr v-if="!designs.length" class="empty-row">
             <td colspan="6">No designs found.</td>
           </tr>
-          <tr v-for="design in filteredDesigns" :key="design.id">
+          <tr v-for="design in designs" :key="design.id">
             <td class="design-cell">
               <div class="thumbnail">{{ design.title.slice(0, 2).toUpperCase() }}</div>
               <div>
@@ -149,7 +212,7 @@ onMounted(() => {
                 </p>
               </div>
             </td>
-            <td>{{ design.customer ?? '—' }}</td>
+            <td>{{ design.customer ?? 'ï¿½' }}</td>
             <td>
               <VChip
                 size="small"
@@ -159,7 +222,7 @@ onMounted(() => {
                 {{ formatStatus(design.status).label }}
               </VChip>
             </td>
-            <td>{{ design.surface ?? '—' }}</td>
+            <td>{{ design.surface ?? 'ï¿½' }}</td>
             <td>{{ formatUpdated(design.updatedAt) }}</td>
             <td class="actions">
               <VBtn icon="tabler-external-link" variant="text" size="small" />
@@ -284,6 +347,21 @@ tbody tr:hover {
   display: flex;
   justify-content: flex-end;
   gap: 4px;
+}
+
+.filters-panel {
+  padding: 16px;
+  background: rgba(17, 18, 23, 0.02);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>
 

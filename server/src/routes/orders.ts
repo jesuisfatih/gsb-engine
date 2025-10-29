@@ -1,9 +1,16 @@
 import { Router } from "express";
 import { z } from "zod";
+import type { Prisma } from "../../../src/generated/prisma/client";
 
 const listOrdersQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
-  status: z.string().optional(),
+  offset: z.coerce.number().int().min(0).default(0),
+  status: z.enum(["Created", "Queued", "In production", "On hold", "Completed", "Failed", "Cancelled"]).optional(),
+  search: z.string().optional(), // Search by order number, customer name, or email
+  fromDate: z.coerce.date().optional(),
+  toDate: z.coerce.date().optional(),
+  sortBy: z.enum(["createdAt", "updatedAt", "shopifyOrderId"]).default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
 const orderIdParams = z.object({
@@ -95,37 +102,67 @@ ordersRouter.get("/", async (req, res, next) => {
 
     const query = listOrdersQuerySchema.parse(req.query);
 
-    const orders = await prisma.order.findMany({
-      where: {
-        tenantId,
-      },
-      orderBy: { createdAt: "desc" },
-      take: query.limit,
-      include: {
-        designs: {
-          orderBy: { createdAt: "desc" },
-          take: 3,
-          select: {
-            id: true,
-            name: true,
-            status: true,
-            previewUrl: true,
-            sheetWidthMm: true,
-            sheetHeightMm: true,
-            createdAt: true,
-            outputs: {
-              select: { id: true },
+    // Build where clause
+    const where: Prisma.OrderWhereInput = {
+      tenantId,
+    };
+
+    // Search by order number, customer name, or email
+    if (query.search) {
+      where.OR = [
+        { shopifyOrderId: { contains: query.search, mode: "insensitive" } },
+        { customerName: { contains: query.search, mode: "insensitive" } },
+        { customerEmail: { contains: query.search, mode: "insensitive" } },
+      ];
+    }
+
+    // Date range filter
+    if (query.fromDate || query.toDate) {
+      where.createdAt = {};
+      if (query.fromDate) where.createdAt.gte = query.fromDate;
+      if (query.toDate) where.createdAt.lte = query.toDate;
+    }
+
+    // Fetch orders with includes
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        orderBy: { [query.sortBy]: query.sortOrder },
+        skip: query.offset,
+        take: query.limit,
+        include: {
+          designs: {
+            orderBy: { createdAt: "desc" },
+            take: 3,
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              previewUrl: true,
+              sheetWidthMm: true,
+              sheetHeightMm: true,
+              createdAt: true,
+              outputs: {
+                select: { id: true },
+              },
             },
           },
+          jobs: {
+            orderBy: { createdAt: "desc" },
+            select: { id: true, status: true },
+          },
         },
-        jobs: {
-          orderBy: { createdAt: "desc" },
-          select: { id: true, status: true },
-        },
-      },
-    });
+      }),
+      prisma.order.count({ where }),
+    ]);
 
-    const payload = orders.map(order => {
+    // Filter by derived status if requested
+    let filteredOrders = orders;
+    if (query.status) {
+      filteredOrders = orders.filter(order => deriveStatus(order.jobs) === query.status);
+    }
+
+    const payload = filteredOrders.map(order => {
       const primaryDesign = order.designs[0];
       const downloadCount = order.designs.reduce((sum, d) => sum + d.outputs.length, 0);
 
@@ -156,7 +193,17 @@ ordersRouter.get("/", async (req, res, next) => {
       };
     });
 
-    res.json({ data: payload });
+    res.json({ 
+      data: {
+        items: payload,
+        total,
+        pagination: {
+          limit: query.limit,
+          offset: query.offset,
+          hasMore: query.offset + query.limit < total,
+        },
+      },
+    });
   } catch (error) {
     next(error);
   }

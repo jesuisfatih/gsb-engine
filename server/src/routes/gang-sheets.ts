@@ -37,6 +37,13 @@ const updateGangSheetSchema = baseGangSheetSchema.partial().extend({
 
 const listQuerySchema = z.object({
   includeItems: z.coerce.boolean().optional().default(false),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+  status: z.enum(GANG_SHEET_STATUSES).optional(),
+  search: z.string().optional(), // Search by name or notes
+  supplierId: z.string().uuid().optional(),
+  sortBy: z.enum(["createdAt", "updatedAt", "name", "utilization"]).default("updatedAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
 const GANG_SHEET_STATUSES = ["draft", "ready", "queued", "in_production", "shipped", "archived"] as const;
@@ -224,17 +231,65 @@ gangSheetRouter.get("/", async (req, res, next) => {
   try {
     const { prisma, tenantId } = req.context;
     if (!tenantId) {
-      return res.json({ data: [] });
+      return res.json({ data: { items: [], total: 0, pagination: { limit: 50, offset: 0, hasMore: false } } });
     }
 
     const query = listQuerySchema.parse(req.query);
-    const sheets = await prisma.gangSheet.findMany({
-      where: { tenantId },
-      orderBy: { updatedAt: "desc" },
-      include: { items: query.includeItems },
-    });
 
-    res.json({ data: sheets });
+    // Build where clause
+    const where: Prisma.GangSheetWhereInput = {
+      tenantId,
+    };
+
+    // Filter by status
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    // Filter by supplier
+    if (query.supplierId) {
+      where.supplierId = query.supplierId;
+    }
+
+    // Search by name or notes
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: "insensitive" } },
+        { notes: { contains: query.search, mode: "insensitive" } },
+      ];
+    }
+
+    const [sheets, total] = await Promise.all([
+      prisma.gangSheet.findMany({
+        where,
+        orderBy: { [query.sortBy]: query.sortOrder },
+        skip: query.offset,
+        take: query.limit,
+        include: { 
+          items: query.includeItems,
+          supplier: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+        },
+      }),
+      prisma.gangSheet.count({ where }),
+    ]);
+
+    res.json({ 
+      data: {
+        items: sheets,
+        total,
+        pagination: {
+          limit: query.limit,
+          offset: query.offset,
+          hasMore: query.offset + query.limit < total,
+        },
+      },
+    });
   } catch (error) {
     next(error);
   }
