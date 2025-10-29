@@ -35,6 +35,8 @@ const updateGangSheetSchema = baseGangSheetSchema.partial().extend({
   discardAutosave: z.boolean().optional(),
 });
 
+const GANG_SHEET_STATUSES = ["draft", "ready", "queued", "in_production", "shipped", "archived"] as const;
+
 const listQuerySchema = z.object({
   includeItems: z.coerce.boolean().optional().default(false),
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -45,8 +47,6 @@ const listQuerySchema = z.object({
   sortBy: z.enum(["createdAt", "updatedAt", "name", "utilization"]).default("updatedAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
-
-const GANG_SHEET_STATUSES = ["draft", "ready", "queued", "in_production", "shipped", "archived"] as const;
 
 const statusUpdateSchema = z.object({
   status: z.enum(GANG_SHEET_STATUSES),
