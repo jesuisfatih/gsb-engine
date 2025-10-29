@@ -158,7 +158,8 @@ export const useCatalogStore = defineStore("catalog", {
           console.warn("[catalog] No access token available, using seed data");
           const fallback = await fetchSeedCatalog();
           this.products = clone(fallback.map(normalizeProduct));
-          this.loaded = true;
+          // Do not mark as loaded so we retry once auth is established.
+          this.loaded = false;
           return;
         }
 
@@ -179,7 +180,9 @@ export const useCatalogStore = defineStore("catalog", {
         try {
           const fallback = await fetchSeedCatalog();
           this.products = clone(fallback.map(normalizeProduct));
-          this.loaded = true;
+          // If auth failed, allow future retries once session is valid.
+          const authFailure = status === 401 || status === 403;
+          this.loaded = !authFailure;
         } catch (fallbackError: any) {
           this.error = fallbackError?.message ?? primaryError?.message ?? String(fallbackError ?? primaryError);
         }
