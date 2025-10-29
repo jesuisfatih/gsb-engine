@@ -22,9 +22,6 @@ const productForm = reactive({
   category: "textile",
   colors: [] as string[],
   materials: [] as string[],
-  base: 100,
-  perSqIn: 0.2,
-  colorAdder: 0,
   techniques: ["dtf"] as string[],
 });
 
@@ -93,9 +90,6 @@ function resetProductForm() {
   productForm.category = "textile";
   productForm.colors = [];
   productForm.materials = [];
-  productForm.base = 100;
-  productForm.perSqIn = 0.2;
-  productForm.colorAdder = 0;
   productForm.techniques = ["dtf"];
 }
 
@@ -119,19 +113,6 @@ async function saveProduct() {
     colors: [...productForm.colors],
     techniques: [...productForm.techniques],
     surfaces: [],
-    pricing: {
-      base: productForm.base,
-      perSqIn: productForm.perSqIn,
-      colorAdder: productForm.colorAdder,
-      techMultipliers: {
-        digital: 1,
-        dtf: 1,
-        sublimation: 1,
-        screen: 1,
-        embroidery: 1,
-      },
-      quantityBreaks: [],
-    },
   };
   try {
     await catalog.addProduct(newProduct);
@@ -441,11 +422,13 @@ function onVariantSurfaceChange(variantId: string, surfaceId: string | null) {
           <VCombobox v-model="productForm.colors" label="Colors" multiple chips hint="Enter and press enter" />
           <VCombobox v-model="productForm.materials" label="Materials" multiple chips />
           <VSelect v-model="productForm.techniques" :items="techniques" multiple chips label="Techniques" />
-          <div class="d-flex gap-4">
-            <VTextField v-model.number="productForm.base" label="Base Price" type="number" prefix="₺" />
-            <VTextField v-model.number="productForm.perSqIn" label="Per SqIn" type="number" />
-            <VTextField v-model.number="productForm.colorAdder" label="Color Adder" type="number" />
-          </div>
+          
+          <VAlert type="info" variant="tonal" density="compact">
+            <template #prepend>
+              <VIcon icon="tabler-info-circle" size="18" />
+            </template>
+            Pricing is configured via Print Techniques in the merchant panel.
+          </VAlert>
         </VCardText>
         <VCardActions>
           <VSpacer />

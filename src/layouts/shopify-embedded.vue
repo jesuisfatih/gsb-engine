@@ -118,6 +118,8 @@ const navSections: NavSection[] = [
       { icon: "tabler-color-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
       { icon: "tabler-photo-scan", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
       { icon: "tabler-truck-delivery", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
+      { icon: "tabler-coin", label: "Print Techniques", name: "shopify-embedded-print-techniques" },
+      { icon: "tabler-receipt", label: "Pricing & Billing", name: "shopify-embedded-pricing" },
     ],
   },
   {
