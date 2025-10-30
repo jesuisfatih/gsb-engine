@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
+import { debugLog, debugWarn, debugError } from "@/utils/debug";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
-import { debugError, debugLog, debugWarn } from "@/utils/debug";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
@@ -101,73 +101,38 @@ const isInIframe = computed(() => {
 const shopifyAuthenticated = ref(false);
 const isAuthenticated = computed(() => shopifyAuthenticated.value || sessionStore.isAuthenticated);
 
-function deriveHostFromReferrer(): string | undefined {
-  if (typeof document === "undefined" || !document.referrer) return undefined;
-  try {
-    const refUrl = new URL(document.referrer);
-    if (!refUrl.hostname.endsWith("shopify.com")) return undefined;
-
-    const segments = refUrl.pathname.split("/").filter(Boolean);
-    const storeIndex = segments.indexOf("store");
-    if (storeIndex === -1 || storeIndex + 1 >= segments.length) return undefined;
-
-    const storeSlug = segments[storeIndex + 1];
-    const hostTarget = `${refUrl.host}/store/${storeSlug}`;
-    const encoded = window.btoa(hostTarget);
-
-    console.log("[shopify-layout] Derived host from referrer:", hostTarget, "->", encoded);
-
-    return encoded;
-  } catch (error) {
-    console.warn("[shopify-layout] Failed to derive host from referrer", error);
-    return undefined;
-  }
-}
-
-function deriveShopFromReferrer(): string | undefined {
-  if (typeof document === "undefined" || !document.referrer) return undefined;
-  try {
-    const refUrl = new URL(document.referrer);
-    if (!refUrl.hostname.endsWith("shopify.com")) return undefined;
-
-    const segments = refUrl.pathname.split("/").filter(Boolean);
-    const storeIndex = segments.indexOf("store");
-    if (storeIndex === -1 || storeIndex + 1 >= segments.length) return undefined;
-
-    const storeSlug = segments[storeIndex + 1];
-    const shopDomain = `${storeSlug}.myshopify.com`;
-
-    console.log("[shopify-layout] Derived shop from referrer:", shopDomain);
-
-    return shopDomain;
-  } catch (error) {
-    console.warn("[shopify-layout] Failed to derive shop from referrer", error);
-    return undefined;
-  }
-}
-
 const hostParam = computed<string | undefined>(() => {
+  // Priority 1: Route query parameter (most reliable)
   const fromRoute = route.query.host;
   if (typeof fromRoute === "string" && fromRoute.length > 0) {
+    console.log("[shopify-layout] 📍 Host from route.query:", fromRoute.substring(0, 20) + "...");
     if (typeof window !== "undefined")
       window.localStorage.setItem("shopify:host", fromRoute);
     return fromRoute;
   }
 
   if (typeof window === "undefined") return undefined;
+  
+  // Priority 2: URL search params (in case route.query missed it)
   const searchHost = new URLSearchParams(window.location.search).get("host");
   if (typeof searchHost === "string" && searchHost.length > 0) {
+    console.log("[shopify-layout] 📍 Host from URL search:", searchHost.substring(0, 20) + "...");
     window.localStorage.setItem("shopify:host", searchHost);
     return searchHost;
   }
 
-  const derived = deriveHostFromReferrer();
-  if (derived) {
-    window.localStorage.setItem("shopify:host", derived);
-    return derived;
-  }
-
+  // Priority 3: localStorage (fallback)
   const stored = window.localStorage.getItem("shopify:host");
+  if (stored) {
+    console.log("[shopify-layout] 📍 Host from localStorage:", stored.substring(0, 20) + "...");
+  } else {
+    console.error("[shopify-layout] ❌ Host parameter NOT FOUND in:");
+    console.error("[shopify-layout]   - route.query.host:", route.query.host);
+    console.error("[shopify-layout]   - window.location.search:", window.location.search);
+    console.error("[shopify-layout]   - localStorage:", stored);
+    console.error("[shopify-layout] 💡 This will cause App Bridge idToken() to timeout!");
+  }
+  
   return stored ?? undefined;
 });
 
@@ -185,12 +150,6 @@ const shopDomain = computed<string | undefined>(() => {
   if (typeof shop === "string" && shop.length > 0) {
     window.localStorage.setItem("shopify:shop", shop);
     return shop;
-  }
-
-  const derived = deriveShopFromReferrer();
-  if (derived) {
-    window.localStorage.setItem("shopify:shop", derived);
-    return derived;
   }
 
   const stored = window.localStorage.getItem("shopify:shop");
@@ -245,22 +204,32 @@ async function ensureAppBridgeAssets(): Promise<void> {
   if (!head) return;
 
   if (!apiKey) {
-    console.warn("[shopify-layout] Cannot inject App Bridge assets without API key");
+    console.error("[shopify-layout] ❌ Cannot inject App Bridge assets: API key missing");
+    console.error("[shopify-layout] Check VITE_SHOPIFY_APP_API_KEY environment variable");
     return;
   }
 
-  console.log("[shopify-layout] ensureAppBridgeAssets - using apiKey:", apiKey);
-
+  // CRITICAL: Check if meta tag exists in DOM
   let meta = head.querySelector('meta[name="shopify-api-key"]') as HTMLMetaElement | null;
+  
+  console.log("[shopify-layout] 🔍 Checking App Bridge meta tag...");
+  console.log("[shopify-layout] Meta tag found in DOM:", !!meta);
+  
   if (!meta) {
+    console.warn("[shopify-layout] ⚠️ Meta tag not found in DOM, creating it dynamically...");
     meta = document.createElement("meta");
     meta.name = "shopify-api-key";
-    head.insertBefore(meta, head.firstChild);
-  }
-  if (meta.content !== apiKey)
     meta.content = apiKey;
-
-  console.log("[shopify-layout] ensureAppBridgeAssets - meta tag:", meta.outerHTML);
+    // Insert as first child of head (Shopify requirement)
+    head.insertBefore(meta, head.firstChild);
+    console.log("[shopify-layout] ✅ Meta tag created and inserted");
+  } else {
+    if (meta.content !== apiKey) {
+      console.warn("[shopify-layout] ⚠️ Meta tag content mismatch, updating...");
+      meta.content = apiKey;
+    }
+    console.log("[shopify-layout] ✅ Meta tag verified:", meta.content.substring(0, 8) + "...");
+  }
 
   const scriptSrc = "https://cdn.shopify.com/shopifycloud/app-bridge.js";
   let script = Array.from(head.querySelectorAll("script"))
@@ -282,7 +251,6 @@ async function ensureAppBridgeAssets(): Promise<void> {
     });
     head.appendChild(script);
     await loadPromise;
-    console.log("[shopify-layout] ensureAppBridgeAssets - app bridge script appended");
   } else if (!window["app-bridge"]) {
     await new Promise<void>(resolve => {
       const poll = () => {
@@ -444,19 +412,56 @@ async function getShopifySessionToken(options: {
   }
 
   if (legacy?.idToken) {
-    console.log("[shopify-layout] Using legacy idToken() with timeout fallback");
+    console.log("[shopify-layout] Using legacy idToken() - waiting for App Bridge ready state...");
+    
+    // CRITICAL: Wait for App Bridge ready state before calling idToken()
+    // Modern App Bridge CDN requires this
+    const readyPromise = (legacy as any).ready;
+    if (readyPromise && typeof readyPromise === "function") {
+      console.log("[shopify-layout] Waiting for ready() function...");
+      try {
+        await Promise.race([
+          readyPromise(),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error("ready() timeout after 8 seconds")), 8000);
+          }),
+        ]);
+        console.log("[shopify-layout] ✅ App Bridge ready() completed");
+      } catch (error) {
+        console.error("[shopify-layout] ⚠️ ready() timeout or failed, proceeding anyway:", error);
+      }
+    } else if (readyPromise && readyPromise instanceof Promise) {
+      console.log("[shopify-layout] Waiting for ready Promise...");
+      try {
+        await Promise.race([
+          readyPromise,
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error("ready Promise timeout after 8 seconds")), 8000);
+          }),
+        ]);
+        console.log("[shopify-layout] ✅ App Bridge ready Promise resolved");
+      } catch (error) {
+        console.error("[shopify-layout] ⚠️ ready Promise timeout or failed, proceeding anyway:", error);
+      }
+    } else {
+      // No ready method, wait a bit for App Bridge to initialize
+      console.log("[shopify-layout] No ready() method found, waiting 3 seconds...");
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+    
     try {
+      console.log("[shopify-layout] Calling idToken()...");
       const token = await Promise.race([
         legacy.idToken(),
         new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("idToken() timeout after 10 seconds - App Bridge may not be fully ready")), 10000);
+          setTimeout(() => reject(new Error("idToken() timeout after 15 seconds")), 15000);
         }),
       ]);
-      if (!token) throw new Error("idToken() returned empty token");
-      console.log("[shopify-layout] Token received via idToken(), length:", token.length);
+      if (!token || token.length === 0) throw new Error("idToken() returned empty token");
+      console.log("[shopify-layout] ✅ Token received via idToken(), length:", token.length);
       return token;
     } catch (error) {
-      console.error("[shopify-layout] idToken() failed or timed out:", error);
+      console.error("[shopify-layout] ❌ idToken() failed or timed out:", error);
       throw error instanceof Error ? error : new Error("idToken() failed");
     }
   }
@@ -500,69 +505,76 @@ async function bootstrapAppBridge() {
   try {
     await ensureAppBridgeAssets();
 
-    const resources = await waitForAppBridgeResources();
-    const { appBridgeModule, utilsModule } = resources;
-    const initialLegacyApi = resources.legacyApi ?? resolveLegacyShopifyApi();
-
-    let createAppFn: ((config: { apiKey: string; host: string }) => ShopifyAppInstance) | undefined;
-    if (typeof appBridgeModule === "function") {
-      createAppFn = appBridgeModule as unknown as (config: { apiKey: string; host: string }) => ShopifyAppInstance;
-    } else if (appBridgeModule?.default && typeof appBridgeModule.default === "function") {
-      createAppFn = appBridgeModule.default;
-    } else if (appBridgeModule?.createApp && typeof appBridgeModule.createApp === "function") {
-      createAppFn = appBridgeModule.createApp;
-    } else if (window.Shopify?.AppBridge?.createApp && typeof window.Shopify.AppBridge.createApp === "function") {
-      createAppFn = window.Shopify.AppBridge.createApp;
-    }
-
-    let appInstance: ShopifyAppInstance | null = null;
-    if (createAppFn) {
-      try {
-        appInstance = createAppFn({ apiKey, host: hostParam.value! });
-        debugLog("[shopify-layout] App Bridge instance created");
-      } catch (error) {
-        console.error("[shopify-layout] createApp() failed:", error);
-        appInstance = null;
+    // MODERN APPROACH: Modern App Bridge CDN creates window.shopify automatically
+    // No need for createApp() - just use window.shopify directly
+    // See: https://shopify.dev/docs/api/app-bridge-library
+    console.log("[shopify-layout] ⏳ Waiting for window.shopify global...");
+    let shopifyGlobal: typeof window.shopify<｜place▁holder▁no▁28｜> null;
+    
+    // Wait up to 10 seconds for window.shopify to appear
+    for (let i = 0; i < 40; i++) {
+      shopifyGlobal = window.shopify ?? null;
+      if (shopifyGlobal && typeof shopifyGlobal.idToken === "function") {
+        console.log("[shopify-layout] ✅ window.shopify.idToken found!");
+        break;
       }
-    } else {
-      console.warn("[shopify-layout] App Bridge createApp function not available - falling back to legacy API");
+      await new Promise(resolve => setTimeout(resolve, 250));
     }
 
-    const updatedLegacyApi = resolveLegacyShopifyApi() ?? initialLegacyApi ?? null;
+    if (!shopifyGlobal || typeof shopifyGlobal.idToken !== "function") {
+      throw new Error("window.shopify.idToken not available after 10 seconds - App Bridge script may not be loaded");
+    }
 
-    shopifyAppInstance.value = appInstance;
-    shopifyApi.value = appInstance ?? updatedLegacyApi;
+    console.log("[shopify-layout] 📦 Using window.shopify API directly (modern CDN approach)");
 
-    if (appInstance && utilsModule?.authenticatedFetch) {
-      debugLog("[shopify-layout] Using authenticatedFetch from app-bridge-utils");
-      shopifyFetch.value = utilsModule.authenticatedFetch(appInstance);
-    } else if (updatedLegacyApi?.fetch) {
-      debugLog("[shopify-layout] Using legacy embedded fetch implementation");
-      shopifyFetch.value = updatedLegacyApi.fetch.bind(updatedLegacyApi);
+    // Wait for ready state if available
+    if (shopifyGlobal.ready) {
+      const readyFn = typeof shopifyGlobal.ready === "function" ? shopifyGlobal.ready() : shopifyGlobal.ready;
+      if (readyFn && typeof readyFn.then === "function") {
+        console.log("[shopify-layout] ⏳ Waiting for shopify.ready()...");
+        try {
+          await Promise.race([
+            readyFn,
+            new Promise((_, reject) => setTimeout(() => reject(new Error("ready() timeout")), 8000)),
+          ]);
+          console.log("[shopify-layout] ✅ shopify.ready() completed");
+        } catch (error) {
+          console.warn("[shopify-layout] ⚠️ ready() timeout, proceeding anyway");
+        }
+      }
+    }
+
+    // Store references
+    shopifyAppInstance.value = null;
+    shopifyApi.value = shopifyGlobal;
+
+    // Use window.shopify.fetch if available
+    if (shopifyGlobal.fetch && typeof shopifyGlobal.fetch === "function") {
+      console.log("[shopify-layout] ✅ Using shopify.fetch");
+      shopifyFetch.value = shopifyGlobal.fetch.bind(shopifyGlobal);
     } else {
-      debugWarn("[shopify-layout] No authenticated fetch available; falling back to window.fetch");
+      console.warn("[shopify-layout] ⚠️ shopify.fetch not available");
       shopifyFetch.value = null;
     }
 
     ensureAuthenticatedFetch(shopifyFetch.value ?? undefined);
-
     lastError.value = null;
 
-    const token = await getShopifySessionToken({
-      appBridgeModule,
-      appInstance,
-      utilsModule,
-      legacyApi: updatedLegacyApi ?? undefined,
-    });
+    // Get session token using window.shopify.idToken() directly
+    console.log("[shopify-layout] 🔑 Calling shopify.idToken()...");
+    const token = await Promise.race([
+      shopifyGlobal.idToken(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("idToken() timeout after 15 seconds")), 15000);
+      }),
+    ]);
 
-    const tokenValue = token ?? "";
-    const tokenLength = tokenValue.length;
-    const tokenPreview = tokenLength > 20
-      ? `${tokenValue.slice(0, 12)}...${tokenValue.slice(-8)}`
-      : (token ?? "none");
+    if (!token || typeof token !== "string" || token.length === 0) {
+      throw new Error("idToken() returned empty or invalid token");
+    }
 
-    debugLog("[shopify-layout] Session token received, length:", tokenLength);
-    debugLog("[shopify-layout] Token preview:", tokenPreview);
+    console.log("[shopify-layout] ✅ Session token received, length:", token.length);
+    console.log("[shopify-layout] Token preview:", `${token.substring(0, 12)}...${token.substring(token.length - 8)}`);
     sessionToken.value = token;
 
     if (token) {
