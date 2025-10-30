@@ -154,13 +154,38 @@ export const useCatalogStore = defineStore("catalog", {
       try {
         const session = useSessionStore();
         
+        // For Shopify embedded routes, wait for session to be ready (up to 5 seconds)
         if (!session.accessToken) {
-          console.warn("[catalog] No access token available, using seed data");
-          const fallback = await fetchSeedCatalog();
-          this.products = clone(fallback.map(normalizeProduct));
-          // Do not mark as loaded so we retry once auth is established.
-          this.loaded = false;
-          return;
+          // Check if we're in Shopify embedded context
+          const isShopifyEmbedded = typeof window !== 'undefined' && 
+            (window.location.pathname.includes('/shopify/embedded') || 
+             window.location.pathname.includes('/editor'));
+          
+          if (isShopifyEmbedded) {
+            // Wait for session up to 5 seconds
+            let attempts = 0;
+            const maxAttempts = 25; // 5 seconds (25 * 200ms)
+            while (!session.accessToken && !session.isAuthenticated && attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+              attempts++;
+            }
+            
+            // If still no token after waiting, use seed data but don't mark as loaded
+            if (!session.accessToken) {
+              console.warn("[catalog] Session not ready after waiting, using seed data temporarily");
+              const fallback = await fetchSeedCatalog();
+              this.products = clone(fallback.map(normalizeProduct));
+              this.loaded = false;
+              return;
+            }
+          } else {
+            // For non-Shopify routes, use seed data immediately
+            console.warn("[catalog] No access token available, using seed data");
+            const fallback = await fetchSeedCatalog();
+            this.products = clone(fallback.map(normalizeProduct));
+            this.loaded = false;
+            return;
+          }
         }
 
         if (session.accessToken && !session.activeTenantId)
