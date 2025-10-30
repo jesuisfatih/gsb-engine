@@ -2,13 +2,32 @@
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
-import { computed, onMounted, provide, ref, watch, Component as VueComponent } from "vue";
-import { useRoute } from "vue-router";
-import { 
-  LayoutDashboard, Rocket, Package, Receipt, Palette, Layers, 
-  Settings, Grid3x3, Wrench, Image as ImageIcon, Sparkles, Images, Printer, 
-  Spray, DollarSign, Users, BarChart3, CreditCard, Star, ArrowLeft, ShieldCheck, Search 
+import {
+  ArrowLeft,
+  BarChart3,
+  CreditCard,
+  DollarSign,
+  Grid3x3,
+  Image as ImageIcon,
+  Images,
+  Layers,
+  LayoutDashboard,
+  Package,
+  Palette,
+  Paintbrush,
+  Printer,
+  Receipt,
+  Rocket,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Users,
+  Wrench
 } from 'lucide-vue-next';
+import { computed, onMounted, provide, ref, Component as VueComponent, watch } from "vue";
+import { useRoute } from "vue-router";
 
 type NavSection = {
   title: string;
@@ -192,7 +211,7 @@ const navSections: NavSection[] = [
       { icon: Sparkles, label: "Appearance", name: "shopify-embedded-appearance" },
       { icon: Images, label: "Gallery Images", name: "shopify-embedded-gallery-images" },
       { icon: Printer, label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
-      { icon: Spray, label: "Print Techniques", name: "shopify-embedded-print-techniques" },
+      { icon: Paintbrush, label: "Print Techniques", name: "shopify-embedded-print-techniques" },
       { icon: DollarSign, label: "Pricing & Billing", name: "shopify-embedded-pricing" },
     ],
   },
@@ -738,18 +757,18 @@ provide("shopifyShopDomain", shopDomain);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(93, 90, 241, 0.12);
+  border: 1px solid rgba(93, 90, 241, 12%);
   border-radius: 12px;
-  background: rgba(93, 90, 241, 0.08);
+  background: rgba(93, 90, 241, 8%);
+  block-size: 38px;
   color: #4536d3;
   cursor: pointer;
+  inline-size: 38px;
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .icon-button svg {
-  stroke: currentColor;
+  stroke: currentcolor;
 }
 
 .icon-button:hover {
@@ -803,17 +822,18 @@ provide("shopifyShopDomain", shopDomain);
 .status-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(96, 92, 220, 0.12);
+  background: rgba(96, 92, 220, 12%);
   color: #5d5af1;
   font-size: 0.85rem;
   font-weight: 600;
+  gap: 8px;
+  padding-block: 6px;
+  padding-inline: 12px;
 }
 
 .status-chip svg {
-  stroke: currentColor;
+  stroke: currentcolor;
 }
 
 .status-chip[data-tone="critical"] {
@@ -923,15 +943,15 @@ provide("shopifyShopDomain", shopDomain);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  block-size: 22px;
   color: #4a4a6a;
+  inline-size: 22px;
 }
 
 .nav-icon svg {
-  width: 18px;
-  height: 18px;
-  stroke: currentColor;
+  block-size: 18px;
+  inline-size: 18px;
+  stroke: currentcolor;
 }
 
 .nav-link.is-active .nav-icon {
