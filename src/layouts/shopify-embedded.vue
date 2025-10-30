@@ -25,6 +25,10 @@ type ShopifyGlobal = {
   toast?: { show: (message: string, options?: Record<string, any>) => void };
   sessionToken?: { get: () => Promise<string> };
   idToken?: () => Promise<string>;
+  ready?: (() => Promise<void>) | Promise<void>;
+  app?: {
+    ready?: (() => Promise<void>) | Promise<void>;
+  };
 };
 
 declare global {
