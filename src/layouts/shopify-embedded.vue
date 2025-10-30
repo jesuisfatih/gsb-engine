@@ -24,11 +24,14 @@ import { debugLog, debugWarn, debugError } from "@/utils/debug";
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
+import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 
 const route = useRoute();
+const sessionStore = useSessionStore();
 const isAuthenticated = ref(false);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const sessionToken = ref<string | null>(null);
 
 // Genel tanılama
 function dumpDiagnostics(stage: string) {
@@ -104,14 +107,87 @@ async function checkShopifyConnection() {
       console.warn('[shopify-layout] health check failed', e);
     }
 
-    // Basit giriş simülasyonu
-    if (host && shop) {
-      console.log("[shopify-layout] ✅ Basic parameters present, simulating success");
-      isAuthenticated.value = true;
-      error.value = null;
+    // 7. Session token exchange
+    if (host && shop && typeof (window as any).shopify?.idToken === 'function') {
+      console.log("[shopify-layout] 🔑 Getting session token from App Bridge...");
+      
+      try {
+        // Get token from App Bridge
+        const shopify = (window as any).shopify;
+        const token = await Promise.race([
+          shopify.idToken(),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('idToken() timeout after 15s')), 15000)
+          ),
+        ]);
+        
+        if (!token || typeof token !== 'string' || token.length === 0) {
+          throw new Error('Invalid token received from App Bridge');
+        }
+        
+        console.log("[shopify-layout] ✅ Session token received, length:", token.length);
+        sessionToken.value = token;
+        
+        // Exchange token with backend
+        console.log("[shopify-layout] 📡 Exchanging session token with backend...");
+        const apiBase = (import.meta as any)?.env?.VITE_API_BASE_URL || '/api';
+        const sessionUrl = `${apiBase.replace(/\/+$/, '')}/auth/shopify/session`;
+        
+        const response = await fetch(sessionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          credentials: 'include',
+          body: JSON.stringify({ token, shop }),
+        });
+        
+        console.log("[shopify-layout] 📡 Session exchange response status:", response.status);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+          throw new Error(errorData?.error || `Session exchange failed: ${response.status}`);
+        }
+        
+        const payload = await response.json();
+        
+        if (!payload?.data) {
+          throw new Error('Invalid session response from backend');
+        }
+        
+        console.log("[shopify-layout] ✅ Session exchange successful!");
+        
+        // Set session in store
+        sessionStore.setSession({
+          user: {
+            id: payload.data.user.id,
+            email: payload.data.user.email,
+            fullName: payload.data.user.fullName || undefined,
+            role: payload.data.user.role,
+            tenantId: payload.data.tenantId,
+            merchantId: payload.data.user.merchantId || payload.data.tenantId,
+          },
+          accessToken: payload.data.accessToken,
+          tenants: (payload.data.tenants || []).map((t: any) => ({
+            ...t,
+            role: t.role || 'merchant-admin',
+          })),
+          tenantId: payload.data.tenantId,
+        });
+        
+        console.log("[shopify-layout] ✅ Session stored, isAuthenticated:", sessionStore.isAuthenticated);
+        
+        isAuthenticated.value = true;
+        error.value = null;
+        
+      } catch (err: any) {
+        console.error("[shopify-layout] ❌ Session exchange failed:", err);
+        error.value = err?.message || 'Session exchange failed';
+      }
     } else {
-      console.log("[shopify-layout] ⚠️ Missing required parameters");
-      error.value = "Missing required parameters (host, shop)";
+      console.log("[shopify-layout] ⚠️ Missing required parameters or App Bridge not ready");
+      error.value = "Missing required parameters (host, shop) or App Bridge not ready";
     }
     
   } catch (err) {
