@@ -239,8 +239,52 @@ async function bootstrapAppBridge() {
   }
 
   try {
+    // Check if script tag exists in DOM immediately
+    const checkInitialDOM = () => {
+      const scripts = Array.from(document.querySelectorAll('script'));
+      const appBridgeScript = scripts.find(s => s.src?.includes('app-bridge'));
+      const metaTag = document.querySelector('meta[name="shopify-api-key"]');
+      
+      console.log("[shopify-layout] 🎯 INITIAL DOM CHECK:");
+      console.log("[shopify-layout] 📋 Script tag in DOM:", !!appBridgeScript);
+      console.log("[shopify-layout] 📋 Meta tag in DOM:", !!metaTag);
+      console.log("[shopify-layout] 📋 Total scripts:", scripts.length);
+      
+      if (appBridgeScript) {
+        console.log("[shopify-layout] ✅ App Bridge script found:", {
+          src: appBridgeScript.src,
+          type: appBridgeScript.type,
+          readyState: appBridgeScript.readyState,
+          complete: (appBridgeScript as any).complete
+        });
+        
+        // Check if script loaded
+        appBridgeScript.addEventListener('load', () => {
+          console.log("[shopify-layout] ✅ App Bridge script LOADED");
+          console.log("[shopify-layout] window.shopify:", window.shopify);
+        });
+        
+        appBridgeScript.addEventListener('error', (e) => {
+          console.error("[shopify-layout] ❌ App Bridge script FAILED to load:", e);
+        });
+      } else {
+        console.error("[shopify-layout] ❌ App Bridge script NOT FOUND in DOM!");
+        console.log("[shopify-layout] Available scripts:", scripts.map(s => ({ src: s.src || 'inline', type: s.type || 'none' })));
+      }
+    };
+    
+    // Run DOM check immediately
+    if (typeof document !== 'undefined') {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', checkInitialDOM);
+      } else {
+        checkInitialDOM();
+      }
+    }
+    
     debugLog("[shopify-layout] Waiting for Shopify App Bridge to initialize...");
     const api = await waitForShopifyApi();
+ար.
 
     shopifyApi.value = api;
     lastError.value = null;
