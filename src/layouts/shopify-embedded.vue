@@ -223,6 +223,12 @@ async function bootstrapAppBridge() {
     console.log("[shopify-layout] Session token received, length:", token?.length || 0);
     console.log("[shopify-layout] Token preview:", token ? `${token.substring(0, 30)}...${token.substring(token.length - 10)}` : "none");
     sessionToken.value = token;
+    
+    // Immediately exchange session token (don't rely only on watch)
+    if (token) {
+      console.log("[shopify-layout] Triggering immediate session exchange...");
+      void exchangeShopifySession(token);
+    }
   } catch (error) {
     console.error("[shopify-layout] App Bridge init failed", error);
     lastError.value = error instanceof Error ? error.message : "Unknown App Bridge error";
@@ -286,16 +292,24 @@ async function exchangeShopifySession(token: string) {
     lastError.value = "Shopify session token gecersiz";
     return;
   }
-  if (sessionIssuedFor.value === token && isAuthenticated.value) return;
-  if (exchangingSession.value) return;
+  if (sessionIssuedFor.value === token && isAuthenticated.value) {
+    console.log("[shopify-layout] Session already exchanged for this token");
+    return;
+  }
+  if (exchangingSession.value) {
+    console.log("[shopify-layout] Session exchange already in progress, skipping");
+    return;
+  }
 
   console.log("[shopify-layout] Starting session exchange...");
+  console.log("[shopify-layout] API Base:", apiBase);
   console.log("[shopify-layout] Token length:", token.length, "Shop:", shopDomain.value);
   
   exchangingSession.value = true;
   try {
     const wrappedFetch = shopifyFetch.value;
     const fetcher = wrappedFetch ?? fetch;
+    const endpointUrl = `${apiBase}/auth/shopify/session`;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
@@ -303,22 +317,34 @@ async function exchangeShopifySession(token: string) {
     if (!wrappedFetch) {
       console.warn("[shopify-layout] Shopify authenticated fetch unavailable, falling back to window.fetch");
     }
-    const response = await fetcher(`${apiBase}/auth/shopify/session`, {
+    
+    console.log("[shopify-layout] Sending POST request to:", endpointUrl);
+    console.log("[shopify-layout] Request body:", { token: token.substring(0, 20) + "...", shop: shopDomain.value });
+    
+    const response = await fetcher(endpointUrl, {
       method: "POST",
       credentials: "include",
       headers,
       body: JSON.stringify({ token, shop: shopDomain.value }),
     });
 
-    const payload = await response.json().catch(() => null);
+    console.log("[shopify-layout] Response status:", response.status, response.statusText);
+    
+    const payload = await response.json().catch((e) => {
+      console.error("[shopify-layout] Failed to parse JSON response:", e);
+      return null;
+    });
+    
     if (!response.ok) {
       const message = payload?.error ?? `HTTP ${response.status}`;
       console.error("[shopify-layout] Session exchange failed:", message);
+      console.error("[shopify-layout] Response payload:", payload);
       throw new Error(message);
     }
 
     if (!payload?.data) {
       console.error("[shopify-layout] Empty session response");
+      console.error("[shopify-layout] Full payload:", payload);
       throw new Error("Oturum doğrulama yanıtı eksik");
     }
 
@@ -330,6 +356,7 @@ async function exchangeShopifySession(token: string) {
   } catch (error: any) {
     const message = error?.message ?? "Bilinmeyen hata";
     console.error("[shopify-layout] Session exchange error:", error);
+    console.error("[shopify-layout] Error stack:", error?.stack);
     if (lastError.value !== message) {
       notification.error(`Shopify oturum doğrulaması başarısız: ${message}`);
     }
