@@ -46,7 +46,7 @@ export function createApp() {
 
   // SPA fallback: Serve index.html for all non-API routes
   // This handles /shopify/embedded and other SPA routes
-  app.get("*", (req, res, next) => {
+  app.use((req, res, next) => {
     // Skip API routes
     if (req.path.startsWith("/api/")) {
       return next();
