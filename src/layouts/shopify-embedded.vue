@@ -60,7 +60,8 @@ const isInIframe = computed(() => {
   }
 });
 
-const isAuthenticated = computed(() => sessionStore.isAuthenticated);
+const shopifyAuthenticated = ref(false);
+const isAuthenticated = computed(() => shopifyAuthenticated.value || sessionStore.isAuthenticated);
 
 const hostParam = computed<string | undefined>(() => {
   const fromRoute = route.query.host;
@@ -353,6 +354,7 @@ async function exchangeShopifySession(token: string) {
     applySessionPayload(payload.data as ShopifySessionResponse);
     sessionIssuedFor.value = token;
     lastError.value = null;
+    shopifyAuthenticated.value = true;
     debugLog("[shopify-layout] Session applied, isAuthenticated:", isAuthenticated.value);
   } catch (error: any) {
     const message = error?.message ?? "Bilinmeyen hata";
