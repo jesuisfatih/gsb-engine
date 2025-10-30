@@ -382,7 +382,7 @@ async function bootstrapAppBridge() {
       try {
         await Promise.race([
           apiReady(),
-          new Promise((_, reject她要) => setTimeout(() => reject(new Error("ready() timeout after 8s")), 8000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error("ready() timeout after 8s")), 8000))
         ]);
         console.log("[shopify-layout] ✅ ready() completed"); // Always log
       } catch (error) {
