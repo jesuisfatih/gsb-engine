@@ -272,6 +272,7 @@ function applySessionPayload(payload: ShopifySessionResponse) {
     merchantId: payload.user.merchantId ?? payload.tenantId,
   };
 
+  debugLog("[shopify-layout] Setting session with user:", sessionUser.email, "tenantId:", payload.tenantId);
   sessionStore.setSession({
     user: sessionUser,
     accessToken: payload.accessToken,
@@ -281,6 +282,9 @@ function applySessionPayload(payload: ShopifySessionResponse) {
     })),
     tenantId: payload.tenantId,
   });
+  
+  // Verify session was set
+  debugLog("[shopify-layout] Session set - isAuthenticated:", sessionStore.isAuthenticated, "user:", !!sessionStore.user, "token:", !!sessionStore.accessToken);
 }
 
 async function exchangeShopifySession(token: string) {
