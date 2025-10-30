@@ -289,7 +289,7 @@ function applySessionPayload(payload: ShopifySessionResponse) {
 
 async function exchangeShopifySession(token: string) {
   if (!token) {
-    console.warn("[shopify-layout]唤起 ⚠️ No token provided, skipping session exchange"); // Always log
+    console.warn("[shopify-layout] ⚠️ No token provided, skipping session exchange"); // Always log
     debugWarn("[shopify-layout] No token provided, skipping session exchange");
     return;
   }
@@ -327,7 +327,8 @@ async function exchangeShopifySession(token: string) {
       debugWarn("[shopify-layout] Shopify authenticated fetch unavailable, falling back to window.fetch");
     }
     
-    debugLog("[shopify-layout] Sending POST request to:", endpointUrl);
+    console.log("[shopify-layout] 🚀 Sending POST request to:", endpointUrl); // Always log
+    console.log("[shopify-layout] 📦 Request body token length:", token.length, "shop:", shopDomain.value); // Always log
     debugLog("[shopify-layout] Request body:", { token: token.substring(0, 20) + "...", shop: shopDomain.value });
     
     const response = await fetcher(endpointUrl, {
@@ -337,15 +338,18 @@ async function exchangeShopifySession(token: string) {
       body: JSON.stringify({ token, shop: shopDomain.value }),
     });
 
+    console.log("[shopify-layout] 📡 Response status:", response.status, response.statusText); // Always log
     debugLog("[shopify-layout] Response status:", response.status, response.statusText);
     
     const payload = await response.json().catch((e) => {
+      console.error("[shopify-layout] ❌ Failed to parse JSON response:", e); // Always log
       debugError("[shopify-layout] Failed to parse JSON response:", e);
       return null;
     });
     
     if (!response.ok) {
       const message = payload?.error ?? `HTTP ${response.status}`;
+      console.error("[shopify-layout] ❌ Session exchange failed:", message, payload); // Always log
       debugError("[shopify-layout] Session exchange failed:", message);
       debugError("[shopify-layout] Response payload:", payload);
       throw new Error(message);
