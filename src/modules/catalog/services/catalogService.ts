@@ -332,15 +332,15 @@ export async function deleteVariantSurfaceMapping(shopifyVariantId: string): Pro
 }
 
 export async function fetchShopifyProducts(): Promise<ShopifyProductSummary[]> {
-  const res = await fetch("/api/shopify/products");
-  if (!res.ok)
-    throw new Error("Failed to fetch Shopify products");
-  return await res.json();
+  const response = await $api<ShopifyProductSummary[]>("/shopify/products");
+  return response.data ?? [];
 }
 
 export async function fetchShopifyVariants(productId: string): Promise<ShopifyVariantSummary[]> {
-  const res = await fetch(`/api/shopify/products/${encodeURIComponent(productId)}/variants`);
-  if (!res.ok)
-    throw new Error("Failed to fetch Shopify variants");
-  return await res.json();
+  // Extract numeric ID from GID if needed
+  const numericId = productId.includes("/") 
+    ? productId.split("/").pop() 
+    : productId;
+  const response = await $api<ShopifyVariantSummary[]>(`/shopify/products/${encodeURIComponent(numericId)}/variants`);
+  return response.data ?? [];
 }

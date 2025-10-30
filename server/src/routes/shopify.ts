@@ -76,7 +76,7 @@ shopifyRouter.get("/products", async (req, res, next) => {
       variantsCount: product.variants?.length || 0,
     }));
 
-    res.json(summaries);
+    res.json({ data: summaries });
   } catch (error) {
     console.error("[shopify] Error fetching products:", error);
     next(error);
@@ -167,7 +167,7 @@ shopifyRouter.get("/products/:productId/variants", async (req, res, next) => {
       };
     });
 
-    res.json(variants);
+    res.json({ data: variants });
   } catch (error) {
     console.error("[shopify] Error fetching variants:", error);
     next(error);
