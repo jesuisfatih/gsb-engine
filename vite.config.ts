@@ -108,6 +108,7 @@ export default defineConfig(({ mode }) => {
         // Remove any existing App Bridge meta tags and script tags
         let transformed = html.replace(/<meta[^>]*name=["']shopify-api-key["'][^>]*>/gi, '');
         transformed = transformed.replace(/<script[^>]*app-bridge[^>]*><\/script>/gi, '');
+        transformed = transformed.replace(/<script[^>]*app-bridge-utils[^>]*><\/script>/gi, '');
         
         // Find <head> tag and insert App Bridge meta + script immediately after it
         // According to Shopify docs: meta tag first, then script tag (no data-api-key attribute)
@@ -118,7 +119,7 @@ export default defineConfig(({ mode }) => {
           
           // Modern App Bridge: use meta tag for API key, script tag without data-api-key
           // IMPORTANT: type="text/javascript" prevents Vite from transforming this script tag
-          const appBridgeTags = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <meta name="shopify-api-key" content="${apiKey}" />\n  <script type="text/javascript" src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>`;
+          const appBridgeTags = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <meta name="shopify-api-key" content="${apiKey}" />\n  <script type="text/javascript" src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>\n  <script type="text/javascript" src="https://cdn.shopify.com/shopifycloud/app-bridge-utils.js"></script>`;
           transformed = transformed.slice(0, headEndIndex) + appBridgeTags + transformed.slice(headEndIndex);
         }
         
