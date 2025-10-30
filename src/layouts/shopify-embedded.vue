@@ -36,7 +36,7 @@ declare global {
     shopify?: ShopifyGlobal;
     Shopify?: {
       AppBridge?: {
-        createApp: Electricity config: { apiKey: string; host: string }) => ShopifyAppInstance;
+        createApp: (config: { apiKey: string; host: string }) => ShopifyAppInstance;
       };
     };
   }
