@@ -50,20 +50,66 @@ function mapTenants(
 }
 
 function extractShopDomain(payload: ShopifySessionPayload, fallback?: string) {
-  const candidates = [payload.dest, payload.iss, fallback].filter(Boolean) as string[];
-  for (const candidate of candidates) {
+  // Helper to decode base64 if needed
+  function tryDecodeBase64(str: string): string {
     try {
-      const url = candidate.startsWith("http")
-        ? new URL(candidate)
-        : new URL(`https://${candidate}`);
-      const host = url.hostname.toLowerCase();
-      if (host.endsWith(".myshopify.com")) return host;
-    } catch {
-      if (/[a-z0-9-]+\.myshopify\.com$/i.test(candidate)) {
-        return candidate.toLowerCase();
+      // Check if it looks like base64
+      if (/^[A-Za-z0-9+/=]+$/.test(str) && str.length > 10) {
+        const decoded = Buffer.from(str, "base64").toString("utf-8");
+        // If decoded looks like a shop domain or URL, use it
+        if (decoded.includes("myshopify.com") || decoded.startsWith("http")) {
+          return decoded;
+        }
       }
+    } catch {
+      // Not valid base64 or decode failed, return original
+    }
+    return str;
+  }
+
+  // Build candidates list with base64 decoding attempt
+  const rawCandidates = [payload.dest, payload.iss, fallback].filter(Boolean) as string[];
+  const candidates: string[] = [];
+  
+  for (const raw of rawCandidates) {
+    candidates.push(raw);
+    const decoded = tryDecodeBase64(raw);
+    if (decoded !== raw) {
+      candidates.push(decoded);
     }
   }
+
+  console.log("[shopify-auth] 🔍 Extracting shop domain from candidates:", candidates);
+
+  for (const candidate of candidates) {
+    try {
+      let url: URL;
+      if (candidate.startsWith("http://") || candidate.startsWith("https://")) {
+        url = new URL(candidate);
+      } else {
+        url = new URL(`https://${candidate}`);
+      }
+      
+      const host = url.hostname.toLowerCase();
+      console.log("[shopify-auth]   Trying candidate:", candidate, "→ hostname:", host);
+      
+      if (host.endsWith(".myshopify.com")) {
+        console.log("[shopify-auth] ✅ Shop domain extracted:", host);
+        return host;
+      }
+    } catch (error) {
+      // Try regex match for myshopify.com domain pattern
+      const match = candidate.match(/([a-z0-9-]+\.myshopify\.com)/i);
+      if (match) {
+        const domain = match[1].toLowerCase();
+        console.log("[shopify-auth] ✅ Shop domain extracted via regex:", domain);
+        return domain;
+      }
+      console.log("[shopify-auth]   Failed to parse candidate:", candidate, error instanceof Error ? error.message : String(error));
+    }
+  }
+  
+  console.warn("[shopify-auth] ❌ Unable to extract shop domain from any candidate");
   return null;
 }
 
@@ -521,18 +567,86 @@ authRouter.post("/shopify/session", async (req, res, next) => {
       apiSecret: env.SHOPIFY_API_SECRET,
     });
     const decoded = verification.payload;
+    
+    console.log("[shopify-auth] 📋 Decoded token payload:", {
+      iss: decoded.iss,
+      dest: decoded.dest,
+      aud: decoded.aud,
+      audType: typeof decoded.aud,
+      audIsArray: Array.isArray(decoded.aud),
+      exp: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : null,
+    });
+    
     if (!verification.verified) {
-      console.warn("[shopify-auth] session token accepted without signature verification (fallback mode)");
+      console.warn("[shopify-auth] ⚠️ Session token accepted without signature verification (fallback mode)");
     }
 
-    if (env.SHOPIFY_API_KEY && decoded.aud && decoded.aud !== env.SHOPIFY_API_KEY) {
-      return res.status(401).json({ error: "Shopify session audience mismatch" });
+    // Audience validation: aud can be string or array according to JWT spec
+    if (env.SHOPIFY_API_KEY && decoded.aud) {
+      let audMatch = false;
+      
+      if (Array.isArray(decoded.aud)) {
+        // If aud is an array, check if API key is in the array
+        audMatch = decoded.aud.includes(env.SHOPIFY_API_KEY);
+        console.log("[shopify-auth] 🔍 Audience check (array):", {
+          decodedAud: decoded.aud,
+          apiKey: env.SHOPIFY_API_KEY,
+          match: audMatch,
+        });
+      } else {
+        // If aud is a string, do direct comparison
+        audMatch = decoded.aud === env.SHOPIFY_API_KEY;
+        console.log("[shopify-auth] 🔍 Audience check (string):", {
+          decodedAud: decoded.aud,
+          apiKey: env.SHOPIFY_API_KEY,
+          match: audMatch,
+        });
+      }
+      
+      if (!audMatch) {
+        console.error("[shopify-auth] ❌ Audience mismatch:", {
+          expected: env.SHOPIFY_API_KEY,
+          received: decoded.aud,
+          receivedType: Array.isArray(decoded.aud) ? "array" : "string",
+        });
+        return res.status(401).json({ 
+          error: "Shopify session audience mismatch",
+          details: {
+            expected: env.SHOPIFY_API_KEY,
+            received: decoded.aud,
+          },
+        });
+      }
+      
+      console.log("[shopify-auth] ✅ Audience validation passed");
+    } else {
+      if (!env.SHOPIFY_API_KEY) {
+        console.warn("[shopify-auth] ⚠️ SHOPIFY_API_KEY not set, skipping audience validation");
+      }
+      if (!decoded.aud) {
+        console.warn("[shopify-auth] ⚠️ Token payload missing 'aud' claim, skipping audience validation");
+      }
     }
 
     const shopDomain = extractShopDomain(decoded, shop);
     if (!shopDomain) {
-      return res.status(400).json({ error: "Unable to resolve Shopify shop domain" });
+      console.error("[shopify-auth] ❌ Unable to resolve shop domain", {
+        payloadDest: decoded.dest,
+        payloadIss: decoded.iss,
+        fallbackShop: shop,
+        payload: decoded,
+      });
+      return res.status(400).json({ 
+        error: "Unable to resolve Shopify shop domain",
+        details: {
+          dest: decoded.dest,
+          iss: decoded.iss,
+          fallbackShop: shop,
+        },
+      });
     }
+    
+    console.log("[shopify-auth] ✅ Shop domain resolved:", shopDomain);
 
     const slugCandidate = sanitizeSlug(shopDomain);
     const slugHints = Array.from(
