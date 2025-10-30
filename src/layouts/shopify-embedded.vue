@@ -103,22 +103,41 @@ const isAuthenticated = computed(() => shopifyAuthenticated.value || sessionStor
 
 const hostParam = computed<string | undefined>(() => {
   const fromRoute = route.query.host;
-  if (typeof fromRoute === "string" && fromRoute.length > 0) return fromRoute;
+  if (typeof fromRoute === "string" && fromRoute.length > 0) {
+    if (typeof window !== "undefined")
+      window.localStorage.setItem("shopify:host", fromRoute);
+    return fromRoute;
+  }
 
   if (typeof window === "undefined") return undefined;
-  const search = new URLSearchParams(window.location.search);
-  const host = search.get("host");
-  return host ?? undefined;
+  const searchHost = new URLSearchParams(window.location.search).get("host");
+  if (typeof searchHost === "string" && searchHost.length > 0) {
+    window.localStorage.setItem("shopify:host", searchHost);
+    return searchHost;
+  }
+
+  const stored = window.localStorage.getItem("shopify:host");
+  return stored ?? undefined;
 });
 
 const shopDomain = computed<string | undefined>(() => {
   const fromRoute = route.query.shop;
-  if (typeof fromRoute === "string" && fromRoute.length > 0) return fromRoute;
+  if (typeof fromRoute === "string" && fromRoute.length > 0) {
+    if (typeof window !== "undefined")
+      window.localStorage.setItem("shopify:shop", fromRoute);
+    return fromRoute;
+  }
 
   if (typeof window === "undefined") return undefined;
   const search = new URLSearchParams(window.location.search);
   const shop = search.get("shop");
-  return shop ?? undefined;
+  if (typeof shop === "string" && shop.length > 0) {
+    window.localStorage.setItem("shopify:shop", shop);
+    return shop;
+  }
+
+  const stored = window.localStorage.getItem("shopify:shop");
+  return stored ?? undefined;
 });
 
 const statusBadge = computed(() => {
@@ -160,6 +179,58 @@ function ensureAuthenticatedFetch(fetchImpl: typeof fetch | null | undefined) {
     window.__shopifyAuthenticatedFetch = fetchImpl;
   } else if (window.__shopifyAuthenticatedFetch) {
     delete window.__shopifyAuthenticatedFetch;
+  }
+}
+
+async function ensureAppBridgeAssets(): Promise<void> {
+  if (typeof document === "undefined") return;
+  const head = document.head;
+  if (!head) return;
+
+  if (!apiKey) {
+    console.warn("[shopify-layout] Cannot inject App Bridge assets without API key");
+    return;
+  }
+
+  let meta = head.querySelector('meta[name="shopify-api-key"]') as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "shopify-api-key";
+    head.insertBefore(meta, head.firstChild);
+  }
+  if (meta.content !== apiKey)
+    meta.content = apiKey;
+
+  const scriptSrc = "https://cdn.shopify.com/shopifycloud/app-bridge.js";
+  let script = Array.from(head.querySelectorAll("script"))
+    .find(node => typeof node.src === "string" && node.src.includes("shopifycloud/app-bridge.js")) as HTMLScriptElement | undefined;
+
+  if (!script) {
+    script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src = scriptSrc;
+    script.defer = false;
+    script.async = false;
+    script.dataset.injected = "true";
+    const once = <T>(event: string, handler: (ev: Event) => void) => {
+      script?.addEventListener(event, handler, { once: true });
+    };
+    const loadPromise = new Promise<void>((resolve, reject) => {
+      once("load", () => resolve());
+      once("error", () => reject(new Error("Failed to load Shopify App Bridge script")));
+    });
+    head.appendChild(script);
+    await loadPromise;
+  } else if (!window["app-bridge"]) {
+    await new Promise<void>(resolve => {
+      const poll = () => {
+        if (window["app-bridge"])
+          resolve();
+        else
+          requestAnimationFrame(poll);
+      };
+      poll();
+    });
   }
 }
 
@@ -365,6 +436,8 @@ async function bootstrapAppBridge() {
   }
 
   try {
+    await ensureAppBridgeAssets();
+
     const resources = await waitForAppBridgeResources();
     const { appBridgeModule, utilsModule } = resources;
     const initialLegacyApi = resources.legacyApi ?? resolveLegacyShopifyApi();
@@ -398,7 +471,10 @@ async function bootstrapAppBridge() {
     shopifyAppInstance.value = appInstance;
     shopifyApi.value = appInstance ?? updatedLegacyApi;
 
-    if (updatedLegacyApi?.fetch) {
+    if (appInstance && utilsModule?.authenticatedFetch) {
+      debugLog("[shopify-layout] Using authenticatedFetch from app-bridge-utils");
+      shopifyFetch.value = utilsModule.authenticatedFetch(appInstance);
+    } else if (updatedLegacyApi?.fetch) {
       debugLog("[shopify-layout] Using legacy embedded fetch implementation");
       shopifyFetch.value = updatedLegacyApi.fetch.bind(updatedLegacyApi);
     } else {
