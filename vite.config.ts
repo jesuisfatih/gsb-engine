@@ -96,19 +96,25 @@ export default defineConfig(({ mode }) => ({
       transformIndexHtml(html) {
         const apiKey = process.env.VITE_SHOPIFY_APP_API_KEY || process.env.VITE_SHOPIFY_API_KEY || '';
         
-        // Remove any existing App Bridge script tags (from source or previous transforms)
-        let transformed = html.replace(/<script[^>]*app-bridge[^>]*><\/script>/gi, '');
+        if (!apiKey) {
+          console.warn('[vite-plugin-app-bridge] VITE_SHOPIFY_APP_API_KEY not found, skipping App Bridge setup');
+          return html;
+        }
         
-        // Find <head> tag and insert App Bridge script immediately after it
-        // This ensures it's the FIRST element in <head>, which is required by Shopify
+        // Remove any existing App Bridge meta tags and script tags
+        let transformed = html.replace(/<meta[^>]*name=["']shopify-api-key["'][^>]*>/gi, '');
+        transformed = transformed.replace(/<script[^>]*app-bridge[^>]*><\/script>/gi, '');
+        
+        // Find <head> tag and insert App Bridge meta + script immediately after it
+        // According to Shopify docs: meta tag first, then script tag (no data-api-key attribute)
         const headMatch = transformed.match(/<head[^>]*>/i);
-        if (headMatch && apiKey) {
+        if (headMatch) {
           const headTag = headMatch[0];
           const headEndIndex = transformed.indexOf(headTag) + headTag.length;
           
-          // Insert script tag with newline for proper formatting
-          const scriptTag = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" data-api-key="${apiKey}"></script>`;
-          transformed = transformed.slice(0, headEndIndex) + scriptTag + transformed.slice(headEndIndex);
+          // Modern App Bridge: use meta tag for API key, script tag without data-api-key
+          const appBridgeTags = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <meta name="shopify-api-key" content="${apiKey}" />\n  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>`;
+          transformed = transformed.slice(0, headEndIndex) + appBridgeTags + transformed.slice(headEndIndex);
         }
         
         return transformed;
