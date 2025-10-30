@@ -13,8 +13,8 @@ import {
   Layers,
   LayoutDashboard,
   Package,
-  Palette,
   Paintbrush,
+  Palette,
   Printer,
   Receipt,
   Rocket,
@@ -316,7 +316,7 @@ async function ensureAppBridgeAssets(): Promise<void> {
         poll();
       }),
       new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error("app-bridge module load timeout")), 5000)
+        setTimeout(() => reject(new Error("app-bridge module load timeout")), 800)
       ),
     ]).catch(() => {
       // Module didn't load in time, continue anyway
@@ -324,7 +324,7 @@ async function ensureAppBridgeAssets(): Promise<void> {
   }
 }
 
-function waitForAppBridgeResources(timeout = 5000): Promise<ShopifyRuntimeResources> {
+function waitForAppBridgeResources(timeout = 2000): Promise<ShopifyRuntimeResources> {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeout;
     const poll = () => {
@@ -349,7 +349,7 @@ function waitForAppBridgeResources(timeout = 5000): Promise<ShopifyRuntimeResour
   });
 }
 
-async function waitForLegacyReady(legacy: ShopifyGlobal, timeout = 3000): Promise<void> {
+async function waitForLegacyReady(legacy: ShopifyGlobal, timeout = 1000): Promise<void> {
   const candidate = legacy.ready ?? legacy.app?.ready;
   if (!candidate) return;
 
@@ -415,7 +415,7 @@ async function retrieveSessionToken(options: {
     await waitForLegacyReady(legacyApi);
     const token = await Promise.race([
       legacyApi.idToken(),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Shopify idToken timeout")), 6000)),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Shopify idToken timeout")), 2000)),
     ]);
     if (typeof token === "string" && token.length > 0) return token;
   }
