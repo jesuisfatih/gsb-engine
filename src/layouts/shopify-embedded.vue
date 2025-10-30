@@ -373,7 +373,7 @@ async function getShopifySessionToken(options: {
           return result;
         if (result && typeof result === "object" && typeof result.token === "string" && result.token.length > 0)
           return result.token;
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("[shopify-layout] actions.SessionToken.request() failed:", error);
       }
     }
@@ -385,7 +385,7 @@ async function getShopifySessionToken(options: {
       const token = await utilsModule.getSessionToken(appInstance);
       console.log("[shopify-layout] Session token received via getSessionToken(), length:", token?.length ?? 0);
       return token;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("[shopify-layout] getSessionToken(app) failed:", error);
       throw error instanceof Error ? error : new Error("getSessionToken(app) failed");
     }
@@ -404,7 +404,7 @@ async function getShopifySessionToken(options: {
         if (!token) throw new Error("sessionToken.get() returned empty token");
         console.log("[shopify-layout] Token received via sessionToken.get(), length:", token.length);
         return token;
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("[shopify-layout] sessionToken.get() failed:", error);
         throw error instanceof Error ? error : new Error("sessionToken.get() failed");
       }
@@ -427,7 +427,7 @@ async function getShopifySessionToken(options: {
           }),
         ]);
         console.log("[shopify-layout] ✅ App Bridge ready() completed");
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("[shopify-layout] ⚠️ ready() timeout or failed, proceeding anyway:", error);
       }
     } else if (readyPromise && readyPromise instanceof Promise) {
@@ -440,7 +440,7 @@ async function getShopifySessionToken(options: {
           }),
         ]);
         console.log("[shopify-layout] ✅ App Bridge ready Promise resolved");
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("[shopify-layout] ⚠️ ready Promise timeout or failed, proceeding anyway:", error);
       }
     } else {
@@ -460,7 +460,7 @@ async function getShopifySessionToken(options: {
       if (!token || token.length === 0) throw new Error("idToken() returned empty token");
       console.log("[shopify-layout] ✅ Token received via idToken(), length:", token.length);
       return token;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("[shopify-layout] ❌ idToken() failed or timed out:", error);
       throw error instanceof Error ? error : new Error("idToken() failed");
     }
@@ -495,7 +495,7 @@ async function bootstrapAppBridge() {
       const redirectUrl = `https://${decodedHost}/apps/${apiKey}/shopify/embedded${window.location.search}`;
       debugLog("[shopify-layout] Redirect URL:", redirectUrl);
       window.top!.location.href = redirectUrl;
-    } catch (error) {
+    } catch (error: unknown) {
       debugError("[shopify-layout] Failed to decode host parameter:", error);
       lastError.value = "Invalid host parameter";
     }
@@ -517,7 +517,7 @@ async function bootstrapAppBridge() {
     if (!shopifyGlobal) {
         console.warn("[shopify-layout] ⚠️  Shopify not available, continuing without it");
     }
-} catch (error) {
+} catch (error: unknown) {
     console.error("[shopify-layout] ❌ Error initializing Shopify:", error);
 }
 // Layout her durumda mount olsun
@@ -532,7 +532,7 @@ async function bootstrapAppBridge() {
             new Promise((_, reject) => setTimeout(() => reject(new Error("ready() timeout")), 8000)),
           ]);
           console.log("[shopify-layout] ✅ shopify.ready() completed");
-        } catch (error) {
+        } catch (error: unknown) {
           console.warn("[shopify-layout] ⚠️ ready() timeout, proceeding anyway");
         }
       }
@@ -575,7 +575,7 @@ async function bootstrapAppBridge() {
       debugLog("[shopify-layout] Triggering immediate session exchange...");
       void exchangeShopifySession(token);
     }
-  } catch (error) {
+  } catch (error: unknown) {
     debugError("[shopify-layout] App Bridge init failed", error);
     lastError.value = error instanceof Error ? error.message : "Unknown App Bridge error";
   }
@@ -1116,3 +1116,5 @@ provide("shopifyShopDomain", shopDomain);
   }
 }
 </style>
+
+
