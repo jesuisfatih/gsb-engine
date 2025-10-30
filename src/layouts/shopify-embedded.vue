@@ -407,7 +407,7 @@ async function bootstrapAppBridge() {
 
     console.log("[shopify-layout] 🚀 Getting session token from App Bridge..."); // Always log
     debugLog("[shopify-layout] Getting session token from App Bridge...");
-    const token = await getShopifySessionToken(tokenApi);
+    const token = await getShopifySessionToken(api);
     debugLog("[shopify-layout] Session token received, length:", token?.length || 0);
     debugLog("[shopify-layout] Token preview:", token ? `${token.substring(0, 30)}...${token.substring(token.length - 10)}` : "none");
     sessionToken.value = token;
