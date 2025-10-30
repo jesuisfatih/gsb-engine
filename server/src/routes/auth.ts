@@ -454,10 +454,23 @@ authRouter.get("/callback", async (req, res) => {
   }
   
   // Redirect to embedded app with shop and host params
-  const redirectUrl = `/shopify/embedded?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host as string)}` : ""}`;
+  // CRITICAL: host parameter MUST be preserved for App Bridge to work
+  const shopParam = encodeURIComponent(shop);
+  const hostParam = host ? encodeURIComponent(host as string) : null;
+  
+  // Build redirect URL with query parameters
+  let redirectUrl = `/shopify/embedded?shop=${shopParam}`;
+  if (hostParam) {
+    redirectUrl += `&host=${hostParam}`;
+  }
+  
+  console.log("[shopify-auth] ✅ OAuth callback successful");
+  console.log("[shopify-auth] Shop:", shop);
+  console.log("[shopify-auth] Host parameter:", host ? "present" : "missing");
   console.log("[shopify-auth] Redirecting to:", redirectUrl);
   
-  return res.redirect(redirectUrl);
+  // Use object form of redirect to ensure query params are preserved
+  return res.redirect(302, redirectUrl);
 });
 
 // GET endpoint for debugging - should not be used

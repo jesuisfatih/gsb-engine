@@ -102,21 +102,37 @@ const shopifyAuthenticated = ref(false);
 const isAuthenticated = computed(() => shopifyAuthenticated.value || sessionStore.isAuthenticated);
 
 const hostParam = computed<string | undefined>(() => {
+  // Priority 1: Route query parameter (most reliable)
   const fromRoute = route.query.host;
   if (typeof fromRoute === "string" && fromRoute.length > 0) {
+    console.log("[shopify-layout] 📍 Host from route.query:", fromRoute.substring(0, 20) + "...");
     if (typeof window !== "undefined")
       window.localStorage.setItem("shopify:host", fromRoute);
     return fromRoute;
   }
 
   if (typeof window === "undefined") return undefined;
+  
+  // Priority 2: URL search params (in case route.query missed it)
   const searchHost = new URLSearchParams(window.location.search).get("host");
   if (typeof searchHost === "string" && searchHost.length > 0) {
+    console.log("[shopify-layout] 📍 Host from URL search:", searchHost.substring(0, 20) + "...");
     window.localStorage.setItem("shopify:host", searchHost);
     return searchHost;
   }
 
+  // Priority 3: localStorage (fallback)
   const stored = window.localStorage.getItem("shopify:host");
+  if (stored) {
+    console.log("[shopify-layout] 📍 Host from localStorage:", stored.substring(0, 20) + "...");
+  } else {
+    console.error("[shopify-layout] ❌ Host parameter NOT FOUND in:");
+    console.error("[shopify-layout]   - route.query.host:", route.query.host);
+    console.error("[shopify-layout]   - window.location.search:", window.location.search);
+    console.error("[shopify-layout]   - localStorage:", stored);
+    console.error("[shopify-layout] 💡 This will cause App Bridge idToken() to timeout!");
+  }
+  
   return stored ?? undefined;
 });
 
@@ -188,18 +204,32 @@ async function ensureAppBridgeAssets(): Promise<void> {
   if (!head) return;
 
   if (!apiKey) {
-    console.warn("[shopify-layout] Cannot inject App Bridge assets without API key");
+    console.error("[shopify-layout] ❌ Cannot inject App Bridge assets: API key missing");
+    console.error("[shopify-layout] Check VITE_SHOPIFY_APP_API_KEY environment variable");
     return;
   }
 
+  // CRITICAL: Check if meta tag exists in DOM
   let meta = head.querySelector('meta[name="shopify-api-key"]') as HTMLMetaElement | null;
+  
+  console.log("[shopify-layout] 🔍 Checking App Bridge meta tag...");
+  console.log("[shopify-layout] Meta tag found in DOM:", !!meta);
+  
   if (!meta) {
+    console.warn("[shopify-layout] ⚠️ Meta tag not found in DOM, creating it dynamically...");
     meta = document.createElement("meta");
     meta.name = "shopify-api-key";
-    head.insertBefore(meta, head.firstChild);
-  }
-  if (meta.content !== apiKey)
     meta.content = apiKey;
+    // Insert as first child of head (Shopify requirement)
+    head.insertBefore(meta, head.firstChild);
+    console.log("[shopify-layout] ✅ Meta tag created and inserted");
+  } else {
+    if (meta.content !== apiKey) {
+      console.warn("[shopify-layout] ⚠️ Meta tag content mismatch, updating...");
+      meta.content = apiKey;
+    }
+    console.log("[shopify-layout] ✅ Meta tag verified:", meta.content.substring(0, 8) + "...");
+  }
 
   const scriptSrc = "https://cdn.shopify.com/shopifycloud/app-bridge.js";
   let script = Array.from(head.querySelectorAll("script"))

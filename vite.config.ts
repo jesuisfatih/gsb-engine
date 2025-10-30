@@ -101,25 +101,41 @@ export default defineConfig(({ mode }) => {
         const apiKey = env.VITE_SHOPIFY_APP_API_KEY || env.VITE_SHOPIFY_API_KEY || '';
         
         if (!apiKey) {
-          console.warn('[vite-plugin-app-bridge] VITE_SHOPIFY_APP_API_KEY not found, skipping App Bridge setup');
+          console.warn('[vite-plugin-app-bridge] ⚠️ VITE_SHOPIFY_APP_API_KEY not found, skipping App Bridge setup');
           return html;
         }
         
-        // Remove any existing App Bridge meta tags and script tags
+        console.log('[vite-plugin-app-bridge] ✅ Injecting App Bridge with API key:', apiKey.substring(0, 8) + '...');
+        
+        // Remove any existing App Bridge meta tags and script tags (including placeholders)
         let transformed = html.replace(/<meta[^>]*name=["']shopify-api-key["'][^>]*>/gi, '');
         transformed = transformed.replace(/<script[^>]*app-bridge[^>]*><\/script>/gi, '');
+        transformed = transformed.replace(/<!--[\s\S]*?App Bridge[\s\S]*?-->/gi, '');
         
-        // Find <head> tag and insert App Bridge meta + script immediately after it
-        // According to Shopify docs: meta tag first, then script tag (no data-api-key attribute)
+        // Find <head> tag - MUST be the first thing in <head>
         const headMatch = transformed.match(/<head[^>]*>/i);
-        if (headMatch) {
-          const headTag = headMatch[0];
-          const headEndIndex = transformed.indexOf(headTag) + headTag.length;
-          
-          // Modern App Bridge: use meta tag for API key, script tag without data-api-key
-          // IMPORTANT: type="text/javascript" prevents Vite from transforming this script tag
-          const appBridgeTags = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <meta name="shopify-api-key" content="${apiKey}" />\n  <script type="text/javascript" src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>`;
-          transformed = transformed.slice(0, headEndIndex) + appBridgeTags + transformed.slice(headEndIndex);
+        if (!headMatch) {
+          console.error('[vite-plugin-app-bridge] ❌ <head> tag not found!');
+          return html;
+        }
+        
+        const headTag = headMatch[0];
+        const headEndIndex = transformed.indexOf(headTag) + headTag.length;
+        
+        // Modern App Bridge setup:
+        // 1. Meta tag with API key (REQUIRED)
+        // 2. Script tag WITHOUT data-api-key (API key comes from meta tag)
+        // 3. type="text/javascript" prevents Vite from transforming this script
+        // 4. MUST be first elements in <head> according to Shopify docs
+        const appBridgeTags = `\n  <!-- Shopify App Bridge - MUST be first in <head> -->\n  <meta name="shopify-api-key" content="${apiKey}" />\n  <script type="text/javascript" src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>`;
+        
+        transformed = transformed.slice(0, headEndIndex) + appBridgeTags + transformed.slice(headEndIndex);
+        
+        // Verify injection
+        if (!transformed.includes(`<meta name="shopify-api-key" content="${apiKey}" />`)) {
+          console.error('[vite-plugin-app-bridge] ❌ Failed to inject meta tag!');
+        } else {
+          console.log('[vite-plugin-app-bridge] ✅ App Bridge tags injected successfully');
         }
         
         return transformed;
