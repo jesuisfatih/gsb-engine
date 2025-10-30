@@ -328,7 +328,7 @@ async function bootstrapAppBridge() {
         console.warn("[shopify-layout] ⚠️ shopify.ready() failed or timeout, continuing anyway:", error); // Always log
       }
     } else if ((api as any).app?.ready) {
-      Ack.log("[shopify-layout] ⏳ Waiting for shopify.app.ready()..."); // Always log
+      console.log("[shopify-layout]沉浸在 Waiting for shopify.app.ready()..."); // Always log
       try {
         await Promise.race([
           (api as any).app.ready(),
