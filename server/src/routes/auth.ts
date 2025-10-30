@@ -499,6 +499,8 @@ authRouter.post("/shopify/session", async (req, res, next) => {
     console.log("[shopify-auth] Session request received");
     console.log("[shopify-auth] Token length:", token?.length || 0, "Shop:", shop);
     console.log("[shopify-auth] Token preview:", token ? `${token.substring(0, 24)}...${token.substring(token.length - 6)}` : "none", "source:", tokenSource);
+    console.log("[shopify-auth] Request headers:", JSON.stringify(req.headers, null, 2));
+    console.log("[shopify-auth] Request body:", JSON.stringify(req.body, null, 2));
     if (!token) {
       console.warn("[shopify-auth] Session exchange missing token in body/header");
       return res.status(400).json({ error: "Missing Shopify session token" });
