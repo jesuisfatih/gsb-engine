@@ -289,6 +289,7 @@ function applySessionPayload(payload: ShopifySessionResponse) {
 
 async function exchangeShopifySession(token: string) {
   if (!token) {
+    console.warn("[shopify-layout]唤起 ⚠️ No token provided, skipping session exchange"); // Always log
     debugWarn("[shopify-layout] No token provided, skipping session exchange");
     return;
   }
@@ -307,11 +308,13 @@ async function exchangeShopifySession(token: string) {
     return;
   }
 
-  debugLog("[shopify-layout] Starting session exchange...");
-  debugLog("[shopify-layout] API Base:", apiBase);
-  debugLog("[shopify-layout] Token length:", token.length, "Shop:", shopDomain.value);
-  
-  exchangingSession.value = true;
+    console.log("[shopify-layout] 🎯 Starting session exchange..."); // Always log
+    console.log("[shopify-layout] 🔑 API Base:", apiBase, "Token length:", token.length, "Shop:", shopDomain.value); // Always log
+    debugLog("[shopify-layout] Starting session exchange...");
+    debugLog("[shopify-layout] API Base:", apiBase);
+    debugLog("[shopify-layout] Token length:", token.length, "Shop:", shopDomain.value);
+    
+    exchangingSession.value = true;
   try {
     const wrappedFetch = shopifyFetch.value;
     const fetcher = wrappedFetch ?? fetch;
