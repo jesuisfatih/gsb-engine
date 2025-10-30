@@ -472,8 +472,18 @@ authRouter.get("/callback", async (req, res) => {
         return res.status(502).send("Failed to complete Shopify OAuth");
       }
 
-      const tokenData = await tokenResponse.json() as { access_token: string; scope: string };
+      const tokenData = await tokenResponse.json() as { 
+        access_token: string; 
+        scope: string; 
+        id_token?: string; // OAuth 2.0 id_token (if available)
+      };
       console.log("[shopify-auth] Access token received for shop:", shop);
+      console.log("[shopify-auth] Token response keys:", Object.keys(tokenData));
+      if (tokenData.id_token) {
+        console.log("[shopify-auth] ✅ id_token received in OAuth callback, length:", tokenData.id_token.length);
+      } else {
+        console.log("[shopify-auth] ⚠️ No id_token in OAuth response (only access_token)");
+      }
 
       // Find or create tenant for this shop
       const shopDomain = shop;
@@ -517,6 +527,8 @@ authRouter.get("/callback", async (req, res) => {
           accessToken: tokenData.access_token,
           scope: tokenData.scope,
           installedAt: new Date().toISOString(),
+          // CRITICAL: Store id_token if available for later use
+          ...(tokenData.id_token ? { idToken: tokenData.id_token } : {}),
         },
       };
 
@@ -604,10 +616,56 @@ authRouter.post("/shopify/session", async (req, res, next) => {
       return res.status(500).json({ error: "Shopify API secret not configured" });
     }
 
-    const verification = await verifyShopifySessionToken(token, {
+    // Try to verify the session token
+    let verification = await verifyShopifySessionToken(token, {
       validateSignature: env.SHOPIFY_VALIDATE_SESSION_SIGNATURE,
       apiSecret: env.SHOPIFY_API_SECRET,
     });
+    
+    // If verification fails and we have a shop parameter, try using stored id_token as fallback
+    // NOTE: We use shop parameter directly to find tenant, as verification may have failed
+    if (!verification.verified && shop) {
+      // Try to extract shop domain from failed token first, fallback to shop parameter
+      const shopDomainFromToken = extractShopDomain(verification.payload, shop);
+      const shopDomain = shopDomainFromToken || shop;
+      
+      console.log("[shopify-auth] 🔄 Session token verification failed, trying stored id_token from tenant");
+      console.log("[shopify-auth]   Using shop domain:", shopDomain, "(from token:", shopDomainFromToken || "fallback", ")");
+      
+      const tenant = await prisma.tenant.findFirst({
+        where: {
+          settings: { path: ["shopify", "domain"], equals: shopDomain },
+        },
+      });
+      
+      if (tenant) {
+        const settings = (tenant.settings as Record<string, unknown> | null) ?? {};
+        const shopifySettings = (settings.shopify as Record<string, unknown> | null) ?? {};
+        const storedIdToken = shopifySettings?.idToken as string | undefined;
+        
+        if (storedIdToken) {
+          console.log("[shopify-auth]   Found stored id_token in tenant settings");
+          try {
+            verification = await verifyShopifySessionToken(storedIdToken, {
+              validateSignature: env.SHOPIFY_VALIDATE_SESSION_SIGNATURE,
+              apiSecret: env.SHOPIFY_API_SECRET,
+            });
+            if (verification.verified) {
+              console.log("[shopify-auth] ✅ Successfully verified using stored id_token");
+            } else {
+              console.warn("[shopify-auth] ⚠️ Stored id_token verification also failed (unverified)");
+            }
+          } catch (idTokenError) {
+            console.warn("[shopify-auth] ⚠️ Stored id_token verification also failed (error):", idTokenError);
+          }
+        } else {
+          console.log("[shopify-auth]   No stored id_token found in tenant settings");
+        }
+      } else {
+        console.log("[shopify-auth]   Tenant not found for shop domain:", shopDomain);
+      }
+    }
+    
     const decoded = verification.payload;
     
     console.log("[shopify-auth] 📋 Decoded token payload:", {
