@@ -164,40 +164,40 @@ const navSections: NavSection[] = [
   {
     title: "Get Started",
     items: [
-      { icon: "tabler-layout-dashboard", label: "Welcome", name: "shopify-embedded-welcome" },
-      { icon: "tabler-rocket", label: "Set up", name: "shopify-embedded-setup" },
+      { icon: "mdi-view-dashboard", label: "Welcome", name: "shopify-embedded-welcome" },
+      { icon: "mdi-rocket-launch", label: "Set up", name: "shopify-embedded-setup" },
     ],
   },
   {
     title: "Commerce",
     items: [
-      { icon: "tabler-package", label: "Catalog & Surfaces", name: "shopify-embedded-catalog" },
-      { icon: "tabler-receipt-2", label: "Orders", name: "shopify-embedded-orders" },
-      { icon: "tabler-brush", label: "Designs", name: "shopify-embedded-designs" },
-      { icon: "tabler-stack-2", label: "Templates", name: "shopify-embedded-templates" },
+      { icon: "mdi-package-variant", label: "Catalog & Surfaces", name: "shopify-embedded-catalog" },
+      { icon: "mdi-receipt-text", label: "Orders", name: "shopify-embedded-orders" },
+      { icon: "mdi-palette", label: "Designs", name: "shopify-embedded-designs" },
+      { icon: "mdi-layers", label: "Templates", name: "shopify-embedded-templates" },
     ],
   },
   {
     title: "Configuration",
     items: [
-      { icon: "tabler-settings", label: "General", name: "shopify-embedded-general" },
-      { icon: "tabler-layout-collage", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
-      { icon: "tabler-tools", label: "Builder", name: "shopify-embedded-builder" },
-      { icon: "tabler-photo", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
-      { icon: "tabler-color-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
-      { icon: "tabler-photo-scan", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
-      { icon: "tabler-truck-delivery", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
-      { icon: "tabler-coin", label: "Print Techniques", name: "shopify-embedded-print-techniques" },
-      { icon: "tabler-receipt", label: "Pricing & Billing", name: "shopify-embedded-pricing" },
+      { icon: "mdi-cog", label: "General", name: "shopify-embedded-general" },
+      { icon: "mdi-view-grid", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
+      { icon: "mdi-tools", label: "Builder", name: "shopify-embedded-builder" },
+      { icon: "mdi-image", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
+      { icon: "mdi-palette-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
+      { icon: "mdi-image-multiple", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
+      { icon: "mdi-printer", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
+      { icon: "mdi-spray", label: "Print Techniques", name: "shopify-embedded-print-techniques" },
+      { icon: "mdi-receipt", label: "Pricing & Billing", name: "shopify-embedded-pricing" },
     ],
   },
   {
     title: "Operations",
     items: [
-      { icon: "tabler-users-group", label: "Customers", name: "shopify-embedded-customers" },
-      { icon: "tabler-chart-bar", label: "Analytics", name: "shopify-embedded-analytics" },
-      { icon: "tabler-credit-card", label: "Payments", name: "shopify-embedded-payments" },
-      { icon: "tabler-star", label: "Reviews", name: "shopify-embedded-reviews" },
+      { icon: "mdi-account-group", label: "Customers", name: "shopify-embedded-customers" },
+      { icon: "mdi-chart-bar", label: "Analytics", name: "shopify-embedded-analytics" },
+      { icon: "mdi-credit-card", label: "Payments", name: "shopify-embedded-payments" },
+      { icon: "mdi-star", label: "Reviews", name: "shopify-embedded-reviews" },
     ],
   },
 ];
@@ -613,7 +613,7 @@ provide("shopifyShopDomain", shopDomain);
     <header class="topbar">
       <div class="topbar-left">
         <button type="button" class="icon-button" aria-label="Back">
-          <VIcon icon="tabler-arrow-left" size="18" />
+          <VIcon icon="mdi-arrow-left" size="18" />
         </button>
         <div class="brand">
           <span class="brand-title">Build a Gang Sheet</span>
@@ -630,7 +630,7 @@ provide("shopifyShopDomain", shopDomain);
 
       <div class="topbar-right">
         <span class="status-chip" :data-tone="statusBadge.tone">
-          <VIcon icon="tabler-shield-check" size="16" />
+          <VIcon icon="mdi-shield-check" size="16" />
           {{ statusBadge.text }}
         </span>
         <div class="topbar-search">
@@ -639,7 +639,7 @@ provide("shopifyShopDomain", shopDomain);
             placeholder="Search"
             variant="solo"
             hide-details
-            prepend-inner-icon="tabler-search"
+            prepend-inner-icon="mdi-magnify"
           />
         </div>
         <VBtn color="primary" variant="flat">New action</VBtn>
