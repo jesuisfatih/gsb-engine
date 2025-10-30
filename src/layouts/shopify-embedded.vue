@@ -359,7 +359,11 @@ async function exchangeShopifySession(token: string) {
     sessionIssuedFor.value = token;
     lastError.value = null;
     shopifyAuthenticated.value = true;
-    debugLog("[shopify-layout] Session applied, isAuthenticated:", isAuthenticated.value);
+    
+    // Wait a bit for Pinia reactivity to propagate
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    debugLog("[shopify-layout] Session applied - isAuthenticated:", isAuthenticated.value, "sessionStore.isAuthenticated:", sessionStore.isAuthenticated, "hasAccessToken:", !!sessionStore.accessToken);
   } catch (error: any) {
     const message = error?.message ?? "Bilinmeyen hata";
     debugError("[shopify-layout] Session exchange error:", error);

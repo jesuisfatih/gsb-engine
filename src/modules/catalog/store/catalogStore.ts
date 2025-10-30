@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import type { ProductDefinition, ProductSurface } from "../../editor/types";
 import { mmToPx } from "../../editor/utils/units";
+import { debugLog, debugWarn } from "@/utils/debug";
 import {
   fetchCatalog,
   fetchSeedCatalog,
@@ -154,7 +155,7 @@ export const useCatalogStore = defineStore("catalog", {
       try {
         const session = useSessionStore();
         
-        // For Shopify embedded routes, wait for session to be ready (up to 5 seconds)
+        // For Shopify embedded routes, wait for session to be ready (up to 10 seconds)
         if (!session.accessToken) {
           // Check if we're in Shopify embedded context
           const isShopifyEmbedded = typeof window !== 'undefined' && 
@@ -162,17 +163,26 @@ export const useCatalogStore = defineStore("catalog", {
              window.location.pathname.includes('/editor'));
           
           if (isShopifyEmbedded) {
-            // Wait for session up to 5 seconds
+            // Wait for session up to 10 seconds - session exchange might take longer
             let attempts = 0;
-            const maxAttempts = 25; // 5 seconds (25 * 200ms)
-            while (!session.accessToken && !session.isAuthenticated && attempts < maxAttempts) {
+            const maxAttempts = 50; // 10 seconds (50 * 200ms)
+            
+            debugLog("[catalog] Waiting for session token in Shopify embedded context...");
+            while (!session.accessToken && attempts < maxAttempts) {
+              // Re-check session store each iteration (reactive)
               await new Promise(resolve => setTimeout(resolve, 200));
               attempts++;
+              
+              // Check again after delay - session might have been set reactively
+              if (session.accessToken) {
+                debugLog("[catalog] Session token received after", attempts * 200, "ms");
+                break;
+              }
             }
             
             // If still no token after waiting, use seed data but don't mark as loaded
             if (!session.accessToken) {
-              console.warn("[catalog] Session not ready after waiting, using seed data temporarily");
+              debugWarn("[catalog] Session not ready after waiting", maxAttempts * 200, "ms, using seed data temporarily");
               const fallback = await fetchSeedCatalog();
               this.products = clone(fallback.map(normalizeProduct));
               this.loaded = false;
@@ -180,7 +190,7 @@ export const useCatalogStore = defineStore("catalog", {
             }
           } else {
             // For non-Shopify routes, use seed data immediately
-            console.warn("[catalog] No access token available, using seed data");
+            debugWarn("[catalog] No access token available, using seed data");
             const fallback = await fetchSeedCatalog();
             this.products = clone(fallback.map(normalizeProduct));
             this.loaded = false;
