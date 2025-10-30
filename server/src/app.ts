@@ -28,7 +28,7 @@ export function createApp() {
 
   // Serve static files from dist folder (SPA frontend)
   // This must come BEFORE API routes to handle SPA routing correctly
-  const distPath = path.join(__dirname, "../../dist");
+  const distPath = path.join(__dirname, "../../../dist");
   
   // Serve static assets (JS, CSS, images, etc.)
   app.use(express.static(distPath, {
