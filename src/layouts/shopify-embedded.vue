@@ -323,55 +323,58 @@ async function bootstrapAppBridge() {
     console.log("[shopify-layout] ⏳ Waiting for Shopify App Bridge to initialize..."); // Always log
     debugLog("[shopify-layout] Waiting for Shopify App Bridge to initialize...");
     const api = await waitForShopifyApi();
-    console.log("[shopify-layout] ✅ App Bridge API ready, waiting for full initialization..."); // Always log
+    console.log("[shopify-layout] ✅ App Bridge API detected"); // Always log
 
-    // CRITICAL: idToken() hangs if App Bridge isn't fully ready
-    // Check if 'ready' exists and what type it is
-    const apiReady = (api as any).ready;
-    const apiReadyType = typeof apiReady;
-    const isReadyPromise = apiReady instanceof Promise;
-    const isReadyFunction = typeof apiReady === "function";
+    // CRITICAL: Create App Bridge instance - modern App Bridge requires createApp()
+    // Check for Shopify.AppBridge.createApp or window.shopify.AppBridge.createApp
+    let appInstance: ShopifyAppInstance | null = null;
     
-    console.log("[shopify-layout] 🔍 ready check - type:", apiReadyType, "is Promise:", isReadyPromise, "is Function:", isReadyFunction); // Always log
-    console.log("[shopify-layout] 🔍 ready value:", apiReady); // Always log
+    console.log("[shopify-layout] 🔍 Checking for createApp method..."); // Always log
+    console.log("[shopify-layout] 🔍 window.Shopify?.AppBridge:", window.Shopify?.AppBridge); // Always log
+    console.log("[shopify-layout] 🔍 window.shopify?.AppBridge:", (api as any).AppBridge); // Always log
     
-    if (isReadyFunction) {
-      console.log("[shopify-layout] ⏳ ready is a function, calling it..."); // Always log
-      try {
-        await Promise.race([
-          apiReady(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("ready() function timeout after 8s")), 8000))
-        ]);
-        console.log("[shopify-layout] ✅ ready() function completed"); // Always log
-      } catch (error) {
-        console.error("[shopify-layout] ❌ ready() function failed:", error); // Always log
+    const AppBridgeCreateApp = window.Shopify?.AppBridge homemade createApp || (api as any).AppBridge?.createApp;
+    
+    if (AppBridgeCreateApp && typeof AppBridgeCreateApp === "function") {
+      console.log("[shopify-layout] ✅ Found createApp, creating App Bridge instance..."); // Always log
+      console.log("[shopify-layout] 🔑 API Key:", apiKey ? `${apiKey.substring(0, 8)}...` : "MISSING"); // Always log
+      console.log("[shopify-layout] 🔑 Host:", hostParam.value ? "present" : "MISSING"); // Always log
+      
+      if (!apiKey || !hostParam.value) {
+        throw new Error("Cannot create App Bridge instance: missing API key or host parameter");
       }
-    } else if (isReadyPromise) {
-      console.log("[shopify-layout] ⏳ ready is a Promise, awaiting it..."); // Always log
+      
       try {
-        await Promise.race([
-          apiReady,
-          new Promise((_, reject) => setTimeout(() => reject(new Error("ready Promise timeout after 8s")), 8000))
-        ]);
-        console.log("[shopify-layout] ✅ ready Promise resolved"); // Always log
+        const decodedHost = atob(hostParam.value);
+        console.log("[shopify-layout] 📍 Decoded host:", decodedHost); // Always log
+        
+        appInstance = AppBridgeCreateApp({
+          apiKey,
+          host: decodedHost,
+        });
+        
+        console.log("[shopify-layout] ✅ App Bridge instance created:", appInstance); // Always log
+        shopifyAppInstance.value = appInstance;
+        shopifyApi.value = appInstance;
       } catch (error) {
-        console.error("[shopify-layout] ❌ ready Promise failed:", error); // Always log
+        console.error("[shopify-layout] ❌ Failed to create App Bridge instance:", error); // Always log
+        throw error;
       }
     } else {
-      // Wait longer if no ready method - App Bridge needs time to fully initialize
-      console.log("[shopify-layout] ⚠️ No ready method/Promise found, waiting 3s for App Bridge..."); // Always log
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.warn("[shopify-layout] ⚠️ createApp not found, falling back to global shopify API"); // Always log
+      shopifyApi.value = api;
     }
 
-    shopifyApi.value = api;
     lastError.value = null;
-
-    shopifyFetch.value = api.fetch ? api.fetch.bind(api) : fetch;
-    debugLog("[shopify-layout] Shopify fetch available:", !!api.fetch);
+    
+    // Use app instance for fetch if available, otherwise use global API
+    const tokenApi = appInstance || api;
+    shopifyFetch.value = tokenApi.fetch ? tokenApi.fetch.bind(tokenApi) : fetch;
+    debugLog("[shopify-layout] Shopify fetch available:", !!tokenApi.fetch);
 
     console.log("[shopify-layout] 🚀 Getting session token from App Bridge..."); // Always log
     debugLog("[shopify-layout] Getting session token from App Bridge...");
-    const token = await getShopifySessionToken(api);
+    const token = await getShopifySessionToken(tokenApi);
     debugLog("[shopify-layout] Session token received, length:", token?.length || 0);
     debugLog("[shopify-layout] Token preview:", token ? `${token.substring(0, 30)}...${token.substring(token.length - 10)}` : "none");
     sessionToken.value = token;
