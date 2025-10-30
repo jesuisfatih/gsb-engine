@@ -106,11 +106,14 @@ async function checkShopifyConnection() {
     try {
       const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
       const healthUrl = `${apiBase.replace(/\/+$/, '')}/health`; // server health
+      console.log('[shopify-layout] 🌡️ Checking health endpoint:', healthUrl);
       const resp = await fetch(healthUrl, { credentials: 'include' }).catch(err => ({ ok: false, status: 0, err } as any));
-      console.log('[shopify-layout] 🌡️  /health status:', (resp as any)?.status, 'ok:', (resp as any)?.ok);
+      console.log('[shopify-layout] 🌡️ /health status:', (resp as any)?.status, 'ok:', (resp as any)?.ok);
     } catch (e) {
       console.warn('[shopify-layout] health check failed', e);
     }
+    
+    console.log("[shopify-layout] ✅ Health check completed, continuing...");
 
     // 7. Session token exchange
     console.log("[shopify-layout] 🔍 Checking conditions for session exchange...");
