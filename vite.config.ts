@@ -158,5 +158,6 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
       },
     },
+  },
   }
 })
