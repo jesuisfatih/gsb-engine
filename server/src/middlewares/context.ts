@@ -58,8 +58,13 @@ export function contextMiddleware(req: Request, res: Response, next: NextFunctio
     return next();
   }
 
+  // Try to read tenantId from cookie (set by Shopify session exchange)
+  const cookies = (req as Request & { cookies?: Record<string, string> }).cookies ?? {};
+  const cookieTenantId = cookies.tenantId ?? undefined;
+
   req.context = {
     prisma,
+    tenantId: cookieTenantId,
   };
 
   return next();

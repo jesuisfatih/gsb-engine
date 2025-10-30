@@ -25,6 +25,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/auth/",
   "/api/health",
   "/api/_debug/",
+  "/api/embed/",
 ];
 
 const PUBLIC_EXACT_PATHS = new Set([
@@ -33,6 +34,7 @@ const PUBLIC_EXACT_PATHS = new Set([
   "/api/auth/shopify/callback",
   "/api/_debug/set-sid",
   "/api/health",
+  "/api/catalog", // Allow catalog without auth if tenantId cookie exists
 ]);
 
 function isPublicRequest(req: Request): boolean {
@@ -103,6 +105,12 @@ export function requireAuthMiddleware(req: Request, res: Response, next: NextFun
   }
 
   if (req.auth) {
+    return next();
+  }
+
+  // Allow catalog endpoint if tenantId is available from cookie/header
+  const isCatalogPath = req.path === "/catalog" || req.originalUrl?.includes("/api/catalog");
+  if (isCatalogPath && req.context?.tenantId) {
     return next();
   }
 
