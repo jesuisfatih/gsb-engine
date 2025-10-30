@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
-import { debugLog, debugWarn, debugError } from "@/utils/debug";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
-
-
-
 
 type NavSection = {
   title: string;
@@ -19,75 +15,18 @@ type NavSection = {
 };
 
 const route = useRoute();
-
-type ShopifyAppInstance = {
-  dispatch: (...args: any[]) => unknown;
-  getState?: () => unknown;
-};
-
-type ShopifyGlobal = {
-  fetch?: typeof fetch;
-  toast?: { show: (message: string, options?: Record<string, any>) => void };
-  sessionToken?: { get?: () => Promise<string> | string } | (() => Promise<string>);
-  idToken?: () => Promise<string>;
-  ready?: (() => Promise<void>) | Promise<void>;
-  app?: {
-    ready?: (() => Promise<void>) | Promise<void>;
-  };
-};
-
-type ShopifyAppBridgeActions = {
-  SessionToken?: {
-    request?: (app: ShopifyAppInstance) => Promise<string | { token?: string }>;
-  };
-  [key: string]: any;
-};
-
-type AppBridgeModule = {
-  default?: (config: { apiKey: string; host: string }) => ShopifyAppInstance & { actions?: ShopifyAppBridgeActions };
-  createApp?: (config: { apiKey: string; host: string }) => ShopifyAppInstance;
-  actions?: ShopifyAppBridgeActions;
-};
-
-type AppBridgeUtilsModule = {
-  getSessionToken?: (app: ShopifyAppInstance) => Promise<string>;
-  authenticatedFetch?: (app: ShopifyAppInstance) => (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-};
-
-declare global {
-  interface Window {
-    shopify?: ShopifyGlobal;
-    Shopify?: {
-      AppBridge?: {
-        createApp?: (config: { apiKey: string; host: string }) => ShopifyAppInstance;
-      };
-    };
-    __shopifyAuthenticatedFetch?: typeof fetch;
-    ["app-bridge"]?: AppBridgeModule;
-    ["app-bridge-utils"]?: AppBridgeUtilsModule;
-    appBridge?: AppBridgeModule;
-    appBridgeUtils?: AppBridgeUtilsModule;
-  }
-}
-
-const shopifyApi = ref<ShopifyGlobal | ShopifyAppInstance | null>(null);
-const shopifyAppInstance = ref<ShopifyAppInstance | null>(null);
 const sessionToken = ref<string>("");
 const shopifyFetch = ref<typeof fetch | null>(null);
 const lastError = ref<string | null>(null);
 const sessionIssuedFor = ref<string | null>(null);
 const exchangingSession = ref(false);
+const shopifyAuthenticated = ref(false);
 
 const sessionStore = useSessionStore();
 const notification = useNotificationStore();
 
-const apiKey =
-  import.meta.env.VITE_SHOPIFY_APP_API_KEY ??
-  import.meta.env.VITE_SHOPIFY_API_KEY ??
-  "";
-
-const apiBase =
-  (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
+const apiKey = import.meta.env.VITE_SHOPIFY_APP_API_KEY ?? import.meta.env.VITE_SHOPIFY_API_KEY ?? "";
+const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 
 const isInIframe = computed(() => {
   if (typeof window === "undefined") return false;
@@ -98,52 +37,29 @@ const isInIframe = computed(() => {
   }
 });
 
-const shopifyAuthenticated = ref(false);
 const isAuthenticated = computed(() => shopifyAuthenticated.value || sessionStore.isAuthenticated);
 
 const hostParam = computed<string | undefined>(() => {
-  // Priority 1: Route query parameter (most reliable)
   const fromRoute = route.query.host;
   if (typeof fromRoute === "string" && fromRoute.length > 0) {
-    console.log("[shopify-layout] 📍 Host from route.query:", fromRoute.substring(0, 20) + "...");
-    if (typeof window !== "undefined")
-      window.localStorage.setItem("shopify:host", fromRoute);
+    if (typeof window !== "undefined") window.localStorage.setItem("shopify:host", fromRoute);
     return fromRoute;
   }
-
   if (typeof window === "undefined") return undefined;
-  
-  // Priority 2: URL search params (in case route.query missed it)
   const searchHost = new URLSearchParams(window.location.search).get("host");
   if (typeof searchHost === "string" && searchHost.length > 0) {
-    console.log("[shopify-layout] 📍 Host from URL search:", searchHost.substring(0, 20) + "...");
     window.localStorage.setItem("shopify:host", searchHost);
     return searchHost;
   }
-
-  // Priority 3: localStorage (fallback)
-  const stored = window.localStorage.getItem("shopify:host");
-  if (stored) {
-    console.log("[shopify-layout] 📍 Host from localStorage:", stored.substring(0, 20) + "...");
-  } else {
-    console.error("[shopify-layout] ❌ Host parameter NOT FOUND in:");
-    console.error("[shopify-layout]   - route.query.host:", route.query.host);
-    console.error("[shopify-layout]   - window.location.search:", window.location.search);
-    console.error("[shopify-layout]   - localStorage:", stored);
-    console.error("[shopify-layout] 💡 This will cause App Bridge idToken() to timeout!");
-  }
-  
-  return stored ?? undefined;
+  return window.localStorage.getItem("shopify:host") ?? undefined;
 });
 
 const shopDomain = computed<string | undefined>(() => {
   const fromRoute = route.query.shop;
   if (typeof fromRoute === "string" && fromRoute.length > 0) {
-    if (typeof window !== "undefined")
-      window.localStorage.setItem("shopify:shop", fromRoute);
+    if (typeof window !== "undefined") window.localStorage.setItem("shopify:shop", fromRoute);
     return fromRoute;
   }
-
   if (typeof window === "undefined") return undefined;
   const search = new URLSearchParams(window.location.search);
   const shop = search.get("shop");
@@ -151,435 +67,73 @@ const shopDomain = computed<string | undefined>(() => {
     window.localStorage.setItem("shopify:shop", shop);
     return shop;
   }
-
-  const stored = window.localStorage.getItem("shopify:shop");
-  return stored ?? undefined;
+  return window.localStorage.getItem("shopify:shop") ?? undefined;
 });
 
 const statusBadge = computed(() => {
-  if (!apiKey) return { tone: "critical", text: "API anahtarı eksik" };
-  if (!hostParam.value) return { tone: "warning", text: "Host parametresi bekleniyor" };
-  if (isAuthenticated.value) return { tone: "success", text: "Shopify bağlandı" };
-  if (exchangingSession.value) return { tone: "info", text: "Shopify yetkilendiriliyor…" };
-  if (lastError.value) return { tone: "critical", text: "Oturum hatası" };
-  if (sessionToken.value) return { tone: "info", text: "Shopify yanıtı bekleniyor…" };
-  return { tone: "info", text: "Hazırlanıyor…" };
+  if (!apiKey) return { tone: "critical", text: "API key missing" };
+  if (!hostParam.value) return { tone: "warning", text: "Waiting for host" };
+  if (isAuthenticated.value) return { tone: "success", text: "Connected" };
+  if (exchangingSession.value) return { tone: "info", text: "Authorizing..." };
+  if (lastError.value) return { tone: "critical", text: "Session error" };
+  if (sessionToken.value) return { tone: "info", text: "Connecting..." };
+  return { tone: "info", text: "Loading..." };
 });
 
-function resolveAppBridgeModule(): AppBridgeModule | null {
-  if (typeof window === "undefined") return null;
-  const candidate = (window as unknown as Record<string, unknown>)["app-bridge"]
-    ?? (window as unknown as Record<string, unknown>).appBridge
-    ?? null;
-  if (!candidate) return null;
-  return candidate as AppBridgeModule;
-}
-
-function resolveAppBridgeUtilsModule(): AppBridgeUtilsModule | null {
-  if (typeof window === "undefined") return null;
-  const candidate = (window as unknown as Record<string, unknown>)["app-bridge-utils"]
-    ?? (window as unknown as Record<string, unknown>).appBridgeUtils
-    ?? null;
-  if (!candidate) return null;
-  return candidate as AppBridgeUtilsModule;
-}
-
-function resolveLegacyShopifyApi(): ShopifyGlobal | null {
-  if (typeof window === "undefined") return null;
-  return window.shopify ?? null;
-}
-
-function ensureAuthenticatedFetch(fetchImpl: typeof fetch | null | undefined) {
-  if (typeof window === "undefined") return;
-  if (typeof fetchImpl === "function") {
-    window.__shopifyAuthenticatedFetch = fetchImpl;
-  } else if (window.__shopifyAuthenticatedFetch) {
-    delete window.__shopifyAuthenticatedFetch;
-  }
-}
-
-async function ensureAppBridgeAssets(): Promise<void> {
-  if (typeof document === "undefined") return;
-  const head = document.head;
-  if (!head) return;
-
-  if (!apiKey) {
-    console.error("[shopify-layout] ❌ Cannot inject App Bridge assets: API key missing");
-    console.error("[shopify-layout] Check VITE_SHOPIFY_APP_API_KEY environment variable");
-    return;
-  }
-
-  // CRITICAL: Check if meta tag exists in DOM
-  let meta = head.querySelector('meta[name="shopify-api-key"]') as HTMLMetaElement | null;
-  
-  console.log("[shopify-layout] 🔍 Checking App Bridge meta tag...");
-  console.log("[shopify-layout] Meta tag found in DOM:", !!meta);
-  
-  if (!meta) {
-    console.warn("[shopify-layout] ⚠️ Meta tag not found in DOM, creating it dynamically...");
-    meta = document.createElement("meta");
-    meta.name = "shopify-api-key";
-    meta.content = apiKey;
-    // Insert as first child of head (Shopify requirement)
-    head.insertBefore(meta, head.firstChild);
-    console.log("[shopify-layout] ✅ Meta tag created and inserted");
-  } else {
-    if (meta.content !== apiKey) {
-      console.warn("[shopify-layout] ⚠️ Meta tag content mismatch, updating...");
-      meta.content = apiKey;
-    }
-    console.log("[shopify-layout] ✅ Meta tag verified:", meta.content.substring(0, 8) + "...");
-  }
-
-  const scriptSrc = "https://cdn.shopify.com/shopifycloud/app-bridge.js";
-  let script = Array.from(head.querySelectorAll("script"))
-    .find(node => typeof node.src === "string" && node.src.includes("shopifycloud/app-bridge.js")) as HTMLScriptElement | undefined;
-
-  if (!script) {
-    script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = scriptSrc;
-    script.defer = false;
-    script.async = false;
-    script.dataset.injected = "true";
-    const once = <T>(event: string, handler: (ev: Event) => void) => {
-      script?.addEventListener(event, handler, { once: true });
-    };
-    const loadPromise = new Promise<void>((resolve, reject) => {
-      once("load", () => resolve());
-      once("error", () => reject(new Error("Failed to load Shopify App Bridge script")));
-    });
-    head.appendChild(script);
-    await loadPromise;
-  } else if (!window["app-bridge"]) {
-    await new Promise<void>(resolve => {
-      const poll = () => {
-        if (window["app-bridge"])
-          resolve();
-        else
-          requestAnimationFrame(poll);
-      };
-      poll();
-    });
-  }
-}
-
-
-const navSections: NavSection[] = [
-  {
-    title: "Get Started",
-    items: [
-      { icon: "tabler-layout-dashboard", label: "Welcome", name: "shopify-embedded-welcome" },
-      { icon: "tabler-rocket", label: "Set up", name: "shopify-embedded-setup" },
-    ],
-  },
-  {
-    title: "Commerce",
-    items: [
-      { icon: "tabler-package", label: "Catalog & Surfaces", name: "shopify-embedded-catalog" },
-      { icon: "tabler-receipt-2", label: "Orders", name: "shopify-embedded-orders" },
-      { icon: "tabler-brush", label: "Designs", name: "shopify-embedded-designs" },
-      { icon: "tabler-stack-2", label: "Templates", name: "shopify-embedded-templates" },
-    ],
-  },
-  {
-    title: "Configuration",
-    items: [
-      { icon: "tabler-settings", label: "General", name: "shopify-embedded-general" },
-      { icon: "tabler-layout-collage", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
-      { icon: "tabler-tools", label: "Builder", name: "shopify-embedded-builder" },
-      { icon: "tabler-photo", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
-      { icon: "tabler-color-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
-      { icon: "tabler-photo-scan", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
-      { icon: "tabler-truck-delivery", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
-      { icon: "tabler-coin", label: "Print Techniques", name: "shopify-embedded-print-techniques" },
-      { icon: "tabler-receipt", label: "Pricing & Billing", name: "shopify-embedded-pricing" },
-    ],
-  },
-  {
-    title: "Operations",
-    items: [
-      { icon: "tabler-chart-line", label: "Transactions", name: "shopify-embedded-transactions" },
-      { icon: "tabler-typography", label: "Fonts", name: "shopify-embedded-fonts" },
-      { icon: "tabler-life-buoy", label: "Support Ticket", name: "shopify-embedded-support" },
-    ],
-  },
-];
-
-const activeNavName = computed(() => (typeof route.name === "string" ? route.name : ""));
-const currentTitle = computed(() => (route.meta?.embeddedTitle as string | undefined) ?? (route.meta?.title as string | undefined) ?? "Workspace");
-const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | undefined);
-
-type ShopifyRuntimeResources = {
-  appBridgeModule: AppBridgeModule | null;
-  utilsModule: AppBridgeUtilsModule | null;
-  legacyApi: ShopifyGlobal | null;
-};
-
-function waitForAppBridgeResources(timeout = 15000): Promise<ShopifyRuntimeResources> {
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
-
-    const poll = () => {
-      const appBridgeModule = resolveAppBridgeModule();
-      const utilsModule = resolveAppBridgeUtilsModule();
-      const legacyApi = resolveLegacyShopifyApi();
-
-      if (appBridgeModule || legacyApi) {
-        console.log("[shopify-layout] App Bridge runtime detected", {
-          hasModule: !!appBridgeModule,
-          hasLegacyApi: !!legacyApi,
-          hasUtils: !!utilsModule,
-        });
-        resolve({ appBridgeModule, utilsModule, legacyApi });
-        return;
-      }
-
-      if (Date.now() - start > timeout) {
-        console.error("[shopify-layout] App Bridge runtime did not initialise within timeout");
-        reject(new Error("Shopify App Bridge did not initialise in time"));
-        return;
-      }
-
-      setTimeout(poll, 150);
-    };
-
-    poll();
-  });
-}
-
-async function getShopifySessionToken(options: {
-  appBridgeModule?: AppBridgeModule | null;
-  appInstance?: ShopifyAppInstance | null;
-  utilsModule?: AppBridgeUtilsModule | null;
-  legacyApi?: ShopifyGlobal | null;
-}): Promise<string> {
-  const { appBridgeModule, appInstance, utilsModule, legacyApi } = options;
-
-  console.log("[shopify-layout] Attempting to get session token...");
-
-  if (appInstance && appBridgeModule) {
-    const moduleActions = (appBridgeModule as unknown as { actions?: ShopifyAppBridgeActions }).actions
-      ?? (appBridgeModule as unknown as { default?: { actions?: ShopifyAppBridgeActions } }).default?.actions;
-
-    const sessionTokenAction = moduleActions?.SessionToken ?? (moduleActions as any)?.sessionToken;
-    const requestFn = sessionTokenAction?.request;
-
-    if (typeof requestFn === "function") {
-      console.log("[shopify-layout] Using App Bridge actions.SessionToken.request()");
-      try {
-        const result = await requestFn(appInstance);
-        if (typeof result === "string" && result.length > 0)
-          return result;
-        if (result && typeof result === "object" && typeof result.token === "string" && result.token.length > 0)
-          return result.token;
-      } catch (error) {
-        console.error("[shopify-layout] actions.SessionToken.request() failed:", error);
-      }
-    }
-  }
-
-  if (appInstance && utilsModule?.getSessionToken) {
-    console.log("[shopify-layout] Using app-bridge-utils.getSessionToken");
-    try {
-      const token = await utilsModule.getSessionToken(appInstance);
-      console.log("[shopify-layout] Session token received via getSessionToken(), length:", token?.length ?? 0);
-      return token;
-    } catch (error) {
-      console.error("[shopify-layout] getSessionToken(app) failed:", error);
-      throw error instanceof Error ? error : new Error("getSessionToken(app) failed");
-    }
-  }
-
-  const legacy = legacyApi ?? resolveLegacyShopifyApi();
-  if (legacy?.sessionToken) {
-    const sessionTokenGetter = typeof legacy.sessionToken === "function"
-      ? legacy.sessionToken
-      : legacy.sessionToken.get;
-
-    if (typeof sessionTokenGetter === "function") {
-      console.log("[shopify-layout] Using legacy sessionToken.get()");
-      try {
-        const token = await sessionTokenGetter.call(legacy.sessionToken);
-        if (!token) throw new Error("sessionToken.get() returned empty token");
-        console.log("[shopify-layout] Token received via sessionToken.get(), length:", token.length);
-        return token;
-      } catch (error) {
-        console.error("[shopify-layout] sessionToken.get() failed:", error);
-        throw error instanceof Error ? error : new Error("sessionToken.get() failed");
-      }
-    }
-  }
-
-  if (legacy?.idToken) {
-    console.log("[shopify-layout] Using legacy idToken() - waiting for App Bridge ready state...");
-    
-    // CRITICAL: Wait for App Bridge ready state before calling idToken()
-    // Modern App Bridge CDN requires this
-    const readyPromise = (legacy as any).ready;
-    if (readyPromise && typeof readyPromise === "function") {
-      console.log("[shopify-layout] Waiting for ready() function...");
-      try {
-        await Promise.race([
-          readyPromise(),
-          new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error("ready() timeout after 8 seconds")), 8000);
-          }),
-        ]);
-        console.log("[shopify-layout] ✅ App Bridge ready() completed");
-      } catch (error) {
-        console.error("[shopify-layout] ⚠️ ready() timeout or failed, proceeding anyway:", error);
-      }
-    } else if (readyPromise && readyPromise instanceof Promise) {
-      console.log("[shopify-layout] Waiting for ready Promise...");
-      try {
-        await Promise.race([
-          readyPromise,
-          new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error("ready Promise timeout after 8 seconds")), 8000);
-          }),
-        ]);
-        console.log("[shopify-layout] ✅ App Bridge ready Promise resolved");
-      } catch (error) {
-        console.error("[shopify-layout] ⚠️ ready Promise timeout or failed, proceeding anyway:", error);
-      }
-    } else {
-      // No ready method, wait a bit for App Bridge to initialize
-      console.log("[shopify-layout] No ready() method found, waiting 3 seconds...");
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-    
-    try {
-      console.log("[shopify-layout] Calling idToken()...");
-      const token = await Promise.race([
-        legacy.idToken(),
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("idToken() timeout after 15 seconds")), 15000);
-        }),
-      ]);
-      if (!token || token.length === 0) throw new Error("idToken() returned empty token");
-      console.log("[shopify-layout] ✅ Token received via idToken(), length:", token.length);
-      return token;
-    } catch (error) {
-      console.error("[shopify-layout] ❌ idToken() failed or timed out:", error);
-      throw error instanceof Error ? error : new Error("idToken() failed");
-    }
-  }
-
-  console.error("[shopify-layout] No session token API available. Legacy API state:", legacy);
-  throw new Error("Shopify session token API not available");
-}
 async function bootstrapAppBridge() {
-  debugLog("[shopify-layout] Starting App Bridge bootstrap...");
-  debugLog("[shopify-layout] API Key:", apiKey ? `${apiKey.substring(0, 8)}...` : "MISSING");
-  debugLog("[shopify-layout] Host param:", hostParam.value ? "present" : "MISSING");
-  debugLog("[shopify-layout] Shop domain:", shopDomain.value);
-  debugLog("[shopify-layout] Is in iframe:", isInIframe.value);
-
-  if (!apiKey) {
-    lastError.value = "Missing Shopify API key - check VITE_SHOPIFY_API_KEY env variable";
-    debugError("[shopify-layout]", lastError.value);
-    return;
-  }
-
-  if (!hostParam.value) {
-    lastError.value = "Missing host query parameter";
-    debugError("[shopify-layout]", lastError.value);
+  if (!apiKey || !hostParam.value) {
+    lastError.value = "Missing configuration";
     return;
   }
 
   if (!isInIframe.value && shopDomain.value && hostParam.value) {
-    debugLog("[shopify-layout] Not in iframe, redirecting to Shopify admin...");
     try {
       const decodedHost = atob(hostParam.value);
       const redirectUrl = `https://${decodedHost}/apps/${apiKey}/shopify/embedded${window.location.search}`;
-      debugLog("[shopify-layout] Redirect URL:", redirectUrl);
       window.top!.location.href = redirectUrl;
-    } catch (error) {
-      debugError("[shopify-layout] Failed to decode host parameter:", error);
+    } catch {
       lastError.value = "Invalid host parameter";
     }
     return;
   }
 
   try {
-    let shopifyGlobal: typeof window.shopify | null = null;
-    
+    let shopifyGlobal: any = null;
     for (let i = 0; i < 40; i++) {
-        shopifyGlobal = window.shopify ?? null;
-        if (shopifyGlobal && typeof shopifyGlobal.idToken === "function") {
-            console.log("[shopify-layout] ▼ window.shopify.idToken found!");
-            break;
-        }
-        await new Promise(resolve => setTimeout(resolve, 250));
+      shopifyGlobal = window.shopify ?? null;
+      if (shopifyGlobal?.idToken) break;
+      await new Promise(resolve => setTimeout(resolve, 250));
     }
-    
-    if (!shopifyGlobal) {
-        console.warn("[shopify-layout] ⚠️  Shopify not available, continuing without it");
+
+    if (!shopifyGlobal?.idToken) {
+      lastError.value = "Shopify not available";
+      return;
     }
-} catch (error) {
-    console.error("[shopify-layout] ❌ Error initializing Shopify:", error);
-}
-// Layout her durumda mount olsun
-    // Wait for ready state if available
+
     if (shopifyGlobal.ready) {
       const readyFn = typeof shopifyGlobal.ready === "function" ? shopifyGlobal.ready() : shopifyGlobal.ready;
-      if (readyFn && typeof readyFn.then === "function") {
-        console.log("[shopify-layout] ⏳ Waiting for shopify.ready()...");
-        try {
-          await Promise.race([
-            readyFn,
-            new Promise((_, reject) => setTimeout(() => reject(new Error("ready() timeout")), 8000)),
-          ]);
-          console.log("[shopify-layout] ✅ shopify.ready() completed");
-        } catch (error) {
-          console.warn("[shopify-layout] ⚠️ ready() timeout, proceeding anyway");
-        }
+      if (readyFn?.then) {
+        await Promise.race([readyFn, new Promise((_, reject) => setTimeout(() => reject(), 8000))]).catch(() => {});
       }
     }
 
-    // Store references
-    shopifyAppInstance.value = null;
-    shopifyApi.value = shopifyGlobal;
-
-    // Use window.shopify.fetch if available
-    if (shopifyGlobal.fetch && typeof shopifyGlobal.fetch === "function") {
-      console.log("[shopify-layout] ✅ Using shopify.fetch");
-      shopifyFetch.value = shopifyGlobal.fetch.bind(shopifyGlobal);
-    } else {
-      console.warn("[shopify-layout] ⚠️ shopify.fetch not available");
-      shopifyFetch.value = null;
-    }
-
-    ensureAuthenticatedFetch(shopifyFetch.value ?? undefined);
+    shopifyFetch.value = shopifyGlobal.fetch?.bind(shopifyGlobal) ?? null;
     lastError.value = null;
 
-    // Get session token using window.shopify.idToken() directly
-    console.log("[shopify-layout] 🔑 Calling shopify.idToken()...");
     const token = await Promise.race([
       shopifyGlobal.idToken(),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("idToken() timeout after 15 seconds")), 15000);
-      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 15000))
     ]);
 
-    if (!token || typeof token !== "string" || token.length === 0) {
-      throw new Error("idToken() returned empty or invalid token");
-    }
-
-    console.log("[shopify-layout] ✅ Session token received, length:", token.length);
-    console.log("[shopify-layout] Token preview:", `${token.substring(0, 12)}...${token.substring(token.length - 8)}`);
-    sessionToken.value = token;
-
-    if (token) {
-      debugLog("[shopify-layout] Triggering immediate session exchange...");
+    if (token && typeof token === "string" && token.length > 0) {
+      sessionToken.value = token;
       void exchangeShopifySession(token);
     }
-  } catch (error) {
-    debugError("[shopify-layout] App Bridge init failed", error);
-    lastError.value = error instanceof Error ? error.message : "Unknown App Bridge error";
+  } catch (err) {
+    lastError.value = err instanceof Error ? err.message : "Unknown error";
   }
 }
+
 const KNOWN_ROLES: RoleId[] = ["super-admin", "merchant-admin", "merchant-staff", "customer"];
 
 function coerceRole(value?: string): RoleId {
@@ -615,7 +169,6 @@ function applySessionPayload(payload: ShopifySessionResponse) {
     merchantId: payload.user.merchantId ?? payload.tenantId,
   };
 
-  debugLog("[shopify-layout] Setting session with user:", sessionUser.email, "tenantId:", payload.tenantId);
   sessionStore.setSession({
     user: sessionUser,
     accessToken: payload.accessToken,
@@ -625,55 +178,28 @@ function applySessionPayload(payload: ShopifySessionResponse) {
     })),
     tenantId: payload.tenantId,
   });
-  
-  // Verify session was set
-  debugLog("[shopify-layout] Session set - isAuthenticated:", sessionStore.isAuthenticated, "user:", !!sessionStore.user, "token:", !!sessionStore.accessToken);
 }
 
 async function exchangeShopifySession(token: string) {
-  if (!token) {
-    console.warn("[shopify-layout] ⚠️ No token provided, skipping session exchange"); // Always log
-    debugWarn("[shopify-layout] No token provided, skipping session exchange");
-    return;
-  }
+  if (!token || exchangingSession.value) return;
+
   const tokenSegments = token.split(".");
   if (tokenSegments.length !== 3 || tokenSegments.some(segment => segment.length === 0)) {
-    debugError("[shopify-layout] Received malformed session token");
-    lastError.value = "Shopify session token gecersiz";
-    return;
-  }
-  if (sessionIssuedFor.value === token && isAuthenticated.value) {
-    debugLog("[shopify-layout] Session already exchanged for this token");
-    return;
-  }
-  if (exchangingSession.value) {
-    debugLog("[shopify-layout] Session exchange already in progress, skipping");
+    lastError.value = "Invalid token";
     return;
   }
 
-    console.log("[shopify-layout] 🎯 Starting session exchange..."); // Always log
-    console.log("[shopify-layout] 🔑 API Base:", apiBase, "Token length:", token.length, "Shop:", shopDomain.value); // Always log
-    debugLog("[shopify-layout] Starting session exchange...");
-    debugLog("[shopify-layout] API Base:", apiBase);
-    debugLog("[shopify-layout] Token length:", token.length, "Shop:", shopDomain.value);
-    
-    exchangingSession.value = true;
+  if (sessionIssuedFor.value === token && isAuthenticated.value) return;
+
+  exchangingSession.value = true;
   try {
-    const wrappedFetch = shopifyFetch.value;
-    const fetcher = wrappedFetch ?? fetch;
+    const fetcher = shopifyFetch.value ?? fetch;
     const endpointUrl = `${apiBase}/auth/shopify/session`;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     };
-    if (!wrappedFetch) {
-      debugWarn("[shopify-layout] Shopify authenticated fetch unavailable, falling back to window.fetch");
-    }
-    
-    console.log("[shopify-layout] 🚀 Sending POST request to:", endpointUrl); // Always log
-    console.log("[shopify-layout] 📦 Request body token length:", token.length, "shop:", shopDomain.value); // Always log
-    debugLog("[shopify-layout] Request body:", { token: token.substring(0, 20) + "...", shop: shopDomain.value });
-    
+
     const response = await fetcher(endpointUrl, {
       method: "POST",
       credentials: "include",
@@ -681,47 +207,27 @@ async function exchangeShopifySession(token: string) {
       body: JSON.stringify({ token, shop: shopDomain.value }),
     });
 
-    console.log("[shopify-layout] 📡 Response status:", response.status, response.statusText); // Always log
-    debugLog("[shopify-layout] Response status:", response.status, response.statusText);
-    
-    const payload = await response.json().catch((e) => {
-      console.error("[shopify-layout] ❌ Failed to parse JSON response:", e); // Always log
-      debugError("[shopify-layout] Failed to parse JSON response:", e);
-      return null;
-    });
-    
+    const payload = await response.json().catch(() => null);
+
     if (!response.ok) {
       const message = payload?.error ?? `HTTP ${response.status}`;
-      console.error("[shopify-layout] ❌ Session exchange failed:", message, payload); // Always log
-      debugError("[shopify-layout] Session exchange failed:", message);
-      debugError("[shopify-layout] Response payload:", payload);
       throw new Error(message);
     }
 
     if (!payload?.data) {
-      debugError("[shopify-layout] Empty session response");
-      debugError("[shopify-layout] Full payload:", payload);
-      throw new Error("Oturum doğrulama yanıtı eksik");
+      throw new Error("Empty response");
     }
 
-    debugLog("[shopify-layout] Session exchange successful, applying payload...");
-    console.log("[shopify-layout] ✅ Session exchange successful, applying payload..."); // Always log in production
     applySessionPayload(payload.data as ShopifySessionResponse);
     sessionIssuedFor.value = token;
     lastError.value = null;
     shopifyAuthenticated.value = true;
-    
-    // Wait a bit for Pinia reactivity to propagate
+
     await new Promise(resolve => setTimeout(resolve, 100));
-    
-    debugLog("[shopify-layout] Session applied - isAuthenticated:", isAuthenticated.value, "sessionStore.isAuthenticated:", sessionStore.isAuthenticated, "hasAccessToken:", !!sessionStore.accessToken);
-    console.log("[shopify-layout] ✅ Session applied - isAuthenticated:", isAuthenticated.value, "hasAccessToken:", !!sessionStore.accessToken); // Always log in production
-  } catch (error: any) {
-    const message = error?.message ?? "Bilinmeyen hata";
-    debugError("[shopify-layout] Session exchange error:", error);
-    debugError("[shopify-layout] Error stack:", error?.stack);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
     if (lastError.value !== message) {
-      notification.error(`Shopify oturum doğrulaması başarısız: ${message}`);
+      notification.error(`Session failed: ${message}`);
     }
     lastError.value = message;
   } finally {
@@ -736,14 +242,57 @@ onMounted(() => {
 watch(
   () => sessionToken.value,
   token => {
-    if (!token) return;
-    void exchangeShopifySession(token);
-  },
+    if (token) void exchangeShopifySession(token);
+  }
 );
 
-provide("shopifyAppBridge", shopifyApi);
 provide("shopifySessionToken", sessionToken);
 provide("shopifyShopDomain", shopDomain);
+
+const navSections: NavSection[] = [
+  {
+    title: "Get Started",
+    items: [
+      { icon: "tabler-layout-dashboard", label: "Welcome", name: "shopify-embedded-welcome" },
+      { icon: "tabler-rocket", label: "Set up", name: "shopify-embedded-setup" },
+    ],
+  },
+  {
+    title: "Commerce",
+    items: [
+      { icon: "tabler-package", label: "Catalog and Surfaces", name: "shopify-embedded-catalog" },
+      { icon: "tabler-receipt-2", label: "Orders", name: "shopify-embedded-orders" },
+      { icon: "tabler-brush", label: "Designs", name: "shopify-embedded-designs" },
+      { icon: "tabler-stack-2", label: "Templates", name: "shopify-embedded-templates" },
+    ],
+  },
+  {
+    title: "Configuration",
+    items: [
+      { icon: "tabler-settings", label: "General", name: "shopify-embedded-general" },
+      { icon: "tabler-layout-collage", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
+      { icon: "tabler-tools", label: "Builder", name: "shopify-embedded-builder" },
+      { icon: "tabler-photo", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
+      { icon: "tabler-color-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
+      { icon: "tabler-photo-scan", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
+      { icon: "tabler-truck-delivery", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
+      { icon: "tabler-coin", label: "Print Techniques", name: "shopify-embedded-print-techniques" },
+      { icon: "tabler-receipt", label: "Pricing and Billing", name: "shopify-embedded-pricing" },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { icon: "tabler-chart-line", label: "Transactions", name: "shopify-embedded-transactions" },
+      { icon: "tabler-typography", label: "Fonts", name: "shopify-embedded-fonts" },
+      { icon: "tabler-life-buoy", label: "Support Ticket", name: "shopify-embedded-support" },
+    ],
+  },
+];
+
+const activeNavName = computed(() => (typeof route.name === "string" ? route.name : ""));
+const currentTitle = computed(() => (route.meta?.embeddedTitle as string | undefined) ?? (route.meta?.title as string | undefined) ?? "Workspace");
+const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | undefined);
 </script>
 
 <template>
@@ -760,9 +309,7 @@ provide("shopifyShopDomain", shopDomain);
       </div>
       <div class="topbar-center">
         <h1 class="page-title">{{ currentTitle }}</h1>
-        <p v-if="currentSubtitle" class="page-subtitle">
-          {{ currentSubtitle }}
-        </p>
+        <p v-if="currentSubtitle" class="page-subtitle">{{ currentSubtitle }}</p>
       </div>
       <div class="topbar-right">
         <span class="status-chip" :data-tone="statusBadge.tone">
@@ -811,11 +358,11 @@ provide("shopifyShopDomain", shopDomain);
       <main class="workspace">
         <div v-if="!isAuthenticated && !lastError" class="auth-pending">
           <VProgressCircular indeterminate color="primary" />
-          <p>Shopify bağlantısı kuruluyor...</p>
+          <p>Connecting to Shopify...</p>
         </div>
         <div v-else-if="lastError" class="auth-error">
           <VAlert type="error" variant="tonal">
-            <div>Shopify oturum hatası: {{ lastError }}</div>
+            <div>Session error: {{ lastError }}</div>
           </VAlert>
         </div>
         <RouterView v-else v-slot="{ Component }">
@@ -1106,11 +653,9 @@ provide("shopifyShopDomain", shopDomain);
   .content-shell {
     grid-template-columns: 1fr;
   }
-
   .sidebar {
     display: none;
   }
-
   .topbar {
     flex-wrap: wrap;
   }

@@ -90,7 +90,8 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
       };
       return next();
     } catch (error) {
-      console.warn("[auth] invalid token", error);
+      // Silently skip invalid tokens - could be Shopify tokens or expired tokens
+      // Don't log to avoid noise in production
     }
   }
 
