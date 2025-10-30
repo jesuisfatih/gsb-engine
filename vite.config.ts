@@ -92,24 +92,21 @@ export default defineConfig(({ mode }) => ({
     svgLoader(),
     {
       name: 'html-transform-app-bridge',
-      enforce: 'pre', // Run before other plugins to preserve script tag
+      enforce: 'post', // Run AFTER Vite's HTML transforms to ensure correct order
       transformIndexHtml(html) {
         const apiKey = process.env.VITE_SHOPIFY_APP_API_KEY || process.env.VITE_SHOPIFY_API_KEY || '';
         
-        // Replace placeholder with actual API key
-        let transformed = html.replace(
-          /%VITE_SHOPIFY_APP_API_KEY%/g,
-          apiKey
-        );
-        
-        // App Bridge MUST be the first script tag in <head> (Shopify requirement)
-        // Remove existing App Bridge script if present (we'll re-insert it at the right place)
-        transformed = transformed.replace(/<script[^>]*app-bridge[^>]*><\/script>/gi, '');
+        // Remove any existing App Bridge script tags (from source or previous transforms)
+        let transformed = html.replace(/<script[^>]*app-bridge[^>]*><\/script>/gi, '');
         
         // Find <head> tag and insert App Bridge script immediately after it
+        // This ensures it's the FIRST element in <head>, which is required by Shopify
         const headMatch = transformed.match(/<head[^>]*>/i);
-        if (headMatch) {
-          const headEndIndex = transformed.indexOf(headMatch[0]) + headMatch[0].length;
+        if (headMatch && apiKey) {
+          const headTag = headMatch[0];
+          const headEndIndex = transformed.indexOf(headTag) + headTag.length;
+          
+          // Insert script tag with newline for proper formatting
           const scriptTag = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" data-api-key="${apiKey}"></script>`;
           transformed = transformed.slice(0, headEndIndex) + scriptTag + transformed.slice(headEndIndex);
         }
