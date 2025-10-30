@@ -117,6 +117,8 @@ async function checkShopifyConnection() {
     console.log("[shopify-layout] - host exists:", !!host, "shop exists:", !!shop);
     console.log("[shopify-layout] - host type:", typeof host, "shop type:", typeof shop);
     console.log("[shopify-layout] - hostStr length:", hostStr.length, "shopStr length:", shopStr.length);
+    console.log("[shopify-layout] - hostStr truthy:", !!hostStr, "shopStr truthy:", !!shopStr);
+    console.log("[shopify-layout] - hostStr value:", JSON.stringify(hostStr), "shopStr value:", JSON.stringify(shopStr));
     
     if (hostStr && shopStr) {
       console.log("[shopify-layout] 🔑 Waiting for App Bridge to be ready...");
