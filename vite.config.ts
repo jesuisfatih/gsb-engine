@@ -91,12 +91,35 @@ export default defineConfig(({ mode }) => ({
     }),
     svgLoader(),
     {
-      name: 'html-transform',
+      name: 'html-transform-app-bridge',
+      enforce: 'pre', // Run before other plugins to preserve script tag
       transformIndexHtml(html) {
-        return html.replace(
+        const apiKey = process.env.VITE_SHOPIFY_APP_API_KEY || process.env.VITE_SHOPIFY_API_KEY || '';
+        
+        // Replace placeholder with actual API key
+        let transformed = html.replace(
           /%VITE_SHOPIFY_APP_API_KEY%/g,
-          process.env.VITE_SHOPIFY_APP_API_KEY || process.env.VITE_SHOPIFY_API_KEY || ''
-        )
+          apiKey
+        );
+        
+        // Ensure App Bridge script exists and is preserved
+        // Vite may strip external script tags during build, so we ensure it's there
+        const appBridgePattern = /<script[^>]*app-bridge[^>]*><\/script>/i;
+        const appBridgeMatch = transformed.match(appBridgePattern);
+        
+        if (appBridgeMatch) {
+          // Already exists, just ensure API key is replaced
+          return transformed;
+        } else {
+          // Script was removed, re-insert it before </head>
+          const headEndIndex = transformed.indexOf('</head>');
+          if (headEndIndex !== -1) {
+            const scriptTag = `\n  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" data-api-key="${apiKey}"></script>`;
+            transformed = transformed.slice(0, headEndIndex) + scriptTag + transformed.slice(headEndIndex);
+          }
+        }
+        
+        return transformed;
       },
     },
   ],
