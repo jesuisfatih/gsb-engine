@@ -95,7 +95,12 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
   }
 
   delete req.auth;
-  if (publicRequest) return next();
+  
+  // Allow public requests even if token validation failed
+  if (publicRequest) {
+    return next();
+  }
+  
   return res.status(401).json({ error: "Invalid or expired token" });
 }
 
