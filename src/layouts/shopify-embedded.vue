@@ -300,7 +300,7 @@ async function ensureAppBridgeAssets(): Promise<void> {
   }
 }
 
-function waitForAppBridgeResources(timeout = 15000): Promise<ShopifyRuntimeResources> {
+function waitForAppBridgeResources(timeout = 5000): Promise<ShopifyRuntimeResources> {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeout;
     const poll = () => {
@@ -325,7 +325,7 @@ function waitForAppBridgeResources(timeout = 15000): Promise<ShopifyRuntimeResou
   });
 }
 
-async function waitForLegacyReady(legacy: ShopifyGlobal, timeout = 8000): Promise<void> {
+async function waitForLegacyReady(legacy: ShopifyGlobal, timeout = 3000): Promise<void> {
   const candidate = legacy.ready ?? legacy.app?.ready;
   if (!candidate) return;
 
@@ -391,7 +391,7 @@ async function retrieveSessionToken(options: {
     await waitForLegacyReady(legacyApi);
     const token = await Promise.race([
       legacyApi.idToken(),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Shopify idToken timeout")), 15000)),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Shopify idToken timeout")), 6000)),
     ]);
     if (typeof token === "string" && token.length > 0) return token;
   }
