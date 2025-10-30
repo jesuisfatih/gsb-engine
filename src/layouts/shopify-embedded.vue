@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { computed, onMounted, provide, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
-import { computed, onMounted, provide, ref, watch } from "vue";
-import { useRoute } from "vue-router";
 
 type NavSection = {
   title: string;
@@ -15,6 +15,59 @@ type NavSection = {
 };
 
 const route = useRoute();
+
+type ShopifyAppInstance = {
+  dispatch: (...args: any[]) => unknown;
+  getState?: () => unknown;
+};
+
+type ShopifyGlobal = {
+  fetch?: typeof fetch;
+  toast?: { show: (message: string, options?: Record<string, unknown>) => void };
+  sessionToken?: { get?: () => Promise<string> | string } | (() => Promise<string>);
+  idToken?: () => Promise<string>;
+  ready?: (() => Promise<void>) | Promise<void>;
+  app?: {
+    ready?: (() => Promise<void>) | Promise<void>;
+  };
+};
+
+type ShopifyAppBridgeActions = {
+  SessionToken?: {
+    request?: (app: ShopifyAppInstance) => Promise<string | { token?: string }>;
+  };
+  [key: string]: unknown;
+};
+
+type AppBridgeModule = {
+  default?: (config: { apiKey: string; host: string }) => ShopifyAppInstance & { actions?: ShopifyAppBridgeActions };
+  createApp?: (config: { apiKey: string; host: string }) => ShopifyAppInstance;
+  actions?: ShopifyAppBridgeActions;
+};
+
+type AppBridgeUtilsModule = {
+  getSessionToken?: (app: ShopifyAppInstance) => Promise<string>;
+  authenticatedFetch?: (app: ShopifyAppInstance) => (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+};
+
+declare global {
+  interface Window {
+    shopify?: ShopifyGlobal;
+    Shopify?: {
+      AppBridge?: {
+        createApp?: (config: { apiKey: string; host: string }) => ShopifyAppInstance;
+      };
+    };
+    __shopifyAuthenticatedFetch?: typeof fetch;
+    ["app-bridge"]?: AppBridgeModule;
+    ["app-bridge-utils"]?: AppBridgeUtilsModule;
+    appBridge?: AppBridgeModule;
+    appBridgeUtils?: AppBridgeUtilsModule;
+  }
+}
+
+const shopifyApi = ref<ShopifyGlobal | ShopifyAppInstance | null>(null);
+const shopifyAppInstance = ref<ShopifyAppInstance | null>(null);
 const sessionToken = ref<string>("");
 const shopifyFetch = ref<typeof fetch | null>(null);
 const lastError = ref<string | null>(null);
@@ -25,7 +78,11 @@ const shopifyAuthenticated = ref(false);
 const sessionStore = useSessionStore();
 const notification = useNotificationStore();
 
-const apiKey = import.meta.env.VITE_SHOPIFY_APP_API_KEY ?? import.meta.env.VITE_SHOPIFY_API_KEY ?? "";
+const apiKey =
+  import.meta.env.VITE_SHOPIFY_APP_API_KEY ??
+  import.meta.env.VITE_SHOPIFY_API_KEY ??
+  "";
+
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 
 const isInIframe = computed(() => {
@@ -39,99 +96,300 @@ const isInIframe = computed(() => {
 
 const isAuthenticated = computed(() => shopifyAuthenticated.value || sessionStore.isAuthenticated);
 
+function persistLocalValue(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+function readLocalValue(key: string): string | undefined {
+  try {
+    return window.localStorage.getItem(key) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const hostParam = computed<string | undefined>(() => {
   const fromRoute = route.query.host;
   if (typeof fromRoute === "string" && fromRoute.length > 0) {
-    if (typeof window !== "undefined") window.localStorage.setItem("shopify:host", fromRoute);
+    if (typeof window !== "undefined") {
+      persistLocalValue("shopify:host", fromRoute);
+    }
     return fromRoute;
   }
-  if (typeof window === "undefined") return undefined;
+  if (typeof window === "undefined") {
+    return undefined;
+  }
   const searchHost = new URLSearchParams(window.location.search).get("host");
   if (typeof searchHost === "string" && searchHost.length > 0) {
-    window.localStorage.setItem("shopify:host", searchHost);
+    persistLocalValue("shopify:host", searchHost);
     return searchHost;
   }
-  return window.localStorage.getItem("shopify:host") ?? undefined;
+  return readLocalValue("shopify:host");
 });
 
 const shopDomain = computed<string | undefined>(() => {
   const fromRoute = route.query.shop;
   if (typeof fromRoute === "string" && fromRoute.length > 0) {
-    if (typeof window !== "undefined") window.localStorage.setItem("shopify:shop", fromRoute);
+    if (typeof window !== "undefined") {
+      persistLocalValue("shopify:shop", fromRoute);
+    }
     return fromRoute;
   }
-  if (typeof window === "undefined") return undefined;
-  const search = new URLSearchParams(window.location.search);
-  const shop = search.get("shop");
-  if (typeof shop === "string" && shop.length > 0) {
-    window.localStorage.setItem("shopify:shop", shop);
-    return shop;
+  if (typeof window === "undefined") {
+    return undefined;
   }
-  return window.localStorage.getItem("shopify:shop") ?? undefined;
+  const searchShop = new URLSearchParams(window.location.search).get("shop");
+  if (typeof searchShop === "string" && searchShop.length > 0) {
+    persistLocalValue("shopify:shop", searchShop);
+    return searchShop;
+  }
+  return readLocalValue("shopify:shop");
 });
 
 const statusBadge = computed(() => {
   if (!apiKey) return { tone: "critical", text: "API key missing" };
-  if (!hostParam.value) return { tone: "warning", text: "Waiting for host" };
-  if (isAuthenticated.value) return { tone: "success", text: "Connected" };
-  if (exchangingSession.value) return { tone: "info", text: "Authorizing..." };
+  if (!hostParam.value) return { tone: "warning", text: "Waiting for host parameter" };
   if (lastError.value) return { tone: "critical", text: "Session error" };
-  if (sessionToken.value) return { tone: "info", text: "Connecting..." };
-  return { tone: "info", text: "Loading..." };
+  if (exchangingSession.value) return { tone: "info", text: "Authorising with Shopify" };
+  if (isAuthenticated.value) return { tone: "success", text: "Shopify connected" };
+  if (sessionToken.value) return { tone: "info", text: "Awaiting confirmation" };
+  return { tone: "info", text: "Preparing session" };
 });
 
-async function bootstrapAppBridge() {
-  if (!apiKey || !hostParam.value) {
-    lastError.value = "Missing configuration";
-    return;
+const navSections: NavSection[] = [
+  {
+    title: "Get Started",
+    items: [
+      { icon: "tabler-layout-dashboard", label: "Welcome", name: "shopify-embedded-welcome" },
+      { icon: "tabler-rocket", label: "Set up", name: "shopify-embedded-setup" },
+    ],
+  },
+  {
+    title: "Commerce",
+    items: [
+      { icon: "tabler-package", label: "Catalog & Surfaces", name: "shopify-embedded-catalog" },
+      { icon: "tabler-receipt-2", label: "Orders", name: "shopify-embedded-orders" },
+      { icon: "tabler-brush", label: "Designs", name: "shopify-embedded-designs" },
+      { icon: "tabler-stack-2", label: "Templates", name: "shopify-embedded-templates" },
+    ],
+  },
+  {
+    title: "Configuration",
+    items: [
+      { icon: "tabler-settings", label: "General", name: "shopify-embedded-general" },
+      { icon: "tabler-layout-collage", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
+      { icon: "tabler-tools", label: "Builder", name: "shopify-embedded-builder" },
+      { icon: "tabler-photo", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
+      { icon: "tabler-color-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
+      { icon: "tabler-photo-scan", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
+      { icon: "tabler-truck-delivery", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
+      { icon: "tabler-coin", label: "Print Techniques", name: "shopify-embedded-print-techniques" },
+      { icon: "tabler-receipt", label: "Pricing & Billing", name: "shopify-embedded-pricing" },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { icon: "tabler-users-group", label: "Customers", name: "shopify-embedded-customers" },
+      { icon: "tabler-chart-bar", label: "Analytics", name: "shopify-embedded-analytics" },
+      { icon: "tabler-credit-card", label: "Payments", name: "shopify-embedded-payments" },
+      { icon: "tabler-star", label: "Reviews", name: "shopify-embedded-reviews" },
+    ],
+  },
+];
+
+const activeNavName = computed(() => (typeof route.name === "string" ? route.name : ""));
+
+const currentTitle = computed(
+  () => (route.meta?.embeddedTitle as string | undefined) ?? (route.meta?.title as string | undefined) ?? "Workspace",
+);
+
+const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | undefined);
+
+type ShopifyRuntimeResources = {
+  appBridgeModule: AppBridgeModule | null;
+  utilsModule: AppBridgeUtilsModule | null;
+  legacyApi: ShopifyGlobal | null;
+};
+
+function resolveAppBridgeModule(): AppBridgeModule | null {
+  if (typeof window === "undefined") return null;
+  const candidate = window["app-bridge"] ?? window.appBridge ?? null;
+  return candidate ?? null;
+}
+
+function resolveAppBridgeUtilsModule(): AppBridgeUtilsModule | null {
+  if (typeof window === "undefined") return null;
+  const candidate = window["app-bridge-utils"] ?? window.appBridgeUtils ?? null;
+  return candidate ?? null;
+}
+
+function resolveLegacyShopifyApi(): ShopifyGlobal | null {
+  if (typeof window === "undefined") return null;
+  return window.shopify ?? null;
+}
+
+function ensureAuthenticatedFetch(fetchImpl: typeof fetch | null | undefined) {
+  if (typeof window === "undefined") return;
+  if (typeof fetchImpl === "function") {
+    window.__shopifyAuthenticatedFetch = fetchImpl;
+  } else if (window.__shopifyAuthenticatedFetch) {
+    delete window.__shopifyAuthenticatedFetch;
+  }
+}
+
+async function ensureAppBridgeAssets(): Promise<void> {
+  if (typeof document === "undefined" || !apiKey) return;
+  const head = document.head;
+  if (!head) return;
+
+  let meta = head.querySelector('meta[name="shopify-api-key"]') as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "shopify-api-key";
+    meta.content = apiKey;
+    head.insertBefore(meta, head.firstChild);
+  } else if (meta.content !== apiKey) {
+    meta.content = apiKey;
   }
 
-  if (!isInIframe.value && shopDomain.value && hostParam.value) {
+  const scriptSrc = "https://cdn.shopify.com/shopifycloud/app-bridge.js";
+  let script = Array.from(head.querySelectorAll("script")).find(node =>
+    typeof node.src === "string" && node.src.includes("shopifycloud/app-bridge.js"),
+  ) as HTMLScriptElement | undefined;
+
+  if (!script) {
+    await new Promise<void>((resolve, reject) => {
+      const newScript = document.createElement("script");
+      newScript.type = "text/javascript";
+      newScript.src = scriptSrc;
+      newScript.async = false;
+      newScript.defer = false;
+      newScript.dataset.injected = "true";
+      newScript.addEventListener("load", () => resolve(), { once: true });
+      newScript.addEventListener("error", () => reject(new Error("Failed to load Shopify App Bridge script")), {
+        once: true,
+      });
+      head.appendChild(newScript);
+      script = newScript;
+    });
+  }
+
+  if (typeof window !== "undefined" && !window["app-bridge"]) {
+    await new Promise<void>(resolve => {
+      const poll = () => {
+        if (window["app-bridge"]) {
+          resolve();
+        } else {
+          requestAnimationFrame(poll);
+        }
+      };
+      poll();
+    });
+  }
+}
+
+function waitForAppBridgeResources(timeout = 15000): Promise<ShopifyRuntimeResources> {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeout;
+    const poll = () => {
+      const appBridgeModule = resolveAppBridgeModule();
+      const utilsModule = resolveAppBridgeUtilsModule();
+      const legacyApi = resolveLegacyShopifyApi();
+
+      if (appBridgeModule || legacyApi) {
+        resolve({ appBridgeModule, utilsModule, legacyApi });
+        return;
+      }
+
+      if (Date.now() > deadline) {
+        reject(new Error("Shopify App Bridge did not initialise in time"));
+        return;
+      }
+
+      setTimeout(poll, 150);
+    };
+
+    poll();
+  });
+}
+
+async function waitForLegacyReady(legacy: ShopifyGlobal, timeout = 8000): Promise<void> {
+  const candidate = legacy.ready ?? legacy.app?.ready;
+  if (!candidate) return;
+
+  let promise: Promise<unknown> | null = null;
+  if (typeof candidate === "function") {
     try {
-      const decodedHost = atob(hostParam.value);
-      const redirectUrl = `https://${decodedHost}/apps/${apiKey}/shopify/embedded${window.location.search}`;
-      window.top!.location.href = redirectUrl;
+      const result = candidate();
+      if (result && typeof (result as PromiseLike<unknown>).then === "function") {
+        promise = result as Promise<unknown>;
+      }
     } catch {
-      lastError.value = "Invalid host parameter";
-    }
-    return;
-  }
-
-  try {
-    let shopifyGlobal: any = null;
-    for (let i = 0; i < 40; i++) {
-      shopifyGlobal = window.shopify ?? null;
-      if (shopifyGlobal?.idToken) break;
-      await new Promise(resolve => setTimeout(resolve, 250));
-    }
-
-    if (!shopifyGlobal?.idToken) {
-      lastError.value = "Shopify not available";
       return;
     }
+  } else if (candidate && typeof (candidate as PromiseLike<unknown>).then === "function") {
+    promise = candidate as Promise<unknown>;
+  }
+  if (!promise) return;
 
-    if (shopifyGlobal.ready) {
-      const readyFn = typeof shopifyGlobal.ready === "function" ? shopifyGlobal.ready() : shopifyGlobal.ready;
-      if (readyFn?.then) {
-        await Promise.race([readyFn, new Promise((_, reject) => setTimeout(() => reject(), 8000))]).catch(() => {});
+  await Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Shopify ready timeout")), timeout)),
+  ]).catch(() => undefined);
+}
+
+async function retrieveSessionToken(options: {
+  appBridgeModule?: AppBridgeModule | null;
+  appInstance?: ShopifyAppInstance | null;
+  utilsModule?: AppBridgeUtilsModule | null;
+  legacyApi?: ShopifyGlobal | null;
+}): Promise<string> {
+  const { appBridgeModule, appInstance, utilsModule } = options;
+  const legacyApi = options.legacyApi ?? resolveLegacyShopifyApi();
+
+  if (appInstance && appBridgeModule) {
+    const actions = appBridgeModule.actions ?? appBridgeModule.default?.actions;
+    const requestFn = actions?.SessionToken?.request ?? (actions as Record<string, any> | undefined)?.sessionToken?.request;
+    if (typeof requestFn === "function") {
+      const result = await requestFn(appInstance);
+      if (typeof result === "string" && result.length > 0) return result;
+      if (result && typeof result === "object") {
+        const token = (result as { token?: string }).token;
+        if (typeof token === "string" && token.length > 0) return token;
       }
     }
-
-    shopifyFetch.value = shopifyGlobal.fetch?.bind(shopifyGlobal) ?? null;
-    lastError.value = null;
-
-    const token = await Promise.race([
-      shopifyGlobal.idToken(),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 15000))
-    ]);
-
-    if (token && typeof token === "string" && token.length > 0) {
-      sessionToken.value = token;
-      void exchangeShopifySession(token);
-    }
-  } catch (err) {
-    lastError.value = err instanceof Error ? err.message : "Unknown error";
   }
+
+  if (appInstance && utilsModule?.getSessionToken) {
+    const token = await utilsModule.getSessionToken(appInstance);
+    if (typeof token === "string" && token.length > 0) return token;
+  }
+
+  if (legacyApi?.sessionToken) {
+    const getter = typeof legacyApi.sessionToken === "function"
+      ? legacyApi.sessionToken
+      : legacyApi.sessionToken.get;
+    if (typeof getter === "function") {
+      const token = await getter.call(legacyApi.sessionToken);
+      if (typeof token === "string" && token.length > 0) return token;
+    }
+  }
+
+  if (legacyApi?.idToken) {
+    await waitForLegacyReady(legacyApi);
+    const token = await Promise.race([
+      legacyApi.idToken(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Shopify idToken timeout")), 15000)),
+    ]);
+    if (typeof token === "string" && token.length > 0) return token;
+  }
+
+  throw new Error("Unable to obtain Shopify session token");
 }
 
 const KNOWN_ROLES: RoleId[] = ["super-admin", "merchant-admin", "merchant-staff", "customer"];
@@ -181,41 +439,50 @@ function applySessionPayload(payload: ShopifySessionResponse) {
 }
 
 async function exchangeShopifySession(token: string) {
-  if (!token || exchangingSession.value) return;
-
-  const tokenSegments = token.split(".");
-  if (tokenSegments.length !== 3 || tokenSegments.some(segment => segment.length === 0)) {
-    lastError.value = "Invalid token";
+  if (!token) return;
+  if (!/^[^.]+\.[^.]+\.[^.]+$/.test(token)) {
+    const message = "Shopify session token is invalid";
+    if (lastError.value !== message) {
+      notification.error(message);
+    }
+    lastError.value = message;
     return;
   }
-
   if (sessionIssuedFor.value === token && isAuthenticated.value) return;
+  if (exchangingSession.value) return;
 
   exchangingSession.value = true;
+
   try {
     const fetcher = shopifyFetch.value ?? fetch;
-    const endpointUrl = `${apiBase}/auth/shopify/session`;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-
-    const response = await fetcher(endpointUrl, {
+    const response = await fetcher(`${apiBase}/auth/shopify/session`, {
       method: "POST",
       credentials: "include",
-      headers,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ token, shop: shopDomain.value }),
     });
 
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
-      const message = payload?.error ?? `HTTP ${response.status}`;
-      throw new Error(message);
+      const message = typeof payload?.error === "string" ? payload.error : `HTTP ${response.status}`;
+      if (lastError.value !== message) {
+        notification.error(`Shopify session exchange failed: ${message}`);
+      }
+      lastError.value = message;
+      return;
     }
 
     if (!payload?.data) {
-      throw new Error("Empty response");
+      const message = "Shopify session payload is missing";
+      if (lastError.value !== message) {
+        notification.error(message);
+      }
+      lastError.value = message;
+      return;
     }
 
     applySessionPayload(payload.data as ShopifySessionResponse);
@@ -223,11 +490,11 @@ async function exchangeShopifySession(token: string) {
     lastError.value = null;
     shopifyAuthenticated.value = true;
 
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 80));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     if (lastError.value !== message) {
-      notification.error(`Session failed: ${message}`);
+      notification.error(`Shopify session exchange failed: ${message}`);
     }
     lastError.value = message;
   } finally {
@@ -235,64 +502,103 @@ async function exchangeShopifySession(token: string) {
   }
 }
 
+async function bootstrapAppBridge() {
+  if (!apiKey) {
+    const message = "Missing Shopify API key";
+    lastError.value = message;
+    notification.error(message);
+    return;
+  }
+
+  const host = hostParam.value;
+  if (!host) {
+    lastError.value = "Missing Shopify host parameter";
+    return;
+  }
+
+  if (!isInIframe.value && shopDomain.value && typeof window !== "undefined") {
+    try {
+      const decodedHost = atob(host);
+      const query = window.location.search ?? "";
+      window.top?.location.replace(`https://${decodedHost}/apps/${apiKey}/shopify/embedded${query}`);
+    } catch {
+      const message = "Unable to redirect to Shopify admin";
+      lastError.value = message;
+      notification.error(message);
+    }
+    return;
+  }
+
+  try {
+    await ensureAppBridgeAssets();
+    const resources = await waitForAppBridgeResources();
+
+    let appInstance = shopifyAppInstance.value;
+
+    if (!appInstance && resources.appBridgeModule) {
+      const factory =
+        resources.appBridgeModule.createApp ??
+        (typeof resources.appBridgeModule.default === "function"
+          ? resources.appBridgeModule.default
+          : undefined);
+      if (factory) {
+        appInstance = factory({ apiKey, host });
+      }
+    }
+
+    if (appInstance) {
+      shopifyAppInstance.value = appInstance;
+    }
+
+    shopifyApi.value = appInstance ?? resources.legacyApi ?? null;
+
+    let fetchImpl: typeof fetch | null = null;
+    if (appInstance && resources.utilsModule?.authenticatedFetch) {
+      fetchImpl = resources.utilsModule.authenticatedFetch(appInstance);
+    } else if (resources.legacyApi?.fetch) {
+      fetchImpl = resources.legacyApi.fetch.bind(resources.legacyApi);
+    }
+
+    shopifyFetch.value = fetchImpl;
+    ensureAuthenticatedFetch(fetchImpl ?? undefined);
+
+    const token = await retrieveSessionToken({
+      appBridgeModule: resources.appBridgeModule,
+      appInstance,
+      utilsModule: resources.utilsModule,
+      legacyApi: resources.legacyApi,
+    });
+
+    sessionToken.value = token;
+    lastError.value = null;
+
+    if (token) {
+      void exchangeShopifySession(token);
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    if (lastError.value !== message) {
+      notification.error(`Shopify App Bridge error: ${message}`);
+    }
+    lastError.value = message;
+  }
+}
+
 onMounted(() => {
-  bootstrapAppBridge();
+  void bootstrapAppBridge();
 });
 
 watch(
   () => sessionToken.value,
   token => {
-    if (token) void exchangeShopifySession(token);
-  }
+    if (!token) return;
+    void exchangeShopifySession(token);
+  },
 );
 
+provide("shopifyAppBridge", shopifyApi);
 provide("shopifySessionToken", sessionToken);
 provide("shopifyShopDomain", shopDomain);
-
-const navSections: NavSection[] = [
-  {
-    title: "Get Started",
-    items: [
-      { icon: "tabler-layout-dashboard", label: "Welcome", name: "shopify-embedded-welcome" },
-      { icon: "tabler-rocket", label: "Set up", name: "shopify-embedded-setup" },
-    ],
-  },
-  {
-    title: "Commerce",
-    items: [
-      { icon: "tabler-package", label: "Catalog and Surfaces", name: "shopify-embedded-catalog" },
-      { icon: "tabler-receipt-2", label: "Orders", name: "shopify-embedded-orders" },
-      { icon: "tabler-brush", label: "Designs", name: "shopify-embedded-designs" },
-      { icon: "tabler-stack-2", label: "Templates", name: "shopify-embedded-templates" },
-    ],
-  },
-  {
-    title: "Configuration",
-    items: [
-      { icon: "tabler-settings", label: "General", name: "shopify-embedded-general" },
-      { icon: "tabler-layout-collage", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
-      { icon: "tabler-tools", label: "Builder", name: "shopify-embedded-builder" },
-      { icon: "tabler-photo", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
-      { icon: "tabler-color-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
-      { icon: "tabler-photo-scan", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
-      { icon: "tabler-truck-delivery", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
-      { icon: "tabler-coin", label: "Print Techniques", name: "shopify-embedded-print-techniques" },
-      { icon: "tabler-receipt", label: "Pricing and Billing", name: "shopify-embedded-pricing" },
-    ],
-  },
-  {
-    title: "Operations",
-    items: [
-      { icon: "tabler-chart-line", label: "Transactions", name: "shopify-embedded-transactions" },
-      { icon: "tabler-typography", label: "Fonts", name: "shopify-embedded-fonts" },
-      { icon: "tabler-life-buoy", label: "Support Ticket", name: "shopify-embedded-support" },
-    ],
-  },
-];
-
-const activeNavName = computed(() => (typeof route.name === "string" ? route.name : ""));
-const currentTitle = computed(() => (route.meta?.embeddedTitle as string | undefined) ?? (route.meta?.title as string | undefined) ?? "Workspace");
-const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | undefined);
 </script>
 
 <template>
@@ -307,10 +613,14 @@ const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | 
           <span v-if="shopDomain" class="brand-subtle">{{ shopDomain }}</span>
         </div>
       </div>
+
       <div class="topbar-center">
         <h1 class="page-title">{{ currentTitle }}</h1>
-        <p v-if="currentSubtitle" class="page-subtitle">{{ currentSubtitle }}</p>
+        <p v-if="currentSubtitle" class="page-subtitle">
+          {{ currentSubtitle }}
+        </p>
       </div>
+
       <div class="topbar-right">
         <span class="status-chip" :data-tone="statusBadge.tone">
           <VIcon icon="tabler-shield-check" size="16" />
@@ -325,18 +635,20 @@ const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | 
             prepend-inner-icon="tabler-search"
           />
         </div>
-        <div class="profile-chip">
-          <span class="profile-avatar">GS</span>
-          <span class="profile-name">Gang Sheet</span>
-        </div>
+        <VBtn color="primary" variant="flat">New action</VBtn>
       </div>
     </header>
 
     <div class="content-shell">
       <aside class="sidebar">
-        <nav class="sidebar-nav">
+        <div class="sidebar-header">
+          <div class="sidebar-title">Workspace navigation</div>
+          <div class="sidebar-subtitle">Quick access to every area</div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Workspace sections">
           <template v-for="section in navSections" :key="section.title">
-            <p class="nav-section">{{ section.title }}</p>
+            <h2 class="nav-section">{{ section.title }}</h2>
             <ul class="nav-list">
               <li v-for="item in section.items" :key="item.name">
                 <RouterLink
@@ -360,11 +672,13 @@ const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | 
           <VProgressCircular indeterminate color="primary" />
           <p>Connecting to Shopify...</p>
         </div>
+
         <div v-else-if="lastError" class="auth-error">
           <VAlert type="error" variant="tonal">
-            <div>Session error: {{ lastError }}</div>
+            <div>Shopify session error: {{ lastError }}</div>
           </VAlert>
         </div>
+
         <RouterView v-else v-slot="{ Component }">
           <Suspense>
             <Component :is="Component" />
@@ -379,48 +693,47 @@ const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | 
 .embedded-frame {
   display: flex;
   flex-direction: column;
-  background: linear-gradient(150deg, #f7f9ff 0%, #fbf4ff 50%, #f5f2ff 100%);
-  color: #151833;
-  min-block-size: 100vh;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8f9ff 0%, #eef1ff 60%, #ffffff 100%);
+  color: #242849;
 }
 
 .topbar {
-  position: sticky;
-  z-index: 20;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  background: linear-gradient(100deg, #eef1ff 0%, #d6e2ff 40%, #e9d7ff 100%);
-  box-shadow: 0 18px 36px -24px rgba(38, 57, 120, 60%);
-  color: #1c1f3f;
-  gap: 16px;
-  inset-block-start: 0;
-  padding-block: 16px;
-  padding-inline: 28px;
+  gap: 24px;
+  padding: 24px 36px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(137, 149, 255, 0.25);
+  box-shadow: 0 18px 28px -22px rgba(61, 63, 152, 0.45);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .icon-button {
   display: grid;
-  border: none;
-  border-radius: 50%;
-  background: rgba(40, 55, 130, 12%);
-  block-size: 38px;
-  color: inherit;
-  cursor: pointer;
-  inline-size: 38px;
   place-items: center;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(93, 90, 241, 0.12);
+  background: rgba(93, 90, 241, 0.08);
+  color: #4536d3;
+  transition: background 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
 }
 
 .icon-button:hover {
-  background: rgba(40, 55, 130, 20%);
-  transform: translateY(-1px);
+  background: rgba(93, 90, 241, 0.18);
+  transform: translateX(-2px);
 }
 
 .brand {
@@ -430,114 +743,103 @@ const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | 
 }
 
 .brand-title {
-  font-size: 0.98rem;
-  font-weight: 600;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .brand-subtle {
-  color: rgba(28, 31, 63, 65%);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  color: rgba(36, 40, 73, 0.6);
 }
 
 .topbar-center {
-  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   text-align: center;
 }
 
 .page-title {
   margin: 0;
-  font-size: 1.12rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1e2055;
 }
 
 .page-subtitle {
-  color: rgba(28, 31, 63, 55%);
-  font-size: 0.88rem;
-  margin-block: 4px 0;
-  margin-inline: 0;
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(36, 40, 73, 0.65);
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
 }
 
 .status-chip {
   display: inline-flex;
   align-items: center;
-  border: 1px solid rgba(76, 120, 255, 28%);
+  gap: 8px;
+  padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(76, 120, 255, 15%);
-  color: #2643a7;
-  font-size: 0.76rem;
-  gap: 6px;
-  letter-spacing: 0.04em;
-  padding-block: 6px;
-  padding-inline: 16px;
-  text-transform: uppercase;
-}
-
-.status-chip[data-tone="success"] {
-  border-color: rgba(72, 199, 148, 25%);
-  background: rgba(72, 199, 148, 15%);
-  color: #256f59;
-}
-
-.status-chip[data-tone="warning"] {
-  background: rgba(255, 205, 102, 18%);
-  color: #8a5c00;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(96, 92, 220, 0.12);
+  color: #5d5af1;
 }
 
 .status-chip[data-tone="critical"] {
-  background: rgba(255, 146, 154, 20%);
-  color: #a12532;
+  background: rgba(220, 73, 92, 0.12);
+  color: #d14358;
+}
+
+.status-chip[data-tone="warning"] {
+  background: rgba(255, 186, 73, 0.16);
+  color: #b06800;
+}
+
+.status-chip[data-tone="success"] {
+  background: rgba(65, 180, 125, 0.16);
+  color: #2e8c5d;
 }
 
 .topbar-search {
-  min-inline-size: 240px;
-}
-
-.profile-chip {
-  display: flex;
-  align-items: center;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 65%);
-  box-shadow: 0 10px 24px -18px rgba(63, 81, 181, 60%);
-  gap: 10px;
-  padding-block: 8px;
-  padding-inline: 16px;
-}
-
-.profile-avatar {
-  display: grid;
-  border-radius: 50%;
-  background: linear-gradient(140deg, #5a61ff, #7c4dff);
-  block-size: 30px;
-  color: #fff;
-  font-weight: 600;
-  inline-size: 30px;
-  place-items: center;
-}
-
-.profile-name {
-  font-size: 0.85rem;
+  width: 220px;
 }
 
 .content-shell {
   display: grid;
-  flex: 1 1 auto;
-  grid-template-columns: 260px 1fr;
-  min-block-size: 0;
+  grid-template-columns: 280px 1fr;
+  min-height: calc(100vh - 96px);
 }
 
 .sidebar {
-  background: linear-gradient(180deg, #fff 0%, #eef0ff 60%, #f5f6ff 100%);
-  border-inline-end: 1px solid rgba(137, 149, 255, 30%);
-  color: rgba(36, 40, 73, 90%);
-  overflow-y: auto;
-  padding-block: 28px;
-  padding-inline: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 32px 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f5ff 45%, #f9f9ff 100%);
+  border-right: 1px solid rgba(137, 149, 255, 0.18);
+}
+
+.sidebar-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1e2055;
+}
+
+.sidebar-subtitle {
+  font-size: 0.85rem;
+  color: rgba(36, 40, 73, 0.6);
 }
 
 .sidebar-nav {
@@ -547,76 +849,74 @@ const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | 
 }
 
 .nav-section {
-  color: rgba(65, 70, 110, 50%);
+  margin: 0 0 10px;
   font-size: 0.72rem;
-  font-weight: 600;
   letter-spacing: 0.08em;
-  margin-block: 0 10px;
-  margin-inline: 0;
-  padding-inline: 10px;
   text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(65, 70, 110, 0.5);
+  padding-inline: 10px;
 }
 
 .nav-list {
-  display: grid;
-  padding: 0;
-  margin: 0;
-  gap: 6px;
   list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
   border-radius: 12px;
-  color: rgba(35, 40, 80, 85%);
+  text-decoration: none;
+  color: rgba(35, 40, 80, 0.85);
   font-size: 0.95rem;
   font-weight: 500;
-  gap: 12px;
-  padding-block: 12px;
-  padding-inline: 16px;
-  text-decoration: none;
   transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .nav-link:hover {
-  background: rgba(96, 92, 220, 15%);
+  background: rgba(96, 92, 220, 0.15);
   color: #4631b8;
   transform: translateX(4px);
 }
 
 .nav-link.is-active {
   background: linear-gradient(120deg, #5d5af1 0%, #a855f7 100%);
-  box-shadow: 0 18px 32px -18px rgba(93, 90, 241, 90%);
-  color: #fff;
+  color: #ffffff;
+  box-shadow: 0 18px 32px -18px rgba(93, 90, 241, 0.9);
 }
 
 .nav-icon {
   display: grid;
-  block-size: 22px;
-  color: #1f1f2b;
-  inline-size: 22px;
   place-items: center;
+  width: 22px;
+  height: 22px;
+  color: inherit;
 }
 
 .nav-icon :deep(.v-icon) {
   display: grid;
-  block-size: 100%;
+  width: 100%;
+  height: 100%;
+  place-items: center;
   color: inherit;
   font-size: 20px;
-  inline-size: 100%;
-  place-items: center;
 }
 
 .nav-icon :deep(.v-icon > i),
 .nav-icon :deep(.v-icon > span),
 .nav-icon :deep(.v-icon > svg) {
-  block-size: 100%;
-  inline-size: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 .nav-link.is-active .nav-icon {
-  color: #fff;
+  color: #ffffff;
 }
 
 .workspace {
@@ -626,9 +926,9 @@ const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | 
 }
 
 .workspace :deep(.card) {
-  border: 1px solid rgba(90, 96, 164, 12%);
-  background: #fff;
-  box-shadow: 0 18px 32px -24px rgba(89, 70, 201, 25%);
+  border: 1px solid rgba(90, 96, 164, 0.12);
+  background: #ffffff;
+  box-shadow: 0 18px 32px -24px rgba(89, 70, 201, 0.25);
 }
 
 .auth-pending {
@@ -636,28 +936,36 @@ const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | 
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgba(28, 31, 63, 70%);
+  color: rgba(28, 31, 63, 0.7);
   font-size: 0.95rem;
   gap: 16px;
-  min-block-size: 60vh;
+  min-height: 60vh;
 }
 
 .auth-error {
   padding: 24px;
-  margin-block: 0;
-  margin-inline: auto;
-  max-inline-size: 600px;
+  margin: 0 auto;
+  max-width: 600px;
 }
 
 @media (max-width: 1080px) {
   .content-shell {
     grid-template-columns: 1fr;
   }
+
   .sidebar {
     display: none;
   }
+
   .topbar {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .topbar-right {
     flex-wrap: wrap;
+    justify-content: center;
   }
 }
 </style>
