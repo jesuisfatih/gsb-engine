@@ -1,0 +1,506 @@
+{
+    "proje": {
+        "ad": "GSB Engine",
+        "aciklama": "Shopify entegreli üretim ve sipariş yönetim platformu",
+        "versiyon": "9.4.0",
+        "teknolojiler": {
+            "frontend": [
+                "Vue 3",
+                "TypeScript",
+                "Vuetify 3",
+                "Vite",
+                "Pinia",
+                "Vue Router"
+            ],
+            "backend": [
+                "Node.js",
+                "Express",
+                "TypeScript",
+                "Prisma",
+                "PostgreSQL"
+            ],
+            "infrastructure": [
+                "Docker",
+                "Nginx",
+                "Docker Compose"
+            ]
+        }
+    },
+    "ssh_baglanti": {
+        "sunucu": {
+            "ip": "46.224.20.228",
+            "kullanici": "root",
+            "ssh_key_yolu": "C:\\Users\\mhmmd\\.ssh\\id_ed25519",
+            "ssh_komutu": "ssh root@46.224.20.228 -i \"C:\\Users\\mhmmd\\.ssh\\id_ed25519\"",
+            "sunucu_dizin": "/srv/gsb/api",
+            "docker_compose_dizin": "/srv/gsb/api"
+        },
+        "yonetim_komutlari": {
+            "baglan": "ssh root@46.224.20.228 -i \"C:\\Users\\mhmmd\\.ssh\\id_ed25519\"",
+            "sunucuya_git": "cd /srv/gsb/api",
+            "asia_log": "docker compose logs app -f --tail=20",
+            "yeniden_baslat": "docker compose restart app",
+            "build_ve_deploy": "git pull origin main && npm run build && docker compose restart app",
+            "database_log": "docker compose logs db -f"
+        }
+    },
+    "sunucu_yapisi": {
+        "docker_servisleri": {
+            "app": {
+                "aciklama": "Ana uygulama container'ı - Frontend ve Backend birlikte",
+                "port": "80 (HTTP)",
+                "image": "vue-app",
+                "build_dosyasi": "prod.Dockerfile",
+                "volumes": [
+                    "/usr/share/nginx/html"
+                ],
+                "depends_on": [
+                    "db"
+                ]
+            },
+            "db": {
+                "aciklama": "PostgreSQL veritabanı",
+                "port": "5432 (internal)",
+                "image": "postgres:16",
+                "environment": {
+                    "POSTGRES_USER": "postgres",
+                    "POSTGRES_DB": "gibi"
+                },
+                "volumes": [
+                    "/mnt/pgdata:/var/lib/postgresql/data"
+                ]
+            }
+        },
+        "production_ortami": {
+            "domain": "app.gsb-engine.dev",
+            "nginx_config": "/etc/nginx/conf.d/default.conf",
+            "static_dosyalar": "/usr/share/nginx/html",
+            "docker_compose_dosyasi": "docker-compose.prod.yml"
+        }
+    },
+    "dosya_yapisi": {
+        "kok_dizin": {
+            "aciklama": "Proje kök dizini",
+            "onemli_dosyalar": {
+                "package.json": "npm bağımlılıkları ve script'ler",
+                "package-lock.json": "Kilitli bağımlılık versiyonları",
+                "tsconfig.json": "TypeScript yapılandırması",
+                "vite.config.ts": "Vite build tool yapılandırması",
+                "docker-compose.yml": "Geliştirme ortamı Docker yapılandırması",
+                "docker-compose.prod.yml": "Production Docker yapılandırması",
+                "prod.Dockerfile": "Production Docker image build dosyası",
+                "dev.Dockerfile": "Development Docker image build dosyası",
+                "nginx.conf": "Nginx web server yapılandırması",
+                ".env": "Environment değişkenleri (git'e commit edilmez)"
+            }
+        },
+        "server/": {
+            "aciklama": "Backend API sunucusu",
+            "konum": "./server/",
+            "alt_dizinler": {
+                "src/": {
+                    "aciklama": "Backend kaynak kodları",
+                    "dosyalar": {
+                        "main.ts": "Express sunucu başlatma noktası",
+                        "app.ts": "Express uygulama yapılandırması, middleware ve route tanımları",
+                        "env.ts": "Environment değişkenlerinin zod ile validasyonu",
+                        "prisma.ts": "Prisma client singleton instance"
+                    },
+                    "alt_dizinler": {
+                        "routes/": {
+                            "aciklama": "API endpoint route tanımları",
+                            "dosyalar": {
+                                "index.ts": "Ana route yönlendirici",
+                                "auth.ts": "Kimlik doğrulama - login, session exchange, OAuth callback endpoint'leri",
+                                "health.ts": "Sağlık kontrolü endpoint'i",
+                                "catalog.ts": "Ürün kataloğu API",
+                                "orders.ts": "Sipariş yönetimi API",
+                                "designs.ts": "Tasarım yönetimi API",
+                                "templates.ts": "Şablon yönetimi API",
+                                "gang-sheets.ts": "Gang sheet (toplu üretim) API",
+                                "shortcodes.ts": "Shortcode yönetimi API",
+                                "pricing.ts": "Fiyatlandırma motoru API",
+                                "webhooks.ts": "Shopify webhook handler'ları",
+                                "shopify.ts": "Shopify özel endpoint'leri",
+                                "proxy.ts": "Shopify proxy endpoint'leri",
+                                "embed.ts": "Embed widget API",
+                                "analytics.ts": "Analitik API",
+                                "billing.ts": "Faturalandırma API",
+                                "audit.ts": "Denetim log API",
+                                "jobs.ts": "Arka plan işleri API",
+                                "merchant-config.ts": "Satıcı yapılandırma API",
+                                "supplier-routing.ts": "Tedarikçi yönlendirme API",
+                                "notifications.ts": "Bildirim API",
+                                "upload.ts": "Dosya yükleme API"
+                            }
+                        },
+                        "middlewares/": {
+                            "aciklama": "Express middleware'leri",
+                            "dosyalar": {
+                                "authenticate.ts": "JWT token doğrulama middleware'i",
+                                "context.ts": "Request context (tenant, user) ayarlama"
+                            }
+                        },
+                        "services/": {
+                            "aciklama": "İş mantığı servisleri",
+                            "dosyalar": {
+                                "pricingEngine.ts": "Fiyatlandırma hesaplama servisi",
+                                "mockupGenerator.ts": "Ürün mockup görsel üretimi",
+                                "billingService.ts": "Faturalandırma işlemleri",
+                                "notificationDelivery.ts": "Bildirim gönderim servisi"
+                            }
+                        },
+                        "shopify/": {
+                            "aciklama": "Shopify entegrasyon yardımcıları",
+                            "dosyalar": {
+                                "sessionToken.ts": "Shopify session token doğrulama (JWKS, HS256)"
+                            }
+                        },
+                        "auth/": {
+                            "aciklama": "Kimlik doğrulama yardımcıları",
+                            "dosyalar": {
+                                "jwt.ts": "JWT token oluşturma ve doğrulama"
+                            }
+                        },
+                        "types/": {
+                            "aciklama": "TypeScript type tanımları",
+                            "dosyalar": {
+                                "express.ts": "Express request/response extension'ları",
+                                "request-context.ts": "Request context type'ları"
+                            }
+                        },
+                        "utils/": {
+                            "aciklama": "Yardımcı fonksiyonlar",
+                            "dosyalar": {
+                                "renderPayload.ts": "API response formatlama"
+                            }
+                        }
+                    }
+                },
+                "tests/": {
+                    "aciklama": "Backend unit test'leri",
+                    "config": "vitest.config.ts"
+                }
+            }
+        },
+        "src/": {
+            "aciklama": "Frontend Vue.js uygulaması",
+            "konum": "./src/",
+            "alt_dizinler": {
+                "pages/": {
+                    "aciklama": "Sayfa component'leri (unplugin-vue-router ile otomatik route oluşturur)",
+                    "shopify/embedded/": {
+                        "aciklama": "Shopify embedded app sayfaları",
+                        "dosyalar": {
+                            "index.vue": "Ana giriş sayfası (dashboard'a yönlendirir)",
+                            "dashboard.vue": "Dashboard - Sipariş ve tasarım istatistikleri",
+                            "orders.vue": "Sipariş listesi ve yönetimi",
+                            "designs.vue": "Tasarım onay/yönetim sayfası",
+                            "catalog.vue": "Ürün kataloğu",
+                            "products.vue": "Ürün yönetimi",
+                            "templates.vue": "Şablon yönetimi",
+                            "gang-sheet.vue": "Gang sheet (toplu üretim) yönetimi",
+                            "shortcodes.vue": "Shortcode yönetimi",
+                            "pricing.vue": "Fiyatlandırma ayarları",
+                            "webhooks.vue": "Webhook yapılandırması",
+                            "analytics.vue": "Analitik raporları",
+                            "bootstrap.vue": "Uygulama bootstrap/ayar sayfası",
+                            "builder.vue": "Tasarım editörü",
+                            "editor-settings.vue": "Editör ayarları",
+                            "fonts.vue": "Font yönetimi",
+                            "gallery-images.vue": "Galeri görsel yönetimi",
+                            "image-to-sheet.vue": "Görselden gang sheet oluşturma",
+                            "operations.vue": "Operasyon yönetimi",
+                            "print-on-demand.vue": "Print-on-demand ayarları",
+                            "print-techniques.vue": "Baskı teknikleri yönetimi",
+                            "supplier-routing.vue": "Tedarikçi yönlendirme",
+                            "support.vue": "Destek sayfası",
+                            "team.vue": "Takım/rol yönetimi",
+                            "transactions.vue": "İşlem geçmişi",
+                            "welcome.vue": "Hoş geldin sayfası",
+                            "setup.vue": "Kurulum/onboarding",
+                            "appearance.vue": "Görünüm ayarları",
+                            "general.vue": "Genel ayarlar",
+                            "audit.vue": "Denetim logları"
+                        }
+                    }
+                },
+                "layouts/": {
+                    "aciklama": "Layout component'leri (vite-plugin-vue-meta-layouts ile kullanılır)",
+                    "dosyalar": {
+                        "default.vue": "Varsayılan layout - navbar, sidebar, footer ile",
+                        "blank.vue": "Boş layout - sadece içerik",
+                        "shopify-embedded.vue": "Shopify embedded app layout - App Bridge entegrasyonu, session management",
+                        "editor.vue": "Tasarım editörü layout"
+                    },
+                    "components/": {
+                        "aciklama": "Layout bileşenleri",
+                        "dosyalar": {
+                            "DefaultLayoutWithVerticalNav.vue": "Dikey navigasyon menülü layout",
+                            "DefaultLayoutWithHorizontalNav.vue": "Yatay navigasyon menülü layout",
+                            "Footer.vue": "Footer component",
+                            "NavBarNotifications.vue": "Bildirim menüsü",
+                            "NavSearchBar.vue": "Arama çubuğu",
+                            "NavbarShortcuts.vue": "Kısayol menüsü",
+                            "NavbarThemeSwitcher.vue": "Tema değiştirici",
+                            "UserProfile.vue": "Kullanıcı profil menüsü"
+                        }
+                    }
+                },
+                "@core/": {
+                    "aciklama": "Core bileşenler, utilities, stiller",
+                    "alt_dizinler": {
+                        "components/": "Temel UI component'leri",
+                        "composable/": "Reusable composable'lar",
+                        "utils/": "Yardımcı fonksiyonlar",
+                        "assets/styles/": "SCSS stil dosyaları"
+                    }
+                },
+                "@layouts/": {
+                    "aciklama": "Layout plugin component'leri",
+                    "dosyalar": {
+                        "VerticalNavLayout.vue": "Dikey navigasyon layout implementasyonu",
+                        "HorizontalNavLayout.vue": "Yatay navigasyon layout implementasyonu"
+                    }
+                },
+                "modules/": {
+                    "aciklama": "Feature-based modül yapısı",
+                    "alt_dizinler": {
+                        "auth/": "Kimlik doğrulama modülü (stores, composables)",
+                        "catalog/": "Katalog modülü (stores, components)",
+                        "merchant/": "Satıcı modülü (orders, designs, templates stores)",
+                        "editor/": "Tasarım editörü modülü (Konva.js ile canvas)",
+                        "core/": "Core modül (notification store, vb.)"
+                    }
+                },
+                "plugins/": {
+                    "aciklama": "Vue plugin'leri (i18n, router, pinia, vb.)",
+                    "dosyalar": {
+                        "1.router/": "Vue Router yapılandırması ve guards",
+                        "i18n/": "Vue I18n çoklu dil desteği",
+                        "pinia/": "Pinia state management yapılandırması",
+                        "vuetify/": "Vuetify UI framework yapılandırması"
+                    }
+                },
+                "components/": {
+                    "aciklama": "Global Vue component'leri"
+                },
+                "utils/": {
+                    "aciklama": "Frontend yardımcı fonksiyonlar",
+                    "dosyalar": {
+                        "api.ts": "API client ($api utility)"
+                    }
+                },
+                "navigation/": {
+                    "aciklama": "Navigasyon menü yapılandırmaları",
+                    "dosyalar": {
+                        "vertical.ts": "Dikey menü items",
+                        "horizontal.ts": "Yatay menü items"
+                    }
+                },
+                "types/": {
+                    "aciklama": "Global TypeScript type tanımları"
+                }
+            },
+            "ana_dosyalar": {
+                "main.ts": "Vue uygulaması giriş noktası",
+                "App.vue": "Ana App component"
+            }
+        },
+        "prisma/": {
+            "aciklama": "Database schema ve migrations",
+            "konum": "./prisma/",
+            "dosyalar": {
+                "schema.prisma": "Prisma schema - database model tanımları",
+                "seed.ts": "Database seed script'i"
+            },
+            "migrations/": {
+                "aciklama": "Database migration dosyaları",
+                "ornek_migrations": [
+                    "000_init",
+                    "001_autosave_crud",
+                    "002_add_shortcodes",
+                    "003_operations_phase2",
+                    "004_shortcodes_usage",
+                    "005_shortcode_usage_status",
+                    "006_billing_usage",
+                    "007_merchant_configs",
+                    "008_image_to_sheet",
+                    "009_variant_surface_mapping",
+                    "010_variant_mapping_shortcode"
+                ]
+            }
+        },
+        "public/": {
+            "aciklama": "Static dosyalar (build'de dist'e kopyalanır)",
+            "dosyalar": {
+                "favicon.ico": "Site ikonu",
+                "gsb-shortcode.js": "Shopify store'lara embed edilecek shortcode script",
+                "loader.css": "Loading spinner CSS"
+            },
+            "images/": "Statik görseller",
+            "models/": "3D model dosyaları (GLB format)"
+        },
+        "extensions/": {
+            "aciklama": "Shopify app extension'ları",
+            "gsb-embed/": {
+                "aciklama": "Shopify theme app embed extension",
+                "dosyalar": {
+                    "shopify.extension.toml": "Extension yapılandırması",
+                    "blocks/app-embed.liquid": "App embed block",
+                    "snippets/": "Liquid snippet'leri"
+                }
+            }
+        },
+        "docs/": {
+            "aciklama": "Proje dokümantasyonu",
+            "dosyalar": {
+                "deployment.md": "Deployment rehberi",
+                "api-server.md": "API server dokümantasyonu",
+                "shopify-app-embed.md": "Shopify embed dokümantasyonu",
+                "database-schema.md": "Database şema açıklamaları",
+                "auth-tenancy.md": "Multi-tenant authentication açıklamaları"
+            }
+        },
+        "scripts/": {
+            "aciklama": "Yardımcı script'ler",
+            "dosyalar": {
+                "check-shopify-config.ts": "Shopify yapılandırma kontrol script'i",
+                "clean-build.sh": "Build cache temizleme script'i"
+            }
+        }
+    },
+    "build_ve_deployment": {
+        "development": {
+            "frontend": "npm run dev",
+            "backend": "npm run api:dev",
+            "docker": "docker-compose up (docker-compose.yml kullanır)"
+        },
+        "production": {
+            "build_adimlari": [
+                "npm ci (bağımlılıkları yükle)",
+                "npm run db:generate (Prisma client generate et)",
+                "npm run build (Vite ile frontend build)",
+                "Docker image build (prod.Dockerfile ile)",
+                "docker compose up -d (Production compose file ile)"
+            ],
+            "sunucu_deployment": {
+                "adimlar": [
+                    "SSH ile sunucuya bağlan",
+                    "cd /srv/gsb/api",
+                    "git pull origin main",
+                    "npm run build",
+                    "docker compose restart app"
+                ],
+                "komut": "ssh root@46.224.20.228 -i \"C:\\Users\\mhmmd\\.ssh\\id_ed25519\" \"cd /srv/gsb/api && git pull origin main && npm run build && docker compose restart app\""
+            }
+        }
+    },
+    "environment_degiskenleri": {
+        "backend": {
+            "DATABASE_URL": "PostgreSQL bağlantı string'i",
+            "NODE_ENV": "production | development",
+            "PORT": "Backend server port (varsayılan: 4000)",
+            "JWT_SECRET": "JWT token şifreleme anahtarı",
+            "JWT_EXPIRES_IN": "JWT token geçerlilik süresi",
+            "SHOPIFY_API_KEY": "Shopify App API Key",
+            "SHOPIFY_API_SECRET": "Shopify App Secret",
+            "SHOPIFY_VALIDATE_SESSION_SIGNATURE": "Session token doğrulama aktif/pasif"
+        },
+        "frontend": {
+            "VITE_SHOPIFY_API_KEY": "Shopify App API Key (App Bridge için)",
+            "VITE_SHOPIFY_APP_API_KEY": "Shopify App API Key (alternatif)",
+            "VITE_API_BASE_URL": "API base URL (varsayılan: /api)",
+            "VITE_API_PROXY": "Development proxy URL (varsayılan: http://localhost:4000)"
+        }
+    },
+    "npm_scriptleri": {
+        "dev": "Vite dev server başlatır (frontend)",
+        "build": "Production build alır (frontend)",
+        "preview": "Production build'i preview modunda çalıştırır",
+        "api:dev": "Backend API server'ı development modunda başlatır",
+        "db:generate": "Prisma client generate eder",
+        "db:push": "Schema'yı database'e push eder (migration olmadan)",
+        "db:migrate": "Yeni migration oluşturur ve çalıştırır",
+        "db:migrate:deploy": "Production'da pending migration'ları uygular",
+        "db:seed": "Database'i seed data ile doldurur",
+        "db:studio": "Prisma Studio'yu açar (database GUI)",
+        "shopify:check": "Shopify yapılandırmasını kontrol eder"
+    },
+    "teknoloji_detaylari": {
+        "vite": {
+            "aciklama": "Frontend build tool ve dev server",
+            "ozellikler": [
+                "HMR (Hot Module Replacement)",
+                "Vue SFC (Single File Component) desteği",
+                "TypeScript desteği",
+                "CSS preprocessing (SCSS)",
+                "Asset optimization",
+                "App Bridge HTML injection plugin"
+            ]
+        },
+        "vue_router": {
+            "aciklama": "File-based routing (unplugin-vue-router)",
+            "ozellik": "src/pages/ dizinindeki .vue dosyaları otomatik route olur"
+        },
+        "prisma": {
+            "aciklama": "ORM (Object-Relational Mapping)",
+            "ozellikler": [
+                "Type-safe database queries",
+                "Migration yönetimi",
+                "Multi-tenant desteği (tenantId column)",
+                "Schema-first yaklaşım"
+            ]
+        },
+        "app_bridge": {
+            "aciklama": "Shopify embedded app framework",
+            "entegrasyon": {
+                "html_injection": "vite.config.ts içinde HTML transform plugin ile",
+                "session_exchange": "src/layouts/shopify-embedded.vue içinde",
+                "token_verification": "server/src/shopify/sessionToken.ts içinde"
+            }
+        },
+        "vuetify": {
+            "aciklama": "Material Design component library",
+            "kullanimi": "UI component'leri için (Button, Card, Table, vb.)"
+        }
+    },
+    "database_yapisi": {
+        "tenant_bazli": {
+            "aciklama": "Multi-tenant mimari - her tablo tenantId içerir",
+            "ana_tablolar": [
+                "Tenant - Kiracı/workspace bilgileri",
+                "User - Kullanıcı bilgileri",
+                "Order - Siparişler",
+                "Design - Tasarımlar",
+                "Template - Şablonlar",
+                "Product - Ürünler",
+                "GangSheet - Gang sheet'ler",
+                "Shortcode - Shortcode tanımları"
+            ]
+        }
+    },
+    "shopify_entegrasyonu": {
+        "oauth_flow": {
+            "aciklama": "Shopify app installation ve authentication",
+            "endpoint": "/api/auth/callback",
+            "dosya": "server/src/routes/auth.ts içinde /callback endpoint"
+        },
+        "session_exchange": {
+            "aciklama": "App Bridge idToken'ı backend session'a çevirme",
+            "endpoint": "POST /api/auth/shopify/session",
+            "frontend": "src/layouts/shopify-embedded.vue",
+            "backend": "server/src/routes/auth.ts içinde /shopify/session endpoint"
+        },
+        "webhooks": {
+            "aciklama": "Shopify event'lerini dinleme",
+            "endpoint": "/api/webhooks/*",
+            "dosya": "server/src/routes/webhooks.ts"
+        },
+        "proxy": {
+            "aciklama": "Shopify store API proxy",
+            "endpoint": "/api/proxy/*",
+            "dosya": "server/src/routes/proxy.ts"
+        }
+    }
+}
