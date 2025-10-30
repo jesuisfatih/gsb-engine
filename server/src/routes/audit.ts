@@ -10,6 +10,8 @@ const querySchema = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
   limit: z.coerce.number().int().min(1).max(200).optional().default(100),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
 export const auditRouter = Router();
@@ -47,7 +49,8 @@ auditRouter.get("/", async (req, res, next) => {
     const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: query.sortOrder },
+        skip: query.offset,
         take: query.limit,
         include: {
           actor: {
@@ -62,7 +65,17 @@ auditRouter.get("/", async (req, res, next) => {
       prisma.auditLog.count({ where }),
     ]);
 
-    res.json({ data: { logs, total } });
+    res.json({
+      data: {
+        items: logs,
+        total,
+        pagination: {
+          limit: query.limit,
+          offset: query.offset,
+          hasMore: query.offset + query.limit < total,
+        },
+      },
+    });
   } catch (error) {
     next(error);
   }

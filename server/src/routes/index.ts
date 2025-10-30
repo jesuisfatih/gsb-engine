@@ -16,6 +16,7 @@ import { ordersRouter } from "./orders";
 import { uploadRouter } from "./upload";
 import { shopifyRouter } from "./shopify";
 import { webhooksRouter } from "./webhooks";
+import { analyticsRouter } from "./analytics";
 
 export function createApiRouter() {
   const router = Router();
@@ -37,6 +38,7 @@ export function createApiRouter() {
   router.use("/upload", uploadRouter);
   router.use("/shopify", shopifyRouter);
   router.use("/webhooks", webhooksRouter);
+  router.use("/analytics", analyticsRouter);
 
   return router;
 }

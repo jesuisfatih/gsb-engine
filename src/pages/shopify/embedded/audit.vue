@@ -78,20 +78,47 @@ async function loadAuditLog() {
   loading.value = true;
   try {
     const params = new URLSearchParams();
-    params.append("page", page.value.toString());
+    const offset = (page.value - 1) * pageSize.value;
     params.append("limit", pageSize.value.toString());
+    if (offset > 0) {
+      params.append("offset", offset.toString());
+    }
     
     if (eventFilter.value) params.append("event", eventFilter.value);
     if (entityFilter.value) params.append("entity", entityFilter.value);
-    if (dateFrom.value) params.append("from", dateFrom.value);
-    if (dateTo.value) params.append("to", dateTo.value);
+    if (searchTerm.value.trim()) {
+      // Search by entityId (backend doesn't have full-text search yet)
+      params.append("entityId", searchTerm.value.trim());
+    }
+    if (dateFrom.value) {
+      const fromDate = new Date(dateFrom.value).toISOString();
+      params.append("from", fromDate);
+    }
+    if (dateTo.value) {
+      const toDate = new Date(dateTo.value);
+      toDate.setHours(23, 59, 59, 999); // End of day
+      params.append("to", toDate.toISOString());
+    }
 
-    const response = await $api<{ data: { entries: AuditEntry[]; total: number } }>(`/audit?${params}`);
+    const response = await $api<{ data: { items: AuditEntry[]; total: number } }>(`/audit?${params.toString()}`);
     
-    entries.value = response.data?.entries ?? [];
+    // Map backend response to frontend format
+    entries.value = (response.data?.items ?? []).map(log => ({
+      id: log.id,
+      event: log.event,
+      entity: log.entity,
+      entityId: log.entityId,
+      actorUserId: log.actorUserId,
+      actorUserName: (log as any).actor?.displayName || (log as any).actor?.email || "System",
+      diff: (log as any).diff || {},
+      metadata: (log as any).metadata || {},
+      createdAt: log.createdAt,
+    }));
     total.value = response.data?.total ?? 0;
   } catch (error) {
-    console.error("[audit] Failed to load audit log:", error);
+    if (import.meta.env.DEV) {
+      console.error("[audit] Failed to load audit log:", error);
+    }
     
     // Mock data for demo
     entries.value = [

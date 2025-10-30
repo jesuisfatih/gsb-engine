@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
+import { debugLog, debugWarn, debugError } from "@/utils/debug";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -141,7 +142,7 @@ function waitForShopifyApi(timeout = 15000): Promise<ShopifyGlobal> {
     const start = Date.now();
     const poll = () => {
       if (typeof window !== "undefined" && window.shopify) {
-        console.log("[shopify-layout] App Bridge API detected:", Object.keys(window.shopify));
+        debugLog("[shopify-layout] App Bridge API detected:", Object.keys(window.shopify));
         resolve(window.shopify);
         return;
       }
@@ -156,81 +157,81 @@ function waitForShopifyApi(timeout = 15000): Promise<ShopifyGlobal> {
 }
 
 async function getShopifySessionToken(api: ShopifyGlobal): Promise<string> {
-  console.log("[shopify-layout] Attempting to get session token...");
-  console.log("[shopify-layout] Available API methods:", Object.keys(api));
+  debugLog("[shopify-layout] Attempting to get session token...");
+  debugLog("[shopify-layout] Available API methods:", Object.keys(api));
   
   // Try modern API first (sessionToken.get)
   if (api.sessionToken && typeof api.sessionToken.get === "function") {
-    console.log("[shopify-layout] Using sessionToken.get()");
+    debugLog("[shopify-layout] Using sessionToken.get()");
     return api.sessionToken.get();
   }
   
   // Try legacy API (idToken)
   if (typeof api.idToken === "function") {
-    console.log("[shopify-layout] Using idToken()");
+    debugLog("[shopify-layout] Using idToken()");
     return api.idToken();
   }
   
-  console.error("[shopify-layout] No session token API available. API structure:", api);
+  debugError("[shopify-layout] No session token API available. API structure:", api);
   throw new Error("Shopify session token API not available");
 }
 
 async function bootstrapAppBridge() {
-  console.log("[shopify-layout] Starting App Bridge bootstrap...");
-  console.log("[shopify-layout] API Key:", apiKey ? `${apiKey.substring(0, 8)}...` : "MISSING");
-  console.log("[shopify-layout] Host param:", hostParam.value ? "present" : "MISSING");
-  console.log("[shopify-layout] Shop domain:", shopDomain.value);
-  console.log("[shopify-layout] Is in iframe:", isInIframe.value);
+  debugLog("[shopify-layout] Starting App Bridge bootstrap...");
+  debugLog("[shopify-layout] API Key:", apiKey ? `${apiKey.substring(0, 8)}...` : "MISSING");
+  debugLog("[shopify-layout] Host param:", hostParam.value ? "present" : "MISSING");
+  debugLog("[shopify-layout] Shop domain:", shopDomain.value);
+  debugLog("[shopify-layout] Is in iframe:", isInIframe.value);
   
   if (!apiKey) {
     lastError.value = "Missing Shopify API key - check VITE_SHOPIFY_API_KEY env variable";
-    console.error("[shopify-layout]", lastError.value);
+    debugError("[shopify-layout]", lastError.value);
     return;
   }
   
   if (!hostParam.value) {
     lastError.value = "Missing host query parameter";
-    console.error("[shopify-layout]", lastError.value);
+    debugError("[shopify-layout]", lastError.value);
     return;
   }
 
   if (!isInIframe.value && shopDomain.value && hostParam.value) {
-    console.log("[shopify-layout] Not in iframe, redirecting to Shopify admin...");
+    debugLog("[shopify-layout] Not in iframe, redirecting to Shopify admin...");
     try {
       const decodedHost = atob(hostParam.value);
       const redirectUrl = `https://${decodedHost}/apps/${apiKey}/shopify/embedded${window.location.search}`;
-      console.log("[shopify-layout] Redirect URL:", redirectUrl);
+      debugLog("[shopify-layout] Redirect URL:", redirectUrl);
       window.top!.location.href = redirectUrl;
     } catch (error) {
-      console.error("[shopify-layout] Failed to decode host parameter:", error);
+      debugError("[shopify-layout] Failed to decode host parameter:", error);
       lastError.value = "Invalid host parameter";
     }
     return;
   }
 
   try {
-    console.log("[shopify-layout] Waiting for Shopify App Bridge to initialize...");
+    debugLog("[shopify-layout] Waiting for Shopify App Bridge to initialize...");
     const api = await waitForShopifyApi();
 
     shopifyApi.value = api;
     lastError.value = null;
 
     shopifyFetch.value = api.fetch ? api.fetch.bind(api) : fetch;
-    console.log("[shopify-layout] Shopify fetch available:", !!api.fetch);
+    debugLog("[shopify-layout] Shopify fetch available:", !!api.fetch);
 
-    console.log("[shopify-layout] Getting session token from App Bridge...");
+    debugLog("[shopify-layout] Getting session token from App Bridge...");
     const token = await getShopifySessionToken(api);
-    console.log("[shopify-layout] Session token received, length:", token?.length || 0);
-    console.log("[shopify-layout] Token preview:", token ? `${token.substring(0, 30)}...${token.substring(token.length - 10)}` : "none");
+    debugLog("[shopify-layout] Session token received, length:", token?.length || 0);
+    debugLog("[shopify-layout] Token preview:", token ? `${token.substring(0, 30)}...${token.substring(token.length - 10)}` : "none");
     sessionToken.value = token;
     
     // Immediately exchange session token (don't rely only on watch)
     if (token) {
-      console.log("[shopify-layout] Triggering immediate session exchange...");
+      debugLog("[shopify-layout] Triggering immediate session exchange...");
       void exchangeShopifySession(token);
     }
   } catch (error) {
-    console.error("[shopify-layout] App Bridge init failed", error);
+    debugError("[shopify-layout] App Bridge init failed", error);
     lastError.value = error instanceof Error ? error.message : "Unknown App Bridge error";
   }
 }
@@ -283,27 +284,27 @@ function applySessionPayload(payload: ShopifySessionResponse) {
 
 async function exchangeShopifySession(token: string) {
   if (!token) {
-    console.warn("[shopify-layout] No token provided, skipping session exchange");
+    debugWarn("[shopify-layout] No token provided, skipping session exchange");
     return;
   }
   const tokenSegments = token.split(".");
   if (tokenSegments.length !== 3 || tokenSegments.some(segment => segment.length === 0)) {
-    console.error("[shopify-layout] Received malformed session token");
+    debugError("[shopify-layout] Received malformed session token");
     lastError.value = "Shopify session token gecersiz";
     return;
   }
   if (sessionIssuedFor.value === token && isAuthenticated.value) {
-    console.log("[shopify-layout] Session already exchanged for this token");
+    debugLog("[shopify-layout] Session already exchanged for this token");
     return;
   }
   if (exchangingSession.value) {
-    console.log("[shopify-layout] Session exchange already in progress, skipping");
+    debugLog("[shopify-layout] Session exchange already in progress, skipping");
     return;
   }
 
-  console.log("[shopify-layout] Starting session exchange...");
-  console.log("[shopify-layout] API Base:", apiBase);
-  console.log("[shopify-layout] Token length:", token.length, "Shop:", shopDomain.value);
+  debugLog("[shopify-layout] Starting session exchange...");
+  debugLog("[shopify-layout] API Base:", apiBase);
+  debugLog("[shopify-layout] Token length:", token.length, "Shop:", shopDomain.value);
   
   exchangingSession.value = true;
   try {
@@ -315,11 +316,11 @@ async function exchangeShopifySession(token: string) {
       Authorization: `Bearer ${token}`,
     };
     if (!wrappedFetch) {
-      console.warn("[shopify-layout] Shopify authenticated fetch unavailable, falling back to window.fetch");
+      debugWarn("[shopify-layout] Shopify authenticated fetch unavailable, falling back to window.fetch");
     }
     
-    console.log("[shopify-layout] Sending POST request to:", endpointUrl);
-    console.log("[shopify-layout] Request body:", { token: token.substring(0, 20) + "...", shop: shopDomain.value });
+    debugLog("[shopify-layout] Sending POST request to:", endpointUrl);
+    debugLog("[shopify-layout] Request body:", { token: token.substring(0, 20) + "...", shop: shopDomain.value });
     
     const response = await fetcher(endpointUrl, {
       method: "POST",
@@ -328,35 +329,35 @@ async function exchangeShopifySession(token: string) {
       body: JSON.stringify({ token, shop: shopDomain.value }),
     });
 
-    console.log("[shopify-layout] Response status:", response.status, response.statusText);
+    debugLog("[shopify-layout] Response status:", response.status, response.statusText);
     
     const payload = await response.json().catch((e) => {
-      console.error("[shopify-layout] Failed to parse JSON response:", e);
+      debugError("[shopify-layout] Failed to parse JSON response:", e);
       return null;
     });
     
     if (!response.ok) {
       const message = payload?.error ?? `HTTP ${response.status}`;
-      console.error("[shopify-layout] Session exchange failed:", message);
-      console.error("[shopify-layout] Response payload:", payload);
+      debugError("[shopify-layout] Session exchange failed:", message);
+      debugError("[shopify-layout] Response payload:", payload);
       throw new Error(message);
     }
 
     if (!payload?.data) {
-      console.error("[shopify-layout] Empty session response");
-      console.error("[shopify-layout] Full payload:", payload);
+      debugError("[shopify-layout] Empty session response");
+      debugError("[shopify-layout] Full payload:", payload);
       throw new Error("Oturum doğrulama yanıtı eksik");
     }
 
-    console.log("[shopify-layout] Session exchange successful, applying payload...");
+    debugLog("[shopify-layout] Session exchange successful, applying payload...");
     applySessionPayload(payload.data as ShopifySessionResponse);
     sessionIssuedFor.value = token;
     lastError.value = null;
-    console.log("[shopify-layout] Session applied, isAuthenticated:", isAuthenticated.value);
+    debugLog("[shopify-layout] Session applied, isAuthenticated:", isAuthenticated.value);
   } catch (error: any) {
     const message = error?.message ?? "Bilinmeyen hata";
-    console.error("[shopify-layout] Session exchange error:", error);
-    console.error("[shopify-layout] Error stack:", error?.stack);
+    debugError("[shopify-layout] Session exchange error:", error);
+    debugError("[shopify-layout] Error stack:", error?.stack);
     if (lastError.value !== message) {
       notification.error(`Shopify oturum doğrulaması başarısız: ${message}`);
     }

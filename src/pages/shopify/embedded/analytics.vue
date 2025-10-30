@@ -175,45 +175,63 @@ const statusDistributionOptions = computed(() => ({
 async function loadAnalytics() {
   loading.value = true;
   try {
-    // Fetch stats from backend
-    const [ordersRes, gangSheetsRes, designsRes] = await Promise.all([
+    // Fetch stats and analytics data from backend
+    const [ordersRes, gangSheetsRes, designsRes, revenueRes, ordersTrendRes, utilizationRes] = await Promise.all([
       $api<{ data: any }>("/orders/stats"),
       $api<{ data: any }>("/gang-sheets/stats"),
       $api<{ data: any }>("/designs/stats"),
+      $api<{ data: { labels: string[]; series: number[] } }>("/analytics/revenue?days=7").catch(() => ({ data: null })),
+      $api<{ data: { labels: string[]; series: number[] } }>("/analytics/orders?days=7").catch(() => ({ data: null })),
+      $api<{ data: { average: number } }>("/analytics/utilization").catch(() => ({ data: null })),
     ]);
 
     ordersStats.value = ordersRes.data;
     gangSheetsStats.value = gangSheetsRes.data;
     designsStats.value = designsRes.data;
 
-    // Mock revenue data (would come from backend in production)
-    revenueChartSeries.value = [{
-      name: 'Revenue',
-      data: [1200, 1450, 1100, 1850, 2100, 2450, 2300, 2650]
-    }];
+    // Revenue chart from backend
+    if (revenueRes.data) {
+      revenueChartSeries.value = [{
+        name: 'Revenue',
+        data: revenueRes.data.series
+      }];
+    } else {
+      // Fallback to empty chart
+      revenueChartSeries.value = [{ name: 'Revenue', data: Array(8).fill(0) }];
+    }
 
-    // Orders data from backend
-    ordersChartSeries.value = [{
-      name: 'Orders',
-      data: [12, 19, 14, 22, 31, 28, 35, 42]
-    }];
+    // Orders trend from backend
+    if (ordersTrendRes.data) {
+      ordersChartSeries.value = [{
+        name: 'Orders',
+        data: ordersTrendRes.data.series
+      }];
+    } else {
+      // Fallback to empty chart
+      ordersChartSeries.value = [{ name: 'Orders', data: Array(8).fill(0) }];
+    }
 
-    // Gang sheet utilization (average from backend)
-    const totalSheets = gangSheetsRes.data?.total || 0;
-    const avgUtilization = totalSheets > 0 ? 78.5 : 0; // Would calculate from backend
-    utilizationChartSeries.value = [avgUtilization];
+    // Gang sheet utilization from backend
+    if (utilizationRes.data) {
+      utilizationChartSeries.value = [utilizationRes.data.average];
+    } else {
+      utilizationChartSeries.value = [0];
+    }
 
-    // Order status distribution
+    // Order status distribution from orders stats
     const byStatus = ordersRes.data?.byStatus || {};
     statusDistributionSeries.value = [
       byStatus["Created"] || 0,
-      byStatus["Queued"] + byStatus["In production"] || 0,
+      (byStatus["Queued"] || 0) + (byStatus["In production"] || 0),
       byStatus["Completed"] || 0,
-      byStatus["Failed"] + byStatus["Cancelled"] || 0,
+      (byStatus["Failed"] || 0) + (byStatus["Cancelled"] || 0),
     ];
 
   } catch (error) {
-    console.error("[analytics] Failed to load data:", error);
+    // Error logging is handled by debug utility
+    if (import.meta.env.DEV) {
+      console.error("[analytics] Failed to load data:", error);
+    }
   } finally {
     loading.value = false;
   }

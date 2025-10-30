@@ -3,6 +3,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { env } from "../env";
 
+
 export const webhooksRouter = Router();
 
 // Webhook event types
@@ -50,6 +51,86 @@ function verifyShopifyWebhook(body: string, hmacHeader: string): boolean {
 
   return hash === hmacHeader;
 }
+
+/**
+ * GET /api/webhooks
+ * List configured webhook endpoints with health status
+ */
+webhooksRouter.get("/", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!requireTenant(res, tenantId)) return;
+
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Get recent logs grouped by topic
+    const recentLogs = await prisma.webhookLog.findMany({
+      where: {
+        tenantId,
+        createdAt: { gte: last24Hours },
+      },
+      select: {
+        topic: true,
+        status: true,
+        createdAt: true,
+        errorMessage: true,
+        retryCount: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Group by topic and get latest status
+    const topicStatus: Record<string, {
+      topic: string;
+      status: "connected" | "retrying" | "failed";
+      retries: number;
+      lastDeliveryAt?: string;
+      lastError?: string;
+      successCount: number;
+      failureCount: number;
+    }> = {};
+
+    WEBHOOK_TOPICS.forEach(topic => {
+      const topicLogs = recentLogs.filter(log => log.topic === topic);
+      const latestLog = topicLogs[0];
+      const successCount = topicLogs.filter(log => log.status === "success").length;
+      const failureCount = topicLogs.filter(log => log.status === "failed").length;
+      
+      let status: "connected" | "retrying" | "failed" = "connected";
+      if (failureCount > 0 && latestLog?.status === "failed") {
+        status = latestLog.retryCount && latestLog.retryCount > 0 ? "retrying" : "failed";
+      } else if (latestLog?.retryCount && latestLog.retryCount > 0) {
+        status = "retrying";
+      }
+
+      topicStatus[topic] = {
+        topic,
+        status,
+        retries: latestLog?.retryCount || 0,
+        lastDeliveryAt: latestLog?.createdAt.toISOString(),
+        lastError: latestLog?.errorMessage || undefined,
+        successCount,
+        failureCount,
+      };
+    });
+
+    const webhooks = Object.values(topicStatus).map(item => ({
+      id: item.topic,
+      topic: item.topic,
+      url: `${env.APP_BASE_URL || "https://app.gsb-engine.dev"}/api/webhooks/${item.topic}`,
+      enabled: true, // All are enabled by default
+      status: item.status,
+      retries: item.retries,
+      lastDeliveryAt: item.lastDeliveryAt,
+      lastError: item.lastError,
+      deliveryHistory: [], // Would be populated from detailed logs if needed
+    }));
+
+    res.json({ data: webhooks });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * GET /api/webhooks/logs
