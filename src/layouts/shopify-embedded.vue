@@ -103,10 +103,16 @@ async function checkShopifyConnection() {
     console.log("[shopify-layout] Host string:", hostStr, "Shop string:", shopStr);
     
     // 6. Basit sağlık sorguları
+    console.log("[shopify-layout] 🔧 Starting health check...");
     try {
+      console.log("[shopify-layout] 🔧 Getting API base URL...");
       const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
+      console.log("[shopify-layout] 🔧 API base:", apiBase);
+      
       const healthUrl = `${apiBase.replace(/\/+$/, '')}/health`; // server health
       console.log('[shopify-layout] 🌡️ Checking health endpoint:', healthUrl);
+      
+      console.log("[shopify-layout] 🔧 Making fetch request...");
       const resp = await fetch(healthUrl, { credentials: 'include' }).catch(err => ({ ok: false, status: 0, err } as any));
       console.log('[shopify-layout] 🌡️ /health status:', (resp as any)?.status, 'ok:', (resp as any)?.ok);
     } catch (e) {
