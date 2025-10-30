@@ -34,10 +34,16 @@ type ShopifyGlobal = {
 declare global {
   interface Window {
     shopify?: ShopifyGlobal;
+    Shopify?: {
+      AppBridge?: {
+        createApp: Electricity config: { apiKey: string; host: string }) => ShopifyAppInstance;
+      };
+    };
   }
 }
 
-const shopifyApi = ref<ShopifyGlobal | null>(null);
+const shopifyApi = ref<ShopifyGlobal | ShopifyAppInstance | null>(null);
+const shopifyAppInstance = ref<ShopifyAppInstance | null>(null);
 const sessionToken = ref<string>("");
 const shopifyFetch = ref<typeof fetch | null>(null);
 const lastError = ref<string | null>(null);
@@ -189,7 +195,7 @@ function waitForShopifyApi(timeout = 15000): Promise<ShopifyGlobal> {
   });
 }
 
-async function getShopifySessionToken(api: ShopifyGlobal): Promise<string> {
+async function getShopifySessionToken(api: ShopifyGlobal | ShopifyAppInstance): Promise<string> {
   console.log("[shopify-layout] 🔑 Attempting to get session token..."); // Always log
   console.log("[shopify-layout] 🔑 Available API methods:", Object.keys(api)); // Always log
   debugLog("[shopify-layout] Attempting to get session token...");
