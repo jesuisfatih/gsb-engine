@@ -36,9 +36,17 @@ type ShopifyGlobal = {
   };
 };
 
+type ShopifyAppBridgeActions = {
+  SessionToken?: {
+    request?: (app: ShopifyAppInstance) => Promise<string | { token?: string }>;
+  };
+  [key: string]: any;
+};
+
 type AppBridgeModule = {
-  default?: (config: { apiKey: string; host: string }) => ShopifyAppInstance;
+  default?: (config: { apiKey: string; host: string }) => ShopifyAppInstance & { actions?: ShopifyAppBridgeActions };
   createApp?: (config: { apiKey: string; host: string }) => ShopifyAppInstance;
+  actions?: ShopifyAppBridgeActions;
 };
 
 type AppBridgeUtilsModule = {
@@ -240,13 +248,35 @@ function waitForAppBridgeResources(timeout = 15000): Promise<ShopifyRuntimeResou
 }
 
 async function getShopifySessionToken(options: {
+  appBridgeModule?: AppBridgeModule | null;
   appInstance?: ShopifyAppInstance | null;
   utilsModule?: AppBridgeUtilsModule | null;
   legacyApi?: ShopifyGlobal | null;
 }): Promise<string> {
-  const { appInstance, utilsModule, legacyApi } = options;
+  const { appBridgeModule, appInstance, utilsModule, legacyApi } = options;
 
   console.log("[shopify-layout] Attempting to get session token...");
+
+  if (appInstance && appBridgeModule) {
+    const moduleActions = (appBridgeModule as unknown as { actions?: ShopifyAppBridgeActions }).actions
+      ?? (appBridgeModule as unknown as { default?: { actions?: ShopifyAppBridgeActions } }).default?.actions;
+
+    const sessionTokenAction = moduleActions?.SessionToken ?? (moduleActions as any)?.sessionToken;
+    const requestFn = sessionTokenAction?.request;
+
+    if (typeof requestFn === "function") {
+      console.log("[shopify-layout] Using App Bridge actions.SessionToken.request()");
+      try {
+        const result = await requestFn(appInstance);
+        if (typeof result === "string" && result.length > 0)
+          return result;
+        if (result && typeof result === "object" && typeof result.token === "string" && result.token.length > 0)
+          return result.token;
+      } catch (error) {
+        console.error("[shopify-layout] actions.SessionToken.request() failed:", error);
+      }
+    }
+  }
 
   if (appInstance && utilsModule?.getSessionToken) {
     console.log("[shopify-layout] Using app-bridge-utils.getSessionToken");
@@ -337,7 +367,7 @@ async function bootstrapAppBridge() {
   try {
     const resources = await waitForAppBridgeResources();
     const { appBridgeModule, utilsModule } = resources;
-    const legacyApi = resources.legacyApi ?? resolveLegacyShopifyApi();
+    const initialLegacyApi = resources.legacyApi ?? resolveLegacyShopifyApi();
 
     let createAppFn: ((config: { apiKey: string; host: string }) => ShopifyAppInstance) | undefined;
     if (typeof appBridgeModule === "function") {
@@ -363,19 +393,14 @@ async function bootstrapAppBridge() {
       console.warn("[shopify-layout] App Bridge createApp function not available - falling back to legacy API");
     }
 
+    const updatedLegacyApi = resolveLegacyShopifyApi() ?? initialLegacyApi ?? null;
+
     shopifyAppInstance.value = appInstance;
-    shopifyApi.value = appInstance ?? legacyApi ?? null;
+    shopifyApi.value = appInstance ?? updatedLegacyApi;
 
-    const authenticatedFetch = appInstance && utilsModule?.authenticatedFetch
-      ? utilsModule.authenticatedFetch(appInstance)
-      : undefined;
-
-    if (authenticatedFetch) {
-      debugLog("[shopify-layout] Using authenticatedFetch from app-bridge-utils");
-      shopifyFetch.value = authenticatedFetch;
-    } else if (legacyApi?.fetch) {
+    if (updatedLegacyApi?.fetch) {
       debugLog("[shopify-layout] Using legacy embedded fetch implementation");
-      shopifyFetch.value = legacyApi.fetch.bind(legacyApi);
+      shopifyFetch.value = updatedLegacyApi.fetch.bind(updatedLegacyApi);
     } else {
       debugWarn("[shopify-layout] No authenticated fetch available; falling back to window.fetch");
       shopifyFetch.value = null;
@@ -386,9 +411,10 @@ async function bootstrapAppBridge() {
     lastError.value = null;
 
     const token = await getShopifySessionToken({
+      appBridgeModule,
       appInstance,
       utilsModule,
-      legacyApi,
+      legacyApi: updatedLegacyApi ?? undefined,
     });
 
     const tokenValue = token ?? "";
