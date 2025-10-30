@@ -30,9 +30,49 @@ const isAuthenticated = ref(false);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
+// Genel tanılama
+function dumpDiagnostics(stage: string) {
+  try {
+    const qs = new URLSearchParams(window.location.search);
+    const inIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
+    const topHref = (() => { try { return window.top?.location?.href; } catch { return 'cross-origin'; } })();
+    const referrer = document.referrer || 'N/A';
+    const hasMeta = !!document.querySelector('meta[name="shopify-api-key"]');
+    const hasScript = !!document.querySelector('script[src*="app-bridge.js"]');
+    const lsHost = typeof window !== 'undefined' ? window.localStorage.getItem('shopify:host') : null;
+    const authFetch = (window as any).__shopifyAuthenticatedFetch ? 'present' : 'absent';
+    console.log(`[shopify-layout] 🔎 Diagnostics @ ${stage}`, {
+      route: {
+        name: route.name,
+        path: route.path,
+        fullPath: route.fullPath,
+        meta: route.meta,
+        query: route.query,
+      },
+      location: {
+        href: window.location.href,
+        inIframe,
+        topHref,
+        referrer,
+      },
+      appBridge: {
+        meta: hasMeta,
+        script: hasScript,
+        windowShopifyType: typeof (window as any).shopify,
+      },
+      storage: { host: lsHost },
+      globals: { __shopifyAuthenticatedFetch: authFetch },
+      queryString: Object.fromEntries(qs.entries()),
+    });
+  } catch (e) {
+    console.warn('[shopify-layout] diagnostics failed', e);
+  }
+}
+
 // Shopify App Bridge kontrolü
 async function checkShopifyConnection() {
   console.log("[shopify-layout] 🔍 Checking Shopify connection...");
+  dumpDiagnostics('checkShopifyConnection/start');
   
   try {
     // 1. App Bridge script yüklendi mi?
@@ -54,6 +94,16 @@ async function checkShopifyConnection() {
     const shop = route.query.shop;
     console.log("[shopify-layout] Shop param:", shop);
     
+    // 6. Basit sağlık sorguları
+    try {
+      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
+      const healthUrl = `${apiBase.replace(/\/+$/, '')}/health`; // server health
+      const resp = await fetch(healthUrl, { credentials: 'include' }).catch(err => ({ ok: false, status: 0, err } as any));
+      console.log('[shopify-layout] 🌡️  /health status:', (resp as any)?.status, 'ok:', (resp as any)?.ok);
+    } catch (e) {
+      console.warn('[shopify-layout] health check failed', e);
+    }
+
     // Basit giriş simülasyonu
     if (host && shop) {
       console.log("[shopify-layout] ✅ Basic parameters present, simulating success");
@@ -68,12 +118,14 @@ async function checkShopifyConnection() {
     console.error("[shopify-layout] ❌ Error:", err);
     error.value = "Connection error";
   } finally {
+    dumpDiagnostics('checkShopifyConnection/end');
     loading.value = false;
   }
 }
 
 onMounted(() => {
   console.log("[shopify-layout] 🚀 Layout mounted, starting check...");
+  dumpDiagnostics('onMounted');
   checkShopifyConnection();
 });
 </script>
