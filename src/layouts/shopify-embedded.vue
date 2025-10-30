@@ -412,19 +412,56 @@ async function getShopifySessionToken(options: {
   }
 
   if (legacy?.idToken) {
-    console.log("[shopify-layout] Using legacy idToken() with timeout fallback");
+    console.log("[shopify-layout] Using legacy idToken() - waiting for App Bridge ready state...");
+    
+    // CRITICAL: Wait for App Bridge ready state before calling idToken()
+    // Modern App Bridge CDN requires this
+    const readyPromise = (legacy as any).ready;
+    if (readyPromise && typeof readyPromise === "function") {
+      console.log("[shopify-layout] Waiting for ready() function...");
+      try {
+        await Promise.race([
+          readyPromise(),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error("ready() timeout after 8 seconds")), 8000);
+          }),
+        ]);
+        console.log("[shopify-layout] ✅ App Bridge ready() completed");
+      } catch (error) {
+        console.error("[shopify-layout] ⚠️ ready() timeout or failed, proceeding anyway:", error);
+      }
+    } else if (readyPromise && readyPromise instanceof Promise) {
+      console.log("[shopify-layout] Waiting for ready Promise...");
+      try {
+        await Promise.race([
+          readyPromise,
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error("ready Promise timeout after 8 seconds")), 8000);
+          }),
+        ]);
+        console.log("[shopify-layout] ✅ App Bridge ready Promise resolved");
+      } catch (error) {
+        console.error("[shopify-layout] ⚠️ ready Promise timeout or failed, proceeding anyway:", error);
+      }
+    } else {
+      // No ready method, wait a bit for App Bridge to initialize
+      console.log("[shopify-layout] No ready() method found, waiting 3 seconds...");
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+    
     try {
+      console.log("[shopify-layout] Calling idToken()...");
       const token = await Promise.race([
         legacy.idToken(),
         new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("idToken() timeout after 10 seconds - App Bridge may not be fully ready")), 10000);
+          setTimeout(() => reject(new Error("idToken() timeout after 15 seconds")), 15000);
         }),
       ]);
-      if (!token) throw new Error("idToken() returned empty token");
-      console.log("[shopify-layout] Token received via idToken(), length:", token.length);
+      if (!token || token.length === 0) throw new Error("idToken() returned empty token");
+      console.log("[shopify-layout] ✅ Token received via idToken(), length:", token.length);
       return token;
     } catch (error) {
-      console.error("[shopify-layout] idToken() failed or timed out:", error);
+      console.error("[shopify-layout] ❌ idToken() failed or timed out:", error);
       throw error instanceof Error ? error : new Error("idToken() failed");
     }
   }
