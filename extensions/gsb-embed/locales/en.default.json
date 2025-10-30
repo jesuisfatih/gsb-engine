@@ -1,0 +1,29 @@
+{
+  "app_embed_name": "Gang Sheet Builder Loader",
+  "app_embed_settings": {
+    "button_label": "Button label",
+    "button_color": "Button background colour",
+    "button_text_color": "Button text colour",
+    "button_variant": "Button style",
+    "button_size": "Button size",
+    "button_icon": "Leading icon (optional)",
+    "button_shadow": "Custom CSS shadow",
+    "fallback_shortcode": "Fallback shortcode handle",
+    "open_mode": "Open editor in",
+    "return_url": "Return URL override",
+    "mobile_full_width": "Use full width on mobile",
+    "editor_url": "Editor URL",
+    "api_url": "Shortcode API URL",
+    "mapping_url": "Variant mapping API URL",
+    "script_url": "Loader script URL"
+  },
+  "app_embed_blocks": {
+    "product_button_name": "Gang Sheet Builder button",
+    "product_button_settings": {
+      "show_native_buttons": "Show default Buy buttons underneath"
+    }
+  },
+  "presets": {
+    "product_button": "Customize button"
+  }
+}
