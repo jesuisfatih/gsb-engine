@@ -355,6 +355,7 @@ async function exchangeShopifySession(token: string) {
     }
 
     debugLog("[shopify-layout] Session exchange successful, applying payload...");
+    console.log("[shopify-layout] ✅ Session exchange successful, applying payload..."); // Always log in production
     applySessionPayload(payload.data as ShopifySessionResponse);
     sessionIssuedFor.value = token;
     lastError.value = null;
@@ -364,6 +365,7 @@ async function exchangeShopifySession(token: string) {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     debugLog("[shopify-layout] Session applied - isAuthenticated:", isAuthenticated.value, "sessionStore.isAuthenticated:", sessionStore.isAuthenticated, "hasAccessToken:", !!sessionStore.accessToken);
+    console.log("[shopify-layout] ✅ Session applied - isAuthenticated:", isAuthenticated.value, "hasAccessToken:", !!sessionStore.accessToken); // Always log in production
   } catch (error: any) {
     const message = error?.message ?? "Bilinmeyen hata";
     debugError("[shopify-layout] Session exchange error:", error);
