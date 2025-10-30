@@ -195,23 +195,56 @@ function waitForShopifyApi(timeout = 15000): Promise<ShopifyGlobal> {
   });
 }
 
-async function getShopifySessionToken(api: ShopifyGlobal | ShopifyAppInstance): Promise<string> {
+ dB async function getShopifySessionToken(api: ShopifyGlobal | ShopifyAppInstance): Promise<string> {
   console.log("[shopify-layout] 🔑 Attempting to get session token..."); // Always log
   console.log("[shopify-layout] 🔑 Available API methods:", Object.keys(api)); // Always log
   debugLog("[shopify-layout] Attempting to get session token...");
   debugLog("[shopify-layout] Available API methods:", Object.keys(api));
   
-  // Try modern API first (sessionToken.get)
-  if (api.sessionToken && typeof api.sessionToken.get === "function") {
+  // Check sessionToken structure in detail
+  const sessionTokenObj = (api as any).sessionToken;
+  console.log("[shopify-layout] 🔍 sessionToken structure:", {
+    exists: !!sessionTokenObj,
+    type: typeof sessionTokenObj,
+    isObject: typeof sessionTokenObj === "object" && sessionTokenObj !== null,
+    keys: sessionTokenObj && typeof sessionTokenObj === "object" ? Object.keys(sessionTokenObj) : "N/A",
+    isFunction: typeof sessionTokenObj === "function"
+  }); // Always log
+  
+  // Try modern API - sessionToken.get()
+  if (sessionTokenObj && typeof sessionTokenObj.get === "function") {
     console.log("[shopify-layout] ✅ Using sessionToken.get()"); // Always log
     debugLog("[shopify-layout] Using sessionToken.get()");
     try {
-      const token = await api.sessionToken.get();
+      const token = await sessionTokenObj.get();
       console.log("[shopify-layout] ✅ Token received via sessionToken.get(), length:", token?.length || 0); // Always log
+      if (!token || token.length === 0) {
+        throw new Error("sessionToken.get() returned empty string");
+      }
       return token;
     } catch (error) {
       console.error("[shopify-layout] ❌ sessionToken.get() failed:", error); // Always log
       throw error;
+    }
+  }
+  
+  // Try sessionToken as direct function (if it's a function)
+  if (typeof sessionTokenObj === "function") {
+    console.log("[shopify-layout] ✅ Trying sessionToken as direct function..."); // Always log
+    try {
+      const token = await Promise.race([
+        sessionTokenObj(),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error("sessionToken() timeout after 8s")), 8000)
+        )
+      ]) as string;
+      console.log("[shopify-layout] ✅ Token received via sessionToken(), length:", token?.length || 0); // Always log
+      if (!token || token.length === 0) {
+        throw new Error("sessionToken() returned empty string");
+      }
+      return token;
+    } catch (error) {
+      console.error("[shopify-layout] ❌ sessionToken() failed:", error); // Always log
     }
   }
   
