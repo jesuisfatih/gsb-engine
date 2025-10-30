@@ -4,15 +4,16 @@
  */
 
 const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
+const forceDebug = import.meta.env.VITE_DEBUG === 'true' || (typeof window !== 'undefined' && (window as any).__GSB_DEBUG__);
 
 export const debugLog = (...args: unknown[]) => {
-  if (isDev) {
+  if (isDev || forceDebug) {
     console.log(...args);
   }
 };
 
 export const debugWarn = (...args: unknown[]) => {
-  if (isDev) {
+  if (isDev || forceDebug) {
     console.warn(...args);
   }
 };

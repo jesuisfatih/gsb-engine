@@ -168,6 +168,7 @@ export const useCatalogStore = defineStore("catalog", {
             const maxAttempts = 50; // 10 seconds (50 * 200ms)
             
             debugLog("[catalog] Waiting for session token in Shopify embedded context...");
+            console.log("[catalog] ⏳ Waiting for session token in Shopify embedded context..."); // Always log in production
             while (!session.accessToken && attempts < maxAttempts) {
               // Re-check session store each iteration (reactive)
               await new Promise(resolve => setTimeout(resolve, 200));
@@ -176,6 +177,7 @@ export const useCatalogStore = defineStore("catalog", {
               // Check again after delay - session might have been set reactively
               if (session.accessToken) {
                 debugLog("[catalog] Session token received after", attempts * 200, "ms");
+                console.log("[catalog] ✅ Session token received after", attempts * 200, "ms"); // Always log in production
                 break;
               }
             }
@@ -183,6 +185,7 @@ export const useCatalogStore = defineStore("catalog", {
             // If still no token after waiting, use seed data but don't mark as loaded
             if (!session.accessToken) {
               debugWarn("[catalog] Session not ready after waiting", maxAttempts * 200, "ms, using seed data temporarily");
+              console.warn("[catalog] ⚠️ Session not ready after waiting", maxAttempts * 200, "ms, using seed data temporarily"); // Always log in production
               const fallback = await fetchSeedCatalog();
               this.products = clone(fallback.map(normalizeProduct));
               this.loaded = false;
