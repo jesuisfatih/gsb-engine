@@ -332,7 +332,7 @@ export async function deleteVariantSurfaceMapping(shopifyVariantId: string): Pro
 }
 
 export async function fetchShopifyProducts(): Promise<ShopifyProductSummary[]> {
-  const response = await $api<ShopifyProductSummary[]>("/shopify/products");
+  const response = await $api<{ data: ShopifyProductSummary[] }>("/shopify/products");
   return response.data ?? [];
 }
 
@@ -341,6 +341,6 @@ export async function fetchShopifyVariants(productId: string): Promise<ShopifyVa
   const numericId = productId.includes("/") 
     ? productId.split("/").pop() 
     : productId;
-  const response = await $api<ShopifyVariantSummary[]>(`/shopify/products/${encodeURIComponent(numericId)}/variants`);
+  const response = await $api<{ data: ShopifyVariantSummary[] }>(`/shopify/products/${encodeURIComponent(numericId)}/variants`);
   return response.data ?? [];
 }
