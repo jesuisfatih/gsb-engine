@@ -113,7 +113,8 @@ export default defineConfig(({ mode }) => ({
           const headEndIndex = transformed.indexOf(headTag) + headTag.length;
           
           // Modern App Bridge: use meta tag for API key, script tag without data-api-key
-          const appBridgeTags = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <meta name="shopify-api-key" content="${apiKey}" />\n  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>`;
+          // IMPORTANT: type="text/javascript" prevents Vite from transforming this script tag
+          const appBridgeTags = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <meta name="shopify-api-key" content="${apiKey}" />\n  <script type="text/javascript" src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>`;
           transformed = transformed.slice(0, headEndIndex) + appBridgeTags + transformed.slice(headEndIndex);
         }
         
