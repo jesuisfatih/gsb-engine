@@ -58,7 +58,6 @@ async function loadDashboardData() {
       $api<{ data: { total: number; last7Days: number; byStatus: Record<string, number>; pending: number; approved: number } }>("/designs/stats"),
     ]);
 
-    console.log("[dashboard] Loaded stats:", { ordersRes, gangSheetsRes, designsRes });
 
     stats.value = {
       pendingOrders: ordersRes.data?.pendingFulfillment ?? 0,

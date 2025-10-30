@@ -379,15 +379,12 @@ watch(
       return;
     }
 
-    console.log('[canvas] Loading product background:', previewImageUrl);
     loadHTMLImageFromURL(previewImageUrl)
       .then(img => {
         productBackgroundImage.value = img;
-        console.log('[canvas] Product background loaded:', img.width, 'x', img.height);
         nextTick(() => stage.value?.batchDraw?.());
       })
-      .catch(err => {
-        console.error('[canvas] Failed to load product background:', err);
+      .catch(() => {
         productBackgroundImage.value = null;
       });
   },
