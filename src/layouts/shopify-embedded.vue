@@ -284,7 +284,6 @@ async function bootstrapAppBridge() {
     
     debugLog("[shopify-layout] Waiting for Shopify App Bridge to initialize...");
     const api = await waitForShopifyApi();
-ար.
 
     shopifyApi.value = api;
     lastError.value = null;
