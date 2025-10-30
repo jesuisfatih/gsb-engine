@@ -195,7 +195,7 @@ function waitForShopifyApi(timeout = 15000): Promise<ShopifyGlobal> {
   });
 }
 
- dB async function getShopifySessionToken(api: ShopifyGlobal | ShopifyAppInstance): Promise<string> {
+async function getShopifySessionToken(api: ShopifyGlobal | ShopifyAppInstance): Promise<string> {
   console.log("[shopify-layout] 🔑 Attempting to get session token..."); // Always log
   console.log("[shopify-layout] 🔑 Available API methods:", Object.keys(api)); // Always log
   debugLog("[shopify-layout] Attempting to get session token...");
