@@ -1,4 +1,4 @@
-﻿import type { App } from "vue";
+import type { App } from "vue";
 import { store } from "./2.pinia";
 import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
 

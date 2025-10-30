@@ -2,13 +2,18 @@
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
-import { computed, onMounted, provide, ref, watch } from "vue";
+import { computed, onMounted, provide, ref, watch, Component as VueComponent } from "vue";
 import { useRoute } from "vue-router";
+import { 
+  LayoutDashboard, Rocket, Package, Receipt, Palette, Layers, 
+  Settings, Grid3x3, Wrench, Image as ImageIcon, Sparkles, Images, Printer, 
+  Spray, DollarSign, Users, BarChart3, CreditCard, Star, ArrowLeft, ShieldCheck, Search 
+} from 'lucide-vue-next';
 
 type NavSection = {
   title: string;
   items: Array<{
-    icon: string;
+    icon: VueComponent;
     label: string;
     name: string;
   }>;
@@ -164,40 +169,40 @@ const navSections: NavSection[] = [
   {
     title: "Get Started",
     items: [
-      { icon: "mdi-view-dashboard", label: "Welcome", name: "shopify-embedded-welcome" },
-      { icon: "mdi-rocket-launch", label: "Set up", name: "shopify-embedded-setup" },
+      { icon: LayoutDashboard, label: "Welcome", name: "shopify-embedded-welcome" },
+      { icon: Rocket, label: "Set up", name: "shopify-embedded-setup" },
     ],
   },
   {
     title: "Commerce",
     items: [
-      { icon: "mdi-package-variant", label: "Catalog & Surfaces", name: "shopify-embedded-catalog" },
-      { icon: "mdi-receipt-text", label: "Orders", name: "shopify-embedded-orders" },
-      { icon: "mdi-palette", label: "Designs", name: "shopify-embedded-designs" },
-      { icon: "mdi-layers", label: "Templates", name: "shopify-embedded-templates" },
+      { icon: Package, label: "Catalog & Surfaces", name: "shopify-embedded-catalog" },
+      { icon: Receipt, label: "Orders", name: "shopify-embedded-orders" },
+      { icon: Palette, label: "Designs", name: "shopify-embedded-designs" },
+      { icon: Layers, label: "Templates", name: "shopify-embedded-templates" },
     ],
   },
   {
     title: "Configuration",
     items: [
-      { icon: "mdi-cog", label: "General", name: "shopify-embedded-general" },
-      { icon: "mdi-view-grid", label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
-      { icon: "mdi-tools", label: "Builder", name: "shopify-embedded-builder" },
-      { icon: "mdi-image", label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
-      { icon: "mdi-palette-swatch", label: "Appearance", name: "shopify-embedded-appearance" },
-      { icon: "mdi-image-multiple", label: "Gallery Images", name: "shopify-embedded-gallery-images" },
-      { icon: "mdi-printer", label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
-      { icon: "mdi-spray", label: "Print Techniques", name: "shopify-embedded-print-techniques" },
-      { icon: "mdi-receipt", label: "Pricing & Billing", name: "shopify-embedded-pricing" },
+      { icon: Settings, label: "General", name: "shopify-embedded-general" },
+      { icon: Grid3x3, label: "Gang Sheet", name: "shopify-embedded-gang-sheet" },
+      { icon: Wrench, label: "Builder", name: "shopify-embedded-builder" },
+      { icon: ImageIcon, label: "Image to Sheet", name: "shopify-embedded-image-to-sheet" },
+      { icon: Sparkles, label: "Appearance", name: "shopify-embedded-appearance" },
+      { icon: Images, label: "Gallery Images", name: "shopify-embedded-gallery-images" },
+      { icon: Printer, label: "Print on Demand", name: "shopify-embedded-print-on-demand" },
+      { icon: Spray, label: "Print Techniques", name: "shopify-embedded-print-techniques" },
+      { icon: DollarSign, label: "Pricing & Billing", name: "shopify-embedded-pricing" },
     ],
   },
   {
     title: "Operations",
     items: [
-      { icon: "mdi-account-group", label: "Customers", name: "shopify-embedded-customers" },
-      { icon: "mdi-chart-bar", label: "Analytics", name: "shopify-embedded-analytics" },
-      { icon: "mdi-credit-card", label: "Payments", name: "shopify-embedded-payments" },
-      { icon: "mdi-star", label: "Reviews", name: "shopify-embedded-reviews" },
+      { icon: Users, label: "Customers", name: "shopify-embedded-customers" },
+      { icon: BarChart3, label: "Analytics", name: "shopify-embedded-analytics" },
+      { icon: CreditCard, label: "Payments", name: "shopify-embedded-payments" },
+      { icon: Star, label: "Reviews", name: "shopify-embedded-reviews" },
     ],
   },
 ];
@@ -613,7 +618,7 @@ provide("shopifyShopDomain", shopDomain);
     <header class="topbar">
       <div class="topbar-left">
         <button type="button" class="icon-button" aria-label="Back">
-          <VIcon icon="mdi-arrow-left" size="18" />
+          <ArrowLeft :size="18" :stroke-width="2" />
         </button>
         <div class="brand">
           <span class="brand-title">Build a Gang Sheet</span>
@@ -630,7 +635,7 @@ provide("shopifyShopDomain", shopDomain);
 
       <div class="topbar-right">
         <span class="status-chip" :data-tone="statusBadge.tone">
-          <VIcon icon="mdi-shield-check" size="16" />
+          <ShieldCheck :size="16" :stroke-width="2" />
           {{ statusBadge.text }}
         </span>
         <div class="topbar-search">
@@ -639,8 +644,11 @@ provide("shopifyShopDomain", shopDomain);
             placeholder="Search"
             variant="solo"
             hide-details
-            prepend-inner-icon="mdi-magnify"
-          />
+          >
+            <template #prepend-inner>
+              <Search :size="18" :stroke-width="2" />
+            </template>
+          </VTextField>
         </div>
         <VBtn color="primary" variant="flat">New action</VBtn>
       </div>
@@ -664,7 +672,7 @@ provide("shopifyShopDomain", shopDomain);
                   :class="{ 'is-active': activeNavName === item.name }"
                 >
                   <span class="nav-icon">
-                    <VIcon :icon="item.icon" size="18" />
+                    <component :is="item.icon" :size="18" :stroke-width="2" />
                   </span>
                   <span class="nav-text">{{ item.label }}</span>
                 </RouterLink>
@@ -700,23 +708,24 @@ provide("shopifyShopDomain", shopDomain);
 .embedded-frame {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  background: linear-gradient(180deg, #f8f9ff 0%, #eef1ff 60%, #ffffff 100%);
+  background: linear-gradient(180deg, #f8f9ff 0%, #eef1ff 60%, #fff 100%);
   color: #242849;
+  min-block-size: 100vh;
 }
 
 .topbar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 24px;
-  padding: 24px 36px;
-  background: #ffffff;
-  border-bottom: 1px solid rgba(137, 149, 255, 0.25);
-  box-shadow: 0 18px 28px -22px rgba(61, 63, 152, 0.45);
   position: sticky;
-  top: 0;
   z-index: 10;
+  display: grid;
+  align-items: center;
+  background: #fff;
+  border-block-end: 1px solid rgba(137, 149, 255, 25%);
+  box-shadow: 0 18px 28px -22px rgba(61, 63, 152, 45%);
+  gap: 24px;
+  grid-template-columns: auto 1fr auto;
+  inset-block-start: 0;
+  padding-block: 24px;
+  padding-inline: 36px;
 }
 
 .topbar-left {
@@ -726,24 +735,25 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .icon-button {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: 12px;
   border: 1px solid rgba(93, 90, 241, 0.12);
+  border-radius: 12px;
   background: rgba(93, 90, 241, 0.08);
   color: #4536d3;
-  transition: background 0.2s ease, transform 0.2s ease;
   cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
-.icon-button :deep(.v-icon) {
-  color: currentColor;
+.icon-button svg {
+  stroke: currentColor;
 }
 
 .icon-button:hover {
-  background: rgba(93, 90, 241, 0.18);
+  background: rgba(93, 90, 241, 18%);
   transform: translateX(-2px);
 }
 
@@ -760,8 +770,8 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .brand-subtle {
+  color: rgba(36, 40, 73, 60%);
   font-size: 0.85rem;
-  color: rgba(36, 40, 73, 0.6);
 }
 
 .topbar-center {
@@ -773,15 +783,15 @@ provide("shopifyShopDomain", shopDomain);
 
 .page-title {
   margin: 0;
+  color: #1e2055;
   font-size: 1.35rem;
   font-weight: 700;
-  color: #1e2055;
 }
 
 .page-subtitle {
   margin: 0;
+  color: rgba(36, 40, 73, 65%);
   font-size: 0.95rem;
-  color: rgba(36, 40, 73, 0.65);
 }
 
 .topbar-right {
@@ -796,48 +806,49 @@ provide("shopifyShopDomain", shopDomain);
   gap: 8px;
   padding: 6px 12px;
   border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
   background: rgba(96, 92, 220, 0.12);
   color: #5d5af1;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
-.status-chip :deep(.v-icon) {
-  color: currentColor;
+.status-chip svg {
+  stroke: currentColor;
 }
 
 .status-chip[data-tone="critical"] {
-  background: rgba(220, 73, 92, 0.12);
+  background: rgba(220, 73, 92, 12%);
   color: #d14358;
 }
 
 .status-chip[data-tone="warning"] {
-  background: rgba(255, 186, 73, 0.16);
+  background: rgba(255, 186, 73, 16%);
   color: #b06800;
 }
 
 .status-chip[data-tone="success"] {
-  background: rgba(65, 180, 125, 0.16);
+  background: rgba(65, 180, 125, 16%);
   color: #2e8c5d;
 }
 
 .topbar-search {
-  width: 220px;
+  inline-size: 220px;
 }
 
 .content-shell {
   display: grid;
   grid-template-columns: 280px 1fr;
-  min-height: calc(100vh - 96px);
+  min-block-size: calc(100vh - 96px);
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
+  background: linear-gradient(180deg, #fff 0%, #f4f5ff 45%, #f9f9ff 100%);
+  border-inline-end: 1px solid rgba(137, 149, 255, 18%);
   gap: 28px;
-  padding: 32px 24px;
-  background: linear-gradient(180deg, #ffffff 0%, #f4f5ff 45%, #f9f9ff 100%);
-  border-right: 1px solid rgba(137, 149, 255, 0.18);
+  padding-block: 32px;
+  padding-inline: 24px;
 }
 
 .sidebar-header {
@@ -847,14 +858,14 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .sidebar-title {
+  color: #1e2055;
   font-size: 0.92rem;
   font-weight: 700;
-  color: #1e2055;
 }
 
 .sidebar-subtitle {
+  color: rgba(36, 40, 73, 60%);
   font-size: 0.85rem;
-  color: rgba(36, 40, 73, 0.6);
 }
 
 .sidebar-nav {
@@ -864,74 +875,67 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .nav-section {
-  margin: 0 0 10px;
+  color: rgba(65, 70, 110, 50%);
   font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   font-weight: 600;
-  color: rgba(65, 70, 110, 0.5);
+  letter-spacing: 0.08em;
+  margin-block: 0 10px;
+  margin-inline: 0;
   padding-inline: 10px;
+  text-transform: uppercase;
 }
 
 .nav-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
+  padding: 0;
+  margin: 0;
   gap: 6px;
+  list-style: none;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
   border-radius: 12px;
-  text-decoration: none;
-  color: rgba(35, 40, 80, 0.85);
+  color: rgba(35, 40, 80, 85%);
   font-size: 0.95rem;
   font-weight: 500;
+  gap: 12px;
+  padding-block: 12px;
+  padding-inline: 16px;
+  text-decoration: none;
   transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .nav-link:hover {
-  background: rgba(96, 92, 220, 0.15);
+  background: rgba(96, 92, 220, 15%);
   color: #4631b8;
   transform: translateX(4px);
 }
 
 .nav-link.is-active {
   background: linear-gradient(120deg, #5d5af1 0%, #a855f7 100%);
-  color: #ffffff;
-  box-shadow: 0 18px 32px -18px rgba(93, 90, 241, 0.9);
+  box-shadow: 0 18px 32px -18px rgba(93, 90, 241, 90%);
+  color: #fff;
 }
 
 .nav-icon {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 22px;
   height: 22px;
   color: #4a4a6a;
 }
 
-.nav-icon :deep(.v-icon) {
-  display: grid;
-  width: 100%;
-  height: 100%;
-  place-items: center;
-  color: currentColor;
-  font-size: 20px;
-}
-
-.nav-icon :deep(.v-icon > i),
-.nav-icon :deep(.v-icon > span),
-.nav-icon :deep(.v-icon > svg) {
-  width: 100%;
-  height: 100%;
+.nav-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
 }
 
 .nav-link.is-active .nav-icon {
-  color: #ffffff;
+  color: #fff;
 }
 
 .workspace {
@@ -941,9 +945,9 @@ provide("shopifyShopDomain", shopDomain);
 }
 
 .workspace :deep(.card) {
-  border: 1px solid rgba(90, 96, 164, 0.12);
-  background: #ffffff;
-  box-shadow: 0 18px 32px -24px rgba(89, 70, 201, 0.25);
+  border: 1px solid rgba(90, 96, 164, 12%);
+  background: #fff;
+  box-shadow: 0 18px 32px -24px rgba(89, 70, 201, 25%);
 }
 
 .auth-pending {
@@ -951,16 +955,17 @@ provide("shopifyShopDomain", shopDomain);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgba(28, 31, 63, 0.7);
+  color: rgba(28, 31, 63, 70%);
   font-size: 0.95rem;
   gap: 16px;
-  min-height: 60vh;
+  min-block-size: 60vh;
 }
 
 .auth-error {
   padding: 24px;
-  margin: 0 auto;
-  max-width: 600px;
+  margin-block: 0;
+  margin-inline: auto;
+  max-inline-size: 600px;
 }
 
 @media (max-width: 1080px) {
