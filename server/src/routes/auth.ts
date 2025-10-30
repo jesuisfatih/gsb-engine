@@ -80,29 +80,65 @@ function extractShopDomain(payload: ShopifySessionPayload, fallback?: string) {
   }
 
   console.log("[shopify-auth] 🔍 Extracting shop domain from candidates:", candidates);
+  console.log("[shopify-auth] 📋 Payload:", {
+    dest: payload.dest,
+    iss: payload.iss,
+    fallback,
+  });
 
   for (const candidate of candidates) {
     try {
+      // First, try direct myshopify.com match (e.g., "we-dream-studio.myshopify.com")
+      const directMatch = candidate.match(/([a-z0-9-]+\.myshopify\.com)/i);
+      if (directMatch) {
+        const domain = directMatch[1].toLowerCase();
+        console.log("[shopify-auth] ✅ Shop domain extracted via direct match:", domain);
+        return domain;
+      }
+      
+      // Try URL parsing
       let url: URL;
       if (candidate.startsWith("http://") || candidate.startsWith("https://")) {
         url = new URL(candidate);
       } else {
+        // Try to parse as URL anyway
         url = new URL(`https://${candidate}`);
       }
       
       const host = url.hostname.toLowerCase();
-      console.log("[shopify-auth]   Trying candidate:", candidate, "→ hostname:", host);
+      console.log("[shopify-auth]   Trying candidate:", candidate, "→ hostname:", host, "pathname:", url.pathname);
       
+      // Check if hostname is myshopify.com domain
       if (host.endsWith(".myshopify.com")) {
-        console.log("[shopify-auth] ✅ Shop domain extracted:", host);
+        console.log("[shopify-auth] ✅ Shop domain extracted from hostname:", host);
         return host;
       }
+      
+      // Check path segments for shop name (e.g., /store/we-dream-studio)
+      const pathMatch = url.pathname.match(/\/store\/([a-z0-9-]+)/i);
+      if (pathMatch) {
+        const shopName = pathMatch[1];
+        const domain = `${shopName}.myshopify.com`;
+        console.log("[shopify-auth] ✅ Shop domain extracted from path:", domain);
+        return domain;
+      }
+      
+      // Check if hostname contains admin.shopify.com and path has shop info
+      if (host.includes("admin.shopify.com") || host.includes("shopify.com")) {
+        // Try to extract from pathname (e.g., /store/we-dream-studio)
+        const storeMatch = url.pathname.match(/store\/([a-z0-9-]+)/i);
+        if (storeMatch) {
+          const domain = `${storeMatch[1]}.myshopify.com`;
+          console.log("[shopify-auth] ✅ Shop domain extracted from admin URL:", domain);
+          return domain;
+        }
+      }
     } catch (error) {
-      // Try regex match for myshopify.com domain pattern
+      // Try regex match for myshopify.com domain pattern as fallback
       const match = candidate.match(/([a-z0-9-]+\.myshopify\.com)/i);
       if (match) {
         const domain = match[1].toLowerCase();
-        console.log("[shopify-auth] ✅ Shop domain extracted via regex:", domain);
+        console.log("[shopify-auth] ✅ Shop domain extracted via regex fallback:", domain);
         return domain;
       }
       console.log("[shopify-auth]   Failed to parse candidate:", candidate, error instanceof Error ? error.message : String(error));
@@ -110,6 +146,7 @@ function extractShopDomain(payload: ShopifySessionPayload, fallback?: string) {
   }
   
   console.warn("[shopify-auth] ❌ Unable to extract shop domain from any candidate");
+  console.warn("[shopify-auth] 📋 Final payload dump:", JSON.stringify(payload, null, 2));
   return null;
 }
 
