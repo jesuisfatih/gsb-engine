@@ -6,14 +6,18 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { VueRouterAutoImports, getPascalCaseRouteName } from 'unplugin-vue-router'
 import VueRouter from 'unplugin-vue-router/vite'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 //import VueDevTools from 'vite-plugin-vue-devtools'
 import MetaLayouts from 'vite-plugin-vue-meta-layouts'
 import vuetify from 'vite-plugin-vuetify'
 import svgLoader from 'vite-svg-loader'
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+// https://vitejs.devidak/config/
+export default defineConfig(({ mode }) => {
+  // Load env variables for build
+  const env = loadEnv(mode, process.cwd(), '')
+  
+  return {
   plugins: [
     // Docs: https://github.com/posva/unplugin-vue-router
     // ℹ️ This plugin should be placed before vue plugin
@@ -91,12 +95,34 @@ export default defineConfig(({ mode }) => ({
     }),
     svgLoader(),
     {
-      name: 'html-transform',
+      name: 'html-transform-app-bridge',
+      enforce: 'post', // Run AFTER Vite's HTML transforms to ensure correct order
       transformIndexHtml(html) {
-        return html.replace(
-          /%VITE_SHOPIFY_APP_API_KEY%/g,
-          process.env.VITE_SHOPIFY_APP_API_KEY || process.env.VITE_SHOPIFY_API_KEY || ''
-        )
+        const apiKey = env.VITE_SHOPIFY_APP_API_KEY || env.VITE_SHOPIFY_API_KEY || '';
+        
+        if (!apiKey) {
+          console.warn('[vite-plugin-app-bridge] VITE_SHOPIFY_APP_API_KEY not found, skipping App Bridge setup');
+          return html;
+        }
+        
+        // Remove any existing App Bridge meta tags and script tags
+        let transformed = html.replace(/<meta[^>]*name=["']shopify-api-key["'][^>]*>/gi, '');
+        transformed = transformed.replace(/<script[^>]*app-bridge[^>]*><\/script>/gi, '');
+        
+        // Find <head> tag and insert App Bridge meta + script immediately after it
+        // According to Shopify docs: meta tag first, then script tag (no data-api-key attribute)
+        const headMatch = transformed.match(/<head[^>]*>/i);
+        if (headMatch) {
+          const headTag = headMatch[0];
+          const headEndIndex = transformed.indexOf(headTag) + headTag.length;
+          
+          // Modern App Bridge: use meta tag for API key, script tag without data-api-key
+          // IMPORTANT: type="text/javascript" prevents Vite from transforming this script tag
+          const appBridgeTags = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <meta name="shopify-api-key" content="${apiKey}" />\n  <script type="text/javascript" src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>`;
+          transformed = transformed.slice(0, headEndIndex) + appBridgeTags + transformed.slice(headEndIndex);
+        }
+        
+        return transformed;
       },
     },
   ],
@@ -128,9 +154,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     proxy: {
       '/api': {
-        target: process.env.VITE_API_PROXY || 'http://localhost:4000',
+        target: env.VITE_API_PROXY || 'http://localhost:4000',
         changeOrigin: true,
       },
     },
   },
-}))
+  }
+})
