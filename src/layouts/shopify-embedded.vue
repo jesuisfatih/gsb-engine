@@ -186,21 +186,40 @@ function waitForShopifyApi(timeout = 15000): Promise<ShopifyGlobal> {
 }
 
 async function getShopifySessionToken(api: ShopifyGlobal): Promise<string> {
+  console.log("[shopify-layout] 🔑 Attempting to get session token..."); // Always log
+  console.log("[shopify-layout] 🔑 Available API methods:", Object.keys(api)); // Always log
   debugLog("[shopify-layout] Attempting to get session token...");
   debugLog("[shopify-layout] Available API methods:", Object.keys(api));
   
   // Try modern API first (sessionToken.get)
   if (api.sessionToken && typeof api.sessionToken.get === "function") {
+    console.log("[shopify-layout] ✅ Using sessionToken.get()"); // Always log
     debugLog("[shopify-layout] Using sessionToken.get()");
-    return api.sessionToken.get();
+    try {
+      const token = await api.sessionToken.get();
+      console.log("[shopify-layout] ✅ Token received via sessionToken.get(), length:", token?.length || 0); // Always log
+      return token;
+    } catch (error) {
+      console.error("[shopify-layout] ❌ sessionToken.get() failed:", error); // Always log
+      throw error;
+    }
   }
   
   // Try legacy API (idToken)
   if (typeof api.idToken === "function") {
+    console.log("[shopify-layout] ✅ Using idToken()"); // Always log
     debugLog("[shopify-layout] Using idToken()");
-    return api.idToken();
+    try {
+      const token = await api.idToken();
+      console.log("[shopify-layout] ✅ Token received via idToken(), length:", token?.length || 0); // Always log
+      return token;
+    } catch (error) {
+      console.error("[shopify-layout] ❌ idToken() failed:", error); // Always log
+      throw error;
+    }
   }
   
+  console.error("[shopify-layout] ❌ No session token API available. API structure:", api); // Always log
   debugError("[shopify-layout] No session token API available. API structure:", api);
   throw new Error("Shopify session token API not available");
 }
