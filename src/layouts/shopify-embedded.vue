@@ -114,16 +114,16 @@ async function checkShopifyConnection() {
       
       console.log("[shopify-layout] 🔧 Making fetch request...");
       
-      // Add timeout to health check (5 seconds max)
-      const healthCheckPromise = fetch(healthUrl, { 
-        credentials: 'include',
-        signal: AbortSignal.timeout(5000), // 5 second timeout
-      });
+      // Add timeout to health check (5 seconds max) - use Promise.race for compatibility
+      const healthCheckPromise = fetch(healthUrl, { credentials: 'include' });
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Health check timeout after 5s')), 5000)
+      );
       
-      const resp = await healthCheckPromise
+      const resp = await Promise.race([healthCheckPromise, timeoutPromise])
         .then(r => {
-          console.log('[shopify-layout] 🌡️ /health status:', r.status, 'ok:', r.ok);
-          return r;
+          console.log('[shopify-layout] 🌡️ /health status:', (r as Response).status, 'ok:', (r as Response).ok);
+          return r as Response;
         })
         .catch(err => {
           console.warn('[shopify-layout] ⚠️ Health check failed:', err?.message || err);
