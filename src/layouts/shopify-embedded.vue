@@ -91,11 +91,16 @@ async function checkShopifyConnection() {
     
     // 4. Host parametresi var mı?
     const host = route.query.host;
-    console.log("[shopify-layout] Host param:", host);
+    console.log("[shopify-layout] Host param:", host, "type:", typeof host);
     
     // 5. Shop parametresi var mı?
     const shop = route.query.shop;
-    console.log("[shopify-layout] Shop param:", shop);
+    console.log("[shopify-layout] Shop param:", shop, "type:", typeof shop);
+    
+    // 6. String kontrolü
+    const hostStr = typeof host === 'string' ? host : String(host || '');
+    const shopStr = typeof shop === 'string' ? shop : String(shop || '');
+    console.log("[shopify-layout] Host string:", hostStr, "Shop string:", shopStr);
     
     // 6. Basit sağlık sorguları
     try {
@@ -108,7 +113,12 @@ async function checkShopifyConnection() {
     }
 
     // 7. Session token exchange
-    if (host && shop) {
+    console.log("[shopify-layout] 🔍 Checking conditions for session exchange...");
+    console.log("[shopify-layout] - host exists:", !!host, "shop exists:", !!shop);
+    console.log("[shopify-layout] - host type:", typeof host, "shop type:", typeof shop);
+    console.log("[shopify-layout] - hostStr length:", hostStr.length, "shopStr length:", shopStr.length);
+    
+    if (hostStr && shopStr) {
       console.log("[shopify-layout] 🔑 Waiting for App Bridge to be ready...");
       
       // Wait for App Bridge to be fully loaded
@@ -159,7 +169,7 @@ async function checkShopifyConnection() {
             'Authorization': `Bearer ${token}`,
           },
           credentials: 'include',
-          body: JSON.stringify({ token, shop }),
+          body: JSON.stringify({ token, shop: shopStr }),
         });
         
         console.log("[shopify-layout] 📡 Session exchange response status:", response.status);
