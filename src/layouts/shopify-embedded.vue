@@ -333,7 +333,7 @@ async function bootstrapAppBridge() {
     console.log("[shopify-layout] 🔍 window.Shopify?.AppBridge:", window.Shopify?.AppBridge); // Always log
     console.log("[shopify-layout] 🔍 window.shopify?.AppBridge:", (api as any).AppBridge); // Always log
     
-    const AppBridgeCreateApp = window.Shopify?.AppBridge homemade createApp || (api as any).AppBridge?.createApp;
+    const AppBridgeCreateApp = window.Shopify?.AppBridge?.createApp || (api as any).AppBridge?.createApp;
     
     if (AppBridgeCreateApp && typeof AppBridgeCreateApp === "function") {
       console.log("[shopify-layout] ✅ Found createApp, creating App Bridge instance..."); // Always log
