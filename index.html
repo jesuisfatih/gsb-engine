@@ -2,12 +2,13 @@
 <html lang="en">
 
 <head>
+  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->
+  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" data-api-key="%VITE_SHOPIFY_APP_API_KEY%"></script>
   <meta charset="UTF-8" />
   <link rel="icon" href="/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy"
     content="frame-ancestors https://admin.shopify.com https://*.myshopify.com;" />
-  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" data-api-key="%VITE_SHOPIFY_APP_API_KEY%"></script>
   <title>GSB-DT PLATFORM</title>
   <link rel="stylesheet" type="text/css" href="/loader.css" />
 </head>
