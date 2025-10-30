@@ -536,6 +536,11 @@ authRouter.get("/shopify/session", async (req, res) => {
 
 authRouter.post("/shopify/session", async (req, res, next) => {
   try {
+    console.log("[shopify-auth] 🚨 POST /shopify/session received!");
+    console.log("[shopify-auth] Raw body:", req.body);
+    console.log("[shopify-auth] Content-Type:", req.get("content-type"));
+    console.log("[shopify-auth] Headers:", JSON.stringify(req.headers, null, 2));
+    
     const { token: bodyToken, shop } = shopifySessionSchema.parse(req.body ?? {});
     const authHeader = req.get("authorization") || req.get("Authorization") || "";
     const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
