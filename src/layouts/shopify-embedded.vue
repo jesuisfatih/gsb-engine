@@ -509,7 +509,7 @@ async function bootstrapAppBridge() {
     // No need for createApp() - just use window.shopify directly
     // See: https://shopify.dev/docs/api/app-bridge-library
     console.log("[shopify-layout] ⏳ Waiting for window.shopify global...");
-    let shopifyGlobal: typeof window.shopify<｜place▁holder▁no▁28｜> null;
+    let shopifyGlobal: typeof window.shopify | null = null;
     
     // Wait up to 10 seconds for window.shopify to appear
     for (let i = 0; i < 40; i++) {
