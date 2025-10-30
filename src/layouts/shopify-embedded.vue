@@ -168,12 +168,47 @@ async function checkShopifyConnection() {
       try {
         // Get token from App Bridge
         const shopify = (window as any).shopify;
-        const token = await Promise.race([
-          shopify.idToken(),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('idToken() timeout after 15s')), 15000)
-          ),
-        ]);
+        console.log("[shopify-layout] 🔍 shopify object:", typeof shopify, "idToken type:", typeof shopify?.idToken);
+        
+        // Wait for App Bridge to be ready before calling idToken
+        if (typeof shopify?.ready === 'function') {
+          console.log("[shopify-layout] ⏳ Waiting for shopify.ready()...");
+          try {
+            await shopify.ready();
+            console.log("[shopify-layout] ✅ shopify.ready() resolved");
+          } catch (readyError) {
+            console.warn("[shopify-layout] ⚠️ shopify.ready() failed:", readyError);
+          }
+        }
+        
+        console.log("[shopify-layout] 🔑 Calling shopify.idToken()...");
+        
+        // Create timeout promise with logging
+        let timeoutFired = false;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            timeoutFired = true;
+            console.error("[shopify-layout] ⏱️ TIMEOUT: idToken() did not resolve within 15s");
+            reject(new Error('idToken() timeout after 15s'));
+          }, 15000);
+        });
+        
+        // Create idToken promise with logging
+        const idTokenPromise = shopify.idToken().then(token => {
+          if (timeoutFired) {
+            console.warn("[shopify-layout] ⚠️ Token received but timeout already fired");
+          } else {
+            console.log("[shopify-layout] ✅ idToken() promise resolved");
+          }
+          return token;
+        }).catch(err => {
+          console.error("[shopify-layout] ❌ idToken() promise rejected:", err);
+          throw err;
+        });
+        
+        const token = await Promise.race([idTokenPromise, timeoutPromise]);
+        
+        console.log("[shopify-layout] 🔍 Token received, type:", typeof token, "length:", token?.length);
         
         if (!token || typeof token !== 'string' || token.length === 0) {
           throw new Error('Invalid token received from App Bridge');
