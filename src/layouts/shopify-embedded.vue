@@ -301,8 +301,10 @@ async function bootstrapAppBridge() {
       }
     }
     
+    console.log("[shopify-layout] ⏳ Waiting for Shopify App Bridge to initialize..."); // Always log
     debugLog("[shopify-layout] Waiting for Shopify App Bridge to initialize...");
     const api = await waitForShopifyApi();
+    console.log("[shopify-layout] ✅ App Bridge API ready, proceeding with session token..."); // Always log
 
     shopifyApi.value = api;
     lastError.value = null;
@@ -310,6 +312,7 @@ async function bootstrapAppBridge() {
     shopifyFetch.value = api.fetch ? api.fetch.bind(api) : fetch;
     debugLog("[shopify-layout] Shopify fetch available:", !!api.fetch);
 
+    console.log("[shopify-layout] 🚀 Getting session token from App Bridge..."); // Always log
     debugLog("[shopify-layout] Getting session token from App Bridge...");
     const token = await getShopifySessionToken(api);
     debugLog("[shopify-layout] Session token received, length:", token?.length || 0);
