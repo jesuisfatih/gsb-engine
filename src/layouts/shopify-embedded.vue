@@ -141,13 +141,41 @@ const currentSubtitle = computed(() => route.meta?.embeddedSubtitle as string | 
 function waitForShopifyApi(timeout = 15000): Promise<ShopifyGlobal> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
+    
+    // First, check if App Bridge script tag exists in DOM
+    const checkScriptTag = () => {
+      const scripts = Array.from(document.querySelectorAll('script'));
+      const appBridgeScript = scripts.find(s => s.src?.includes('app-bridge'));
+      const metaTag = document.querySelector('meta[name="shopify-api-key"]');
+      
+      console.log("[shopify-layout] 🔍 DOM Check - Script tag exists:", !!appBridgeScript, "Meta tag exists:", !!metaTag);
+      console.log("[shopify-layout] 🔍 All scripts in DOM:", scripts.map(s => ({ src: s.src || 'inline', type: s.type || 'none' })));
+      
+      if (appBridgeScript) {
+        console.log("[shopify-layout] 📋 App Bridge script details:", {
+          src: appBridgeScript.src,
+          type: appBridgeScript.type,
+          async: appBridgeScript.async,
+          defer: appBridgeScript.defer,
+          onload: !!appBridgeScript.onload,
+          onerror: !!appBridgeScript.onerror
+        });
+      }
+    };
+    
+    // Check immediately
+    checkScriptTag();
+    
     const poll = () => {
       if (typeof window !== "undefined" && window.shopify) {
+        console.log("[shopify-layout] ✅ App Bridge API detected:", Object.keys(window.shopify));
         debugLog("[shopify-layout] App Bridge API detected:", Object.keys(window.shopify));
         resolve(window.shopify);
         return;
       }
       if (Date.now() - start > timeout) {
+        // Final DOM check before rejecting
+        checkScriptTag();
         reject(new Error("Shopify App Bridge did not initialise in time"));
         return;
       }
