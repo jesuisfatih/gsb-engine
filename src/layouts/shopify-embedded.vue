@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
-import { debugLog, debugWarn, debugError } from "@/utils/debug";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
+import { debugError, debugLog, debugWarn } from "@/utils/debug";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
@@ -503,29 +503,31 @@ async function bootstrapAppBridge() {
   }
 
   try {
-    await ensureAppBridgeAssets();
-
-    // MODERN APPROACH: Modern App Bridge CDN creates window.shopify automatically
-    // No need for createApp() - just use window.shopify directly
-    // See: https://shopify.dev/docs/api/app-bridge-library
-    console.log("[shopify-layout] ⏳ Waiting for window.shopify global...");
-    let shopifyGlobal: typeof window.shopify | null = null;
+    // DEĞİŞEN KISIM - DÜZGÜN ASYNC BEKLEME
+    console.log("[shopify-layout] ▼ Waiting for window.shopify global...");
     
-    // Wait up to 10 seconds for window.shopify to appear
-    for (let i = 0; i < 40; i++) {
+    let shopifyGlobal: typeof window.shopify | null = null;
+    let found = false;
+    
+    // 10 saniye boyunca window.shopify'ı bekle
+    for (let attempt = 0; attempt < 40; attempt++) {
       shopifyGlobal = window.shopify ?? null;
+      
       if (shopifyGlobal && typeof shopifyGlobal.idToken === "function") {
-        console.log("[shopify-layout] ✅ window.shopify.idToken found!");
+        console.log(`[shopify-layout] ✅ window.shopify.idToken found on attempt ${attempt + 1}!`);
+        found = true;
         break;
       }
+      
+      console.log(`[shopify-layout] ⏳ Waiting for window.shopify... (attempt ${attempt + 1}/40)`);
       await new Promise(resolve => setTimeout(resolve, 250));
     }
-
-    if (!shopifyGlobal || typeof shopifyGlobal.idToken !== "function") {
-      throw new Error("window.shopify.idToken not available after 10 seconds - App Bridge script may not be loaded");
+    
+    if (!found || !shopifyGlobal) {
+      console.warn("[shopify-layout] ⚠️ Shopify not available after 10 seconds, continuing without it");
+      // Layout'u Shopify olmadan da mount et
+      return;
     }
-
-    console.log("[shopify-layout] 📦 Using window.shopify API directly (modern CDN approach)");
 
     // Wait for ready state if available
     if (shopifyGlobal.ready) {
@@ -586,6 +588,7 @@ async function bootstrapAppBridge() {
     lastError.value = error instanceof Error ? error.message : "Unknown App Bridge error";
   }
 }
+
 const KNOWN_ROLES: RoleId[] = ["super-admin", "merchant-admin", "merchant-staff", "customer"];
 
 function coerceRole(value?: string): RoleId {
