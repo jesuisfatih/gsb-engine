@@ -201,13 +201,26 @@ async function getShopifySessionToken(api: ShopifyGlobal | ShopifyAppInstance): 
   debugLog("[shopify-layout] Attempting to get session token...");
   debugLog("[shopify-layout] Available API methods:", Object.keys(api));
   
-  // Try modern API first (sessionToken.get)
-  if (api.sessionToken && typeof api.sessionToken.get === "function") {
+  // Check sessionToken structure in detail
+  const sessionTokenObj = (api as any).sessionToken;
+  console.log("[shopify-layout] 🔍 sessionToken structure:", {
+    exists: !!sessionTokenObj,
+    type: typeof sessionTokenObj,
+    isObject: typeof sessionTokenObj === "object" && sessionTokenObj !== null,
+    keys: sessionTokenObj && typeof sessionTokenObj === "object" ? Object.keys(sessionTokenObj) : "N/A",
+    isFunction: typeof sessionTokenObj === "function"
+  }); // Always log
+  
+  // Try modern API - sessionToken.get()
+  if (sessionTokenObj && typeof sessionTokenObj.get === "function") {
     console.log("[shopify-layout] ✅ Using sessionToken.get()"); // Always log
     debugLog("[shopify-layout] Using sessionToken.get()");
     try {
-      const token = await api.sessionToken.get();
+      const token = await sessionTokenObj.get();
       console.log("[shopify-layout] ✅ Token received via sessionToken.get(), length:", token?.length || 0); // Always log
+      if (!token || token.length === 0) {
+        throw new Error("sessionToken.get() returned empty string");
+      }
       return token;
     } catch (error) {
       console.error("[shopify-layout] ❌ sessionToken.get() failed:", error); // Always log
@@ -215,15 +228,35 @@ async function getShopifySessionToken(api: ShopifyGlobal | ShopifyAppInstance): 
     }
   }
   
-  // Try legacy API (idToken) with timeout - this can hang indefinitely
+  // Try sessionToken as direct function (if it's a function)
+  if (typeof sessionTokenObj === "function") {
+    console.log("[shopify-layout] ✅ Trying sessionToken as direct function..."); // Always log
+    try {
+      const token = await Promise.race([
+        sessionTokenObj(),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error("sessionToken() timeout after 8s")), 8000)
+        )
+      ]) as string;
+      console.log("[shopify-layout] ✅ Token received via sessionToken(), length:", token?.length || 0); // Always log
+      if (!token || token.length === 0) {
+        throw new Error("sessionToken() returned empty string");
+      }
+      return token;
+    } catch (error) {
+      console.error("[shopify-layout] ❌ sessionToken() failed:", error); // Always log
+    }
+  }
+  
+  // Use idToken() - this is the standard method for modern App Bridge CDN
   if (typeof api.idToken === "function") {
-    console.log("[shopify-layout] ⚠️ Using legacy idToken() - adding 10s timeout..."); // Always log
+    console.log("[shopify-layout] ✅ Using idToken() method..."); // Always log
     debugLog("[shopify-layout] Using idToken()");
     try {
       const token = await Promise.race([
         api.idToken(),
         new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error("idToken() timeout after 10 seconds - App Bridge may not be fully ready")), 10000)
+          setTimeout(() => reject(new Error("idToken() timeout after 15 seconds")), 15000)
         )
       ]) as string;
       console.log("[shopify-layout] ✅ Token received via idToken(), length:", token?.length || 0); // Always log
@@ -325,56 +358,51 @@ async function bootstrapAppBridge() {
     const api = await waitForShopifyApi();
     console.log("[shopify-layout] ✅ App Bridge API detected"); // Always log
 
-    // CRITICAL: Create App Bridge instance - modern App Bridge requires createApp()
-    // Check for Shopify.AppBridge.createApp or window.shopify.AppBridge.createApp
-    let appInstance: ShopifyAppInstance | null = null;
+    // CRITICAL: Wait for App Bridge to be fully ready before calling idToken()
+    // idToken() will hang/timeout if App Bridge isn't ready
+    console.log("[shopify-layout] ⏳ Waiting for App Bridge ready state..."); // Always log
     
-    console.log("[shopify-layout] 🔍 Checking for createApp method..."); // Always log
-    console.log("[shopify-layout] 🔍 window.Shopify?.AppBridge:", window.Shopify?.AppBridge); // Always log
-    console.log("[shopify-layout] 🔍 window.shopify?.AppBridge:", (api as any).AppBridge); // Always log
+    const apiReady = (api as any).ready;
+    console.log("[shopify-layout] 🔍 ready type:", typeof apiReady, "is Promise:", apiReady instanceof Promise); // Always log
     
-    const AppBridgeCreateApp = window.Shopify?.AppBridge?.createApp || (api as any).AppBridge?.createApp;
-    
-    if (AppBridgeCreateApp && typeof AppBridgeCreateApp === "function") {
-      console.log("[shopify-layout] ✅ Found createApp, creating App Bridge instance..."); // Always log
-      console.log("[shopify-layout] 🔑 API Key:", apiKey ? `${apiKey.substring(0, 8)}...` : "MISSING"); // Always log
-      console.log("[shopify-layout] 🔑 Host:", hostParam.value ? "present" : "MISSING"); // Always log
-      
-      if (!apiKey || !hostParam.value) {
-        throw new Error("Cannot create App Bridge instance: missing API key or host parameter");
-      }
-      
+    if (apiReady instanceof Promise) {
+      console.log("[shopify-layout] ⏳ Awaiting ready Promise..."); // Always log
       try {
-        const decodedHost = atob(hostParam.value);
-        console.log("[shopify-layout] 📍 Decoded host:", decodedHost); // Always log
-        
-        appInstance = AppBridgeCreateApp({
-          apiKey,
-          host: decodedHost,
-        });
-        
-        console.log("[shopify-layout] ✅ App Bridge instance created:", appInstance); // Always log
-        shopifyAppInstance.value = appInstance;
-        shopifyApi.value = appInstance;
+        await Promise.race([
+          apiReady,
+          new Promise((_, reject) => setTimeout(() => reject(new Error("ready timeout after 8s")), 8000))
+        ]);
+        console.log("[shopify-layout] ✅ ready Promise resolved"); // Always log
       } catch (error) {
-        console.error("[shopify-layout] ❌ Failed to create App Bridge instance:", error); // Always log
-        throw error;
+        console.error("[shopify-layout] ❌ ready Promise timeout:", error); // Always log
+        throw new Error("App Bridge not ready after 8 seconds - cannot proceed with idToken()");
+      }
+    } else if (typeof apiReady === "function") {
+      console.log("[shopify-layout] ⏳ Calling ready() function..."); // Always log
+      try {
+        await Promise.race([
+          apiReady(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("ready() timeout after 8s")), 8000))
+        ]);
+        console.log("[shopify-layout] ✅ ready() completed"); // Always log
+      } catch (error) {
+        console.error("[shopify-layout] ❌ ready() timeout:", error); // Always log
+        throw new Error("App Bridge ready() timeout - cannot proceed with idToken()");
       }
     } else {
-      console.warn("[shopify-layout] ⚠️ createApp not found, falling back to global shopify API"); // Always log
-      shopifyApi.value = api;
+      console.log("[shopify-layout] ⚠️ No ready method, waiting 3 seconds for App Bridge initialization..."); // Always log
+      await new Promise(resolve => setTimeout(resolve, 3000));
     }
 
+    shopifyApi.value = api;
     lastError.value = null;
     
-    // Use app instance for fetch if available, otherwise use global API
-    const tokenApi = appInstance || api;
-    shopifyFetch.value = tokenApi.fetch ? tokenApi.fetch.bind(tokenApi) : fetch;
-    debugLog("[shopify-layout] Shopify fetch available:", !!tokenApi.fetch);
+    shopifyFetch.value = api.fetch ? api.fetch.bind(api) : fetch;
+    debugLog("[shopify-layout] Shopify fetch available:", !!api.fetch);
 
     console.log("[shopify-layout] 🚀 Getting session token from App Bridge..."); // Always log
     debugLog("[shopify-layout] Getting session token from App Bridge...");
-    const token = await getShopifySessionToken(tokenApi);
+    const token = await getShopifySessionToken(api);
     debugLog("[shopify-layout] Session token received, length:", token?.length || 0);
     debugLog("[shopify-layout] Token preview:", token ? `${token.substring(0, 30)}...${token.substring(token.length - 10)}` : "none");
     sessionToken.value = token;
