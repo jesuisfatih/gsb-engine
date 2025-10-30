@@ -102,21 +102,16 @@ export default defineConfig(({ mode }) => ({
           apiKey
         );
         
-        // Ensure App Bridge script exists and is preserved
-        // Vite may strip external script tags during build, so we ensure it's there
-        const appBridgePattern = /<script[^>]*app-bridge[^>]*><\/script>/i;
-        const appBridgeMatch = transformed.match(appBridgePattern);
+        // App Bridge MUST be the first script tag in <head> (Shopify requirement)
+        // Remove existing App Bridge script if present (we'll re-insert it at the right place)
+        transformed = transformed.replace(/<script[^>]*app-bridge[^>]*><\/script>/gi, '');
         
-        if (appBridgeMatch) {
-          // Already exists, just ensure API key is replaced
-          return transformed;
-        } else {
-          // Script was removed, re-insert it before </head>
-          const headEndIndex = transformed.indexOf('</head>');
-          if (headEndIndex !== -1) {
-            const scriptTag = `\n  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" data-api-key="${apiKey}"></script>`;
-            transformed = transformed.slice(0, headEndIndex) + scriptTag + transformed.slice(headEndIndex);
-          }
+        // Find <head> tag and insert App Bridge script immediately after it
+        const headMatch = transformed.match(/<head[^>]*>/i);
+        if (headMatch) {
+          const headEndIndex = transformed.indexOf(headMatch[0]) + headMatch[0].length;
+          const scriptTag = `\n  <!-- App Bridge MUST be the first script tag (Shopify requirement) -->\n  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" data-api-key="${apiKey}"></script>`;
+          transformed = transformed.slice(0, headEndIndex) + scriptTag + transformed.slice(headEndIndex);
         }
         
         return transformed;
