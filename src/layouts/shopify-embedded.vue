@@ -108,7 +108,26 @@ async function checkShopifyConnection() {
     }
 
     // 7. Session token exchange
-    if (host && shop && typeof (window as any).shopify?.idToken === 'function') {
+    if (host && shop) {
+      console.log("[shopify-layout] 🔑 Waiting for App Bridge to be ready...");
+      
+      // Wait for App Bridge to be fully loaded
+      let attempts = 0;
+      const maxAttempts = 50; // 10 seconds
+      
+      while (attempts < maxAttempts) {
+        if (typeof (window as any).shopify?.idToken === 'function') {
+          console.log("[shopify-layout] ✅ App Bridge idToken function ready after", attempts * 200, "ms");
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 200));
+        attempts++;
+      }
+      
+      if (typeof (window as any).shopify?.idToken !== 'function') {
+        throw new Error('App Bridge idToken function not available after waiting');
+      }
+      
       console.log("[shopify-layout] 🔑 Getting session token from App Bridge...");
       
       try {
@@ -186,8 +205,8 @@ async function checkShopifyConnection() {
         error.value = err?.message || 'Session exchange failed';
       }
     } else {
-      console.log("[shopify-layout] ⚠️ Missing required parameters or App Bridge not ready");
-      error.value = "Missing required parameters (host, shop) or App Bridge not ready";
+      console.log("[shopify-layout] ⚠️ Missing required parameters");
+      error.value = "Missing required parameters (host, shop)";
     }
     
   } catch (err) {
