@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, provide, ref, watch } from "vue";
-import { useRoute } from "vue-router";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useNotificationStore } from "@/modules/core/stores/notificationStore";
 import type { RoleId, SessionUser } from "@/modules/core/types/domain";
+import { computed, onMounted, provide, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
 type NavSection = {
   title: string;
@@ -280,15 +280,22 @@ async function ensureAppBridgeAssets(): Promise<void> {
   }
 
   if (typeof window !== "undefined" && !window["app-bridge"]) {
-    await new Promise<void>(resolve => {
-      const poll = () => {
-        if (window["app-bridge"]) {
-          resolve();
-        } else {
-          requestAnimationFrame(poll);
-        }
-      };
-      poll();
+    await Promise.race([
+      new Promise<void>(resolve => {
+        const poll = () => {
+          if (window["app-bridge"]) {
+            resolve();
+          } else {
+            requestAnimationFrame(poll);
+          }
+        };
+        poll();
+      }),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("app-bridge module load timeout")), 5000)
+      ),
+    ]).catch(() => {
+      // Module didn't load in time, continue anyway
     });
   }
 }
