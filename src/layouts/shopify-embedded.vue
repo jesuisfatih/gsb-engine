@@ -205,16 +205,25 @@ async function getShopifySessionToken(api: ShopifyGlobal): Promise<string> {
     }
   }
   
-  // Try legacy API (idToken)
+  // Try legacy API (idToken) with timeout - this can hang indefinitely
   if (typeof api.idToken === "function") {
-    console.log("[shopify-layout] ✅ Using idToken()"); // Always log
+    console.log("[shopify-layout] ⚠️ Using legacy idToken() - adding 10s timeout..."); // Always log
     debugLog("[shopify-layout] Using idToken()");
     try {
-      const token = await api.idToken();
+      const token = await Promise.race([
+        api.idToken(),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error("idToken() timeout after 10 seconds - App Bridge may not be fully ready")), 10000)
+        )
+      ]) as string;
       console.log("[shopify-layout] ✅ Token received via idToken(), length:", token?.length || 0); // Always log
+      if (!token || token.length === 0) {
+        throw new Error("idToken() returned empty string");
+      }
       return token;
     } catch (error) {
-      console.error("[shopify-layout] ❌ idToken() failed:", error); // Always log
+      console.error("[shopify-layout] ❌ idToken() failed or timed out:", error); // Always log
+      console.error("[shopify-layout] 💡 Try checking: 1) Is App Bridge fully loaded? 2) Is the app properly embedded? 3) Check Network tab for blocked requests"); // Always log
       throw error;
     }
   }
@@ -304,7 +313,35 @@ async function bootstrapAppBridge() {
     console.log("[shopify-layout] ⏳ Waiting for Shopify App Bridge to initialize..."); // Always log
     debugLog("[shopify-layout] Waiting for Shopify App Bridge to initialize...");
     const api = await waitForShopifyApi();
-    console.log("[shopify-layout] ✅ App Bridge API ready, proceeding with session token..."); // Always log
+    console.log("[shopify-layout] ✅ App Bridge API ready, checking if fully initialized..."); // Always log
+
+    // Wait for App Bridge to be fully ready - idToken() may hang if not ready
+    if ((api as any).ready && typeof (api as any).ready === "function") {
+      console.log("[shopify-layout] ⏳ Waiting for shopify.ready()..."); // Always log
+      try {
+        await Promise.race([
+          (api as any).ready(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("shopify.ready() timeout")), 5000))
+        ]);
+        console.log("[shopify-layout] ✅ shopify.ready() completed"); // Always log
+      } catch (error) {
+        console.warn("[shopify-layout] ⚠️ shopify.ready() failed or timeout, continuing anyway:", error); // Always log
+      }
+    } else if ((api as any).app?.ready) {
+      Ack.log("[shopify-layout] ⏳ Waiting for shopify.app.ready()..."); // Always log
+      try {
+        await Promise.race([
+          (api as any).app.ready(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("shopify.app.ready() timeout")), 5000))
+        ]);
+        console.log("[shopify-layout] ✅ shopify.app.ready() completed"); // Always log
+      } catch (error) {
+        console.warn("[shopify-layout] ⚠️ shopify.app.ready() failed or timeout, continuing anyway:", error); // Always log
+      }
+    } else {
+      console.log("[shopify-layout] ⚠️ No ready() method found, waiting 500ms for App Bridge to initialize..."); // Always log
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
 
     shopifyApi.value = api;
     lastError.value = null;
