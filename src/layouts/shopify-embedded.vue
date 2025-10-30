@@ -738,6 +738,10 @@ provide("shopifyShopDomain", shopDomain);
   cursor: pointer;
 }
 
+.icon-button :deep(.v-icon) {
+  color: currentColor;
+}
+
 .icon-button:hover {
   background: rgba(93, 90, 241, 0.18);
   transform: translateX(-2px);
@@ -796,6 +800,10 @@ provide("shopifyShopDomain", shopDomain);
   font-weight: 600;
   background: rgba(96, 92, 220, 0.12);
   color: #5d5af1;
+}
+
+.status-chip :deep(.v-icon) {
+  color: currentColor;
 }
 
 .status-chip[data-tone="critical"] {
@@ -903,7 +911,7 @@ provide("shopifyShopDomain", shopDomain);
   place-items: center;
   width: 22px;
   height: 22px;
-  color: inherit;
+  color: #4a4a6a;
 }
 
 .nav-icon :deep(.v-icon) {
@@ -911,7 +919,7 @@ provide("shopifyShopDomain", shopDomain);
   width: 100%;
   height: 100%;
   place-items: center;
-  color: inherit;
+  color: currentColor;
   font-size: 20px;
 }
 
