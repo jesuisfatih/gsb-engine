@@ -1023,21 +1023,15 @@ function changeMode(mode: "dtf" | "gang") {
     </div>
   </div>
   
-  <!-- Option C: Collaboration Chat (floating) -->
-  <CollaborationChat
-    v-if="collaboration.isEnabled.value"
-    :user-count="collaboration.userCount.value"
-    :has-collaborators="collaboration.hasCollaborators.value"
-  />
-  
-  <!-- AI Design Assistant (floating) -->
-  <AIDesignAssistant />
-  
-  <!-- Batch Operations Panel (floating) -->
-  <BatchOperationsPanel />
-  
-  <!-- Keyboard Shortcuts Overlay -->
+  <!-- Keyboard Shortcuts Overlay - Keep only this -->
   <KeyboardShortcuts />
+  
+  <!-- Floating panels HIDDEN - causing icon clutter -->
+  <!-- 
+  <CollaborationChat />
+  <AIDesignAssistant />
+  <BatchOperationsPanel />
+  -->
 </template>
 
 <style scoped>

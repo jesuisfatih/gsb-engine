@@ -27,10 +27,55 @@
         </div>
       </div>
 
-      <!-- Cost Breakdown -->
+      <!-- Cost Breakdown - SIMPLIFIED -->
       <div class="cost-breakdown">
-        <h4>Cost Breakdown</h4>
+        <div class="breakdown-row">
+          <span class="row-label">
+            <Package :size="14" :stroke-width="2" />
+            Material
+          </span>
+          <span class="row-value">${{ materialCostsTotal.toFixed(2) }}</span>
+        </div>
         
+        <div class="breakdown-row">
+          <span class="row-label">
+            <Clock :size="14" :stroke-width="2" />
+            Labor
+          </span>
+          <span class="row-value">${{ laborCostsTotal.toFixed(2) }}</span>
+        </div>
+        
+        <div class="breakdown-row">
+          <span class="row-label">
+            <Printer :size="14" :stroke-width="2" />
+            Equipment
+          </span>
+          <span class="row-value">${{ equipmentCostsTotal.toFixed(2) }}</span>
+        </div>
+        
+        <div class="breakdown-row">
+          <span class="row-label">
+            <Building :size="14" :stroke-width="2" />
+            Overhead
+          </span>
+          <span class="row-value">${{ overheadCostsTotal.toFixed(2) }}</span>
+        </div>
+      </div>
+
+      <!-- Profitability - SIMPLIFIED -->
+      <div class="profitability-simple">
+        <div class="profit-row">
+          <span>ROI</span>
+          <span class="profit-value">{{ roi.toFixed(0) }}%</span>
+        </div>
+        <div class="profit-row">
+          <span>Utilization</span>
+          <span class="profit-value">{{ utilization.toFixed(1) }}%</span>
+        </div>
+      </div>
+
+      <!-- HIDE complex dropdowns and inputs -->
+      <div v-if="false" class="hidden-details">
         <!-- Material Costs -->
         <div class="cost-item">
           <div class="item-header" @click="materialExpanded = !materialExpanded">
@@ -143,54 +188,11 @@
         </div>
       </div>
 
-      <!-- Pricing Strategy -->
-      <div class="pricing-strategy">
-        <h4>Pricing Strategy</h4>
-        <div class="strategy-row">
-          <label>Target Margin</label>
-          <input v-model.number="targetMargin" type="number" step="5" min="0" max="500" />
-          <span>%</span>
-        </div>
-        <div class="strategy-row">
-          <label>Suggested Price</label>
-          <span class="suggested-price">${{ suggestedPrice.toFixed(2) }}</span>
-        </div>
-        <button class="apply-pricing" @click="applyPricing">
-          Apply Suggested Pricing
-        </button>
-      </div>
+      <!-- Pricing Strategy - HIDDEN to prevent overflow -->
+      <div v-if="false" class="pricing-strategy">
 
-      <!-- Profitability Analysis -->
-      <div class="profitability">
-        <h4 style="display: flex; align-items: center; gap: 8px;">
-          <TrendingUp :size="16" :stroke-width="2" />
-          Profitability Analysis
-        </h4>
-        <div class="profit-grid">
-          <div class="profit-item">
-            <div class="label">ROI</div>
-            <div class="value">{{ roi.toFixed(0) }}%</div>
-          </div>
-          <div class="profit-item">
-            <div class="label">Break-even</div>
-            <div class="value">{{ breakEven }} units</div>
-          </div>
-          <div class="profit-item">
-            <div class="label">Utilization</div>
-            <div class="value">{{ utilization.toFixed(1) }}%</div>
-          </div>
-          <div class="profit-item">
-            <div class="label">Cost/Item</div>
-            <div class="value">${{ costPerItem.toFixed(2) }}</div>
-          </div>
-        </div>
+      <!-- HIDE complex sections to prevent overflow -->
       </div>
-
-      <!-- Export Quote -->
-      <button class="export-quote" @click="exportQuote">
-        <FileText :size="16" :stroke-width="2" />
-        Export Quote PDF
-      </button>
     </div>
   </details>
 </template>
@@ -460,6 +462,60 @@ function exportQuote() {
 .profit-badge.low {
   background: #fead9a;
   color: #6d2a0e;
+}
+
+/* Simplified Breakdown Rows */
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid #e1e3e5;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.row-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #202223;
+  font-weight: 500;
+}
+
+.row-value {
+  color: #006fbb;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.profitability-simple {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+
+.profit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+  color: #065f46;
+}
+
+.profit-value {
+  font-weight: 700;
+  font-size: 15px;
+  color: #10b981;
+}
+
+.hidden-details {
+  display: none;
 }
 
 .cost-breakdown h4 {

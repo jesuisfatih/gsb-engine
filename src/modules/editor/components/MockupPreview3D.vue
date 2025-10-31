@@ -11,21 +11,17 @@
     </summary>
 
     <div class="section-body">
-      <!-- Product Selector -->
-      <div class="product-selector">
-        <button 
-          v-for="product in products" 
-          :key="product.id"
-          :class="['product-btn', { active: selectedProduct === product.id }]"
-          @click="selectedProduct = product.id"
-        >
-          <span class="product-icon">{{ product.icon }}</span>
-          <span>{{ product.name }}</span>
-        </button>
+      <!-- Product Selector - SIMPLIFIED -->
+      <div class="product-selector-simple">
+        <select v-model="selectedProduct" class="product-dropdown">
+          <option v-for="product in products" :key="product.id" :value="product.id">
+            {{ product.icon }} {{ product.name }}
+          </option>
+        </select>
       </div>
 
-      <!-- 3D Preview Container -->
-      <div class="mockup-container">
+      <!-- 3D Preview Container - SIMPLIFIED -->
+      <div class="mockup-container-simple">
         <div class="mockup-canvas" ref="mockupCanvas">
           <!-- Placeholder for actual 3D mockup -->
           <div class="mockup-placeholder">
