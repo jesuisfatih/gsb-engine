@@ -7,6 +7,13 @@ function isAutosaveMode(mode?: string | null) {
 }
 
 export function useAutosaveManager() {
+  const sessionStore = useSessionStore();
+  
+  // Skip autosave for public/customer access
+  if (!sessionStore?.isAuthenticated) {
+    console.log('[autosave] Disabled for public access');
+    return;
+  }
   const editorStore = useEditorStore();
   const modeStore = useEditorModeStore();
 

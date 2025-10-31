@@ -87,33 +87,23 @@ onMounted(async () => {
       if (technique) {
         editorStore.setPrintTech(technique as any);
       }
-    } else if (surfaceId) {
-      // Public customer access - fetch product directly from API
-      console.log("[editor] Public access - fetching product via API");
-      try {
-        const tenantId = route.query.t as string | undefined;
-        const headers: Record<string, string> = {};
-        if (tenantId) headers['X-Tenant-Id'] = tenantId;
-        
-        const response = await fetch(`https://app.gsb-engine.dev/api/catalog`, { headers });
-        const catalogData = await response.json();
-        const products = catalogData.data || [];
-        
-        const foundProduct = products.find((p: any) => p.slug === productSlug);
-        if (foundProduct) {
-          console.log("[editor] Product loaded from API:", foundProduct.title);
-          editorStore.setProduct(productSlug);
-          
-          if (surfaceId) {
-            editorStore.setSurface(surfaceId);
-          }
-          
-          if (technique) {
-            editorStore.setPrintTech(technique as any);
-          }
-        }
-      } catch (err) {
-        console.error("[editor] Failed to load product from API", err);
+    } else {
+      // Product not in catalog - public customer access
+      console.log("[editor] Product not in catalog, using URL params directly");
+      console.log("[editor] Setting product:", productSlug);
+      console.log("[editor] Setting surface:", surfaceId);
+      
+      // Try to set product anyway - it might be in fallback/hardcoded products
+      if (productSlug) {
+        editorStore.setProduct(productSlug);
+      }
+      
+      if (surfaceId) {
+        editorStore.setSurface(surfaceId);
+      }
+      
+      if (technique) {
+        editorStore.setPrintTech(technique as any);
       }
     }
     
