@@ -17,7 +17,7 @@ import type { ShortcodeRecord } from "@/modules/merchant/store/shortcodeStore";
 
 interface ShortcodeResponse { data?: ShortcodeRecord }
 
-definePage({ meta: { layout: "editor", action: "read", subject: "Editor" } });
+definePage({ meta: { layout: "editor", public: true } });
 
 const route = useRoute();
 const editorStore = useEditorStore();
