@@ -36,6 +36,80 @@ const updateProductSchema = createProductSchema.partial().extend({
 
 export const catalogRouter = Router();
 
+// POST /api/catalog/seed - Quick seed sample product for tenant
+catalogRouter.post("/seed", async (req, res, next) => {
+  try {
+    const { prisma, tenantId } = req.context;
+    if (!tenantId) {
+      return res.status(400).json({ error: "Missing tenant context" });
+    }
+
+    console.log("[catalog] Seeding sample product for tenant:", tenantId);
+
+    const product = await prisma.product.create({
+      data: {
+        tenantId,
+        slug: "canvas-poster",
+        title: "Canvas Poster",
+        category: "textile",
+        description: "Customizable canvas poster - sample product",
+        attributes: {
+          materials: ["canvas"],
+          techniques: ["dtf", "sublimation"],
+        },
+        status: "ACTIVE",
+        surfaces: {
+          create: [
+            {
+              name: "20x30 cm",
+              widthMm: 200,
+              heightMm: 300,
+              unit: "mm",
+              safeArea: { marginMm: 5 },
+              ppi: 300,
+            },
+            {
+              name: "30x40 cm",
+              widthMm: 300,
+              heightMm: 400,
+              unit: "mm",
+              safeArea: { marginMm: 5 },
+              ppi: 300,
+            },
+            {
+              name: "40x60 cm",
+              widthMm: 400,
+              heightMm: 600,
+              unit: "mm",
+              safeArea: { marginMm: 5 },
+              ppi: 300,
+            },
+          ],
+        },
+      },
+      include: { surfaces: true },
+    });
+
+    console.log("[catalog] Sample product created:", product.title, "with", product.surfaces.length, "surfaces");
+
+    res.json({ 
+      success: true, 
+      data: { 
+        id: product.id, 
+        slug: product.slug, 
+        title: product.title,
+        surfaceCount: product.surfaces.length 
+      } 
+    });
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      return res.status(400).json({ error: "Product already exists" });
+    }
+    console.error("[catalog] Seed error:", error);
+    next(error);
+  }
+});
+
 type ProductAccessResult =
   | { product: Awaited<ReturnType<PrismaClient["product"]["findUnique"]>> }
   | { status: number; message: string };

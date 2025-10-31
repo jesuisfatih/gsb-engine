@@ -141,6 +141,26 @@ function hydrateRowSelections() {
   }
 }
 
+const seedingProduct = ref(false);
+
+async function loadSampleProduct() {
+  seedingProduct.value = true;
+  try {
+    await $api("/catalog/seed", { method: "POST" });
+    notifications.success("Sample product (Canvas Poster) oluşturuldu! 3 surface ile.");
+    await catalog.ensureLoaded();
+  } catch (error: any) {
+    console.error("[catalog] seed failed", error);
+    if (error?.response?._data?.error === "Product already exists") {
+      notifications.warning("Sample product zaten mevcut");
+    } else {
+      notifications.error("Sample product oluşturulamadı");
+    }
+  } finally {
+    seedingProduct.value = false;
+  }
+}
+
 async function initialise() {
   try {
     const sessionStore = useSessionStore();
@@ -322,7 +342,20 @@ const isBusy = computed(() => catalog.shopifyLoading || catalog.variantMappingsL
     <VRow dense class="mb-4">
       <VCol cols="12">
         <VAlert type="info" variant="tonal" border="start" color="primary">
-          Shopify ürünlerini seçip her varyantı doğru gang sheet yüzeyine bağlayın. Bu sayede müşteriler ürün sayfasında özelleştirmeye başladığında doğru şablon otomatik açılır.
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              Shopify ürünlerini seçip her varyantı doğru gang sheet yüzeyine bağlayın. Bu sayede müşteriler ürün sayfasında özelleştirmeye başladığında doğru şablon otomatik açılır.
+            </div>
+            <VBtn
+              v-if="!gsbProducts.length"
+              color="success"
+              variant="flat"
+              :loading="seedingProduct"
+              @click="loadSampleProduct"
+            >
+              Quick Setup - Sample Product Ekle
+            </VBtn>
+          </div>
         </VAlert>
       </VCol>
     </VRow>
