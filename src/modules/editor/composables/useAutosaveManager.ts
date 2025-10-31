@@ -1,6 +1,7 @@
 import { computed, onBeforeUnmount, watch } from "vue";
 import { useEditorStore } from "../store/editorStore";
 import { useEditorModeStore } from "../store/editorModeStore";
+import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 
 function isAutosaveMode(mode?: string | null) {
   return mode === "dtf" || mode === "gang";
