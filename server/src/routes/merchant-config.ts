@@ -10,15 +10,15 @@ export const merchantConfigRouter = Router();
 const variantMappingInputSchema = z.object({
   productSlug: z.string().min(1),
   surfaceId: z.string().uuid(),
-  shopifyProductId: z.string().optional().nullable(),
-  shopifyProductTitle: z.string().optional().nullable(),
+  shopifyProductId: z.string().nullish(),
+  shopifyProductTitle: z.string().nullish(),
   shopifyVariantId: z.string().min(1),
-  shopifyVariantTitle: z.string().optional().nullable(),
-  options: z.record(z.unknown()).optional().nullable(),
-  technique: z.string().optional().nullable(),
-  color: z.string().optional().nullable(),
-  material: z.string().optional().nullable(),
-  shortcodeHandle: z.string().optional().nullable(),
+  shopifyVariantTitle: z.string().nullish(),
+  options: z.any().nullish(),
+  technique: z.string().nullish(),
+  color: z.string().nullish(),
+  material: z.string().nullish(),
+  shortcodeHandle: z.string().nullish(),
 });
 
 const bulkUpsertSchema = z.object({
