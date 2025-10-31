@@ -17,7 +17,10 @@ import {
   ShoppingCart,
   Loader2,
   Layers,
-  Sparkles
+  Sparkles,
+  Zap,
+  Brain,
+  Users
 } from 'lucide-vue-next';
 
 const editorStore = useEditorStore();
@@ -82,6 +85,34 @@ async function handleCheckout() {
   } catch (error) {
     console.error('[topbar] Checkout failed', error);
     alert('Failed to proceed to checkout. Please try again.');
+  }
+}
+
+// Option C: AI Auto-Pack
+const aiOptimizing = ref(false);
+
+async function handleAIAutoPack() {
+  if (aiOptimizing.value) return;
+  
+  aiOptimizing.value = true;
+  try {
+    const { getAIOptimizer } = await import('../services/aiPacking');
+    const optimizer = getAIOptimizer();
+    
+    const result = await optimizer.optimize(
+      editorStore.items,
+      { w: editorStore.sheetWpx, h: editorStore.sheetHpx },
+      { margin: 8, allowRotation: true }
+    );
+    
+    editorStore.items = result.items;
+    editorStore.snapshot();
+    
+    console.log('[AI] Optimized! Utilization:', result.utilization.toFixed(1) + '%');
+  } catch (error) {
+    console.error('[AI] Auto-pack failed:', error);
+  } finally {
+    aiOptimizing.value = false;
   }
 }
 </script>
@@ -169,6 +200,22 @@ async function handleCheckout() {
         </button>
         <button class="tool-btn icon-only" title="Line" @click="editorStore.addLine()">
           <Minus :size="18" :stroke-width="2" />
+        </button>
+      </div>
+
+      <div class="divider" />
+
+      <!-- Option C: AI Tools -->
+      <div class="tool-group ai-tools">
+        <button 
+          class="tool-btn ai-btn" 
+          :disabled="aiOptimizing || editorStore.items.length === 0"
+          title="AI Auto-Pack (95% utilization)"
+          @click="handleAIAutoPack"
+        >
+          <Zap v-if="!aiOptimizing" :size="18" :stroke-width="2" />
+          <Loader2 v-else :size="18" class="spinner" />
+          <span class="label">AI Pack</span>
         </button>
       </div>
 
@@ -503,6 +550,40 @@ async function handleCheckout() {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* AI Tools */
+.ai-tools .ai-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-tools .ai-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+.ai-tools .ai-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.ai-tools .ai-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
 
 /* Responsive */

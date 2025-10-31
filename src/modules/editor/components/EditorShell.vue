@@ -22,6 +22,10 @@ import { useConfigStore } from "@core/stores/config";
 import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useAutosaveManager } from "../composables/useAutosaveManager";
+import { useCollaboration } from "../composables/useCollaboration";
+import { getAIOptimizer } from "../services/aiPacking";
+import { getQualityAnalyzer } from "../services/qualityAnalysis";
+import { getSuggestionsEngine } from "../services/smartSuggestions";
 
 const route = useRoute();
 const modeStore = useEditorModeStore();
@@ -30,6 +34,86 @@ const gangStore = useGangSheetStore();
 const catalogStore = useCatalogStore();
 const sessionStore = useSessionStore();
 useAutosaveManager();
+
+// Option C: Real-time Collaboration
+const designId = computed(() => editorStore.designId || `temp-${Date.now()}`);
+const collaboration = useCollaboration(designId.value, true);
+
+// Option C: AI Services
+const aiOptimizer = getAIOptimizer();
+const qualityAnalyzer = getQualityAnalyzer();
+const suggestionsEngine = getSuggestionsEngine();
+
+// AI State
+const aiOptimizing = ref(false);
+const qualityAnalysis = ref<any>(null);
+const suggestions = ref<any[]>([]);
+
+// AI Auto-Pack Function
+async function handleAIAutoPack() {
+  if (aiOptimizing.value) return;
+  
+  aiOptimizing.value = true;
+  try {
+    const result = await aiOptimizer.optimize(
+      editorStore.items,
+      { w: editorStore.sheetWpx, h: editorStore.sheetHpx },
+      { margin: 8, allowRotation: true }
+    );
+    
+    editorStore.items = result.items;
+    editorStore.snapshot();
+    
+    console.log('[AI] Optimized! Utilization:', result.utilization.toFixed(1) + '%');
+    alert(`AI Optimization Complete!\nUtilization: ${result.utilization.toFixed(1)}%\nPacking time: ${result.packingTime.toFixed(0)}ms`);
+  } catch (error) {
+    console.error('[AI] Optimization failed:', error);
+  } finally {
+    aiOptimizing.value = false;
+  }
+}
+
+// Load quality analysis
+async function analyzeQuality() {
+  const canvas = document.querySelector('canvas');
+  if (!canvas) return;
+  
+  try {
+    const analysis = await qualityAnalyzer.analyzeDesign(
+      canvas,
+      editorStore.items,
+      { w: editorStore.sheetWpx, h: editorStore.sheetHpx }
+    );
+    qualityAnalysis.value = analysis;
+  } catch (error) {
+    console.error('[AI] Quality analysis failed:', error);
+  }
+}
+
+// Load suggestions
+async function loadSuggestions() {
+  try {
+    const sug = await suggestionsEngine.generateSuggestions(
+      editorStore.items,
+      { w: editorStore.sheetWpx, h: editorStore.sheetHpx },
+      {
+        printTech: editorStore.printTech,
+        colorCount: editorStore.analysis.stats.colorCount,
+        areaUsage: (editorStore.analysis.stats.areaIn2 / (editorStore.sheetWpx * editorStore.sheetHpx / 10000)) * 100,
+        safeMargin: editorStore.safeMarginPx,
+      }
+    );
+    suggestions.value = sug;
+  } catch (error) {
+    console.error('[AI] Suggestions failed:', error);
+  }
+}
+
+// Auto-analyze on changes
+watch(() => editorStore.items.length, () => {
+  analyzeQuality();
+  loadSuggestions();
+}, { flush: 'post' });
 
 const { activeMode } = storeToRefs(modeStore);
 const configStore = useConfigStore();

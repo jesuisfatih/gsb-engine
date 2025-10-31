@@ -365,16 +365,16 @@
 
   // Storage in parent window (bypasses iframe localStorage issues)
   const STORAGE_KEY = 'gsb_design_{{ block.id }}';
-  
+
   // Listen for messages from editor
   window.addEventListener('message', function(event) {
     // Verify origin
     if (!event.origin.includes('app.gsb-engine.dev')) {
       return;
     }
-    
+
     const message = event.data;
-    
+
     // Auto-save design to parent window
     if (message.type === 'GSB_DESIGN_SAVE') {
       try {
@@ -384,7 +384,7 @@
         console.warn('[GSB Block] Failed to save design:', error);
       }
     }
-    
+
     // Request saved design
     if (message.type === 'GSB_REQUEST_SAVED_DESIGN') {
       try {
@@ -400,7 +400,7 @@
         console.warn('[GSB Block] Failed to restore design:', error);
       }
     }
-    
+
     if (message.type === 'GSB_DESIGN_COMPLETE') {
         console.log('[GSB Block] Design complete:', message);
         console.log('[GSB Block] Mode:', message.mode);
