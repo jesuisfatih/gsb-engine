@@ -27,6 +27,7 @@ const modeStore = useEditorModeStore();
 const editorStore = useEditorStore();
 const gangStore = useGangSheetStore();
 const catalogStore = useCatalogStore();
+const sessionStore = useSessionStore();
 useAutosaveManager();
 
 const { activeMode } = storeToRefs(modeStore);
@@ -40,6 +41,8 @@ onMounted(async () => {
   const tenantId = route.query.t as string | undefined;
   const hasAuth = sessionStore?.isAuthenticated;
   
+  console.log("[editor] Initializing - Auth:", hasAuth, "Tenant ID:", tenantId);
+  
   if (hasAuth) {
     await catalogStore.ensureLoaded().catch(err => console.warn("[catalog] load failed", err));
     gangStore.ensureLoaded().catch(err => console.warn("[gang-sheet] load failed", err));
@@ -51,9 +54,14 @@ onMounted(async () => {
         headers: { 'X-Tenant-Id': tenantId }
       });
       const data = await response.json();
+      console.log("[editor] Catalog API response:", data);
+      
       if (data.data && Array.isArray(data.data)) {
-        catalogStore.products = data.data;
-        console.log("[editor] Loaded", data.data.length, "products for customer");
+        // Directly set products to catalogStore
+        catalogStore.$patch({ products: data.data, loaded: true });
+        console.log("[editor] ✅ Loaded", data.data.length, "products:", data.data.map((p: any) => p.slug).join(', '));
+      } else {
+        console.error("[editor] Invalid catalog response:", data);
       }
     } catch (err) {
       console.error("[editor] Failed to load catalog for customer", err);
