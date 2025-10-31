@@ -137,8 +137,10 @@ export const proxyRouter = Router();
  * GET /apps/gsb/editor
  * Serve editor page via App Proxy (stays on Shopify domain)
  */
-proxyRouter.get("/editor", async (req, res) => {
+proxyRouter.get("/apps/gsb/editor", async (req, res) => {
   try {
+    console.log('[proxy] Editor requested via App Proxy');
+    
     // Serve the built frontend
     const distPath = path.join(process.cwd(), "dist", "index.html");
     
@@ -153,13 +155,32 @@ proxyRouter.get("/editor", async (req, res) => {
       
       res.setHeader('Content-Type', 'text/html');
       res.setHeader('X-Frame-Options', 'ALLOW-FROM https://*.myshopify.com');
+      res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://*.myshopify.com");
       res.send(modifiedHtml);
     } else {
+      console.error('[proxy] dist/index.html not found');
       res.status(404).send('Editor not found. Please build the frontend first.');
     }
   } catch (error) {
     console.error('[proxy] Editor serve error:', error);
     res.status(500).send('Failed to load editor');
+  }
+});
+
+/**
+ * GET /apps/gsb/* (Catch-all for other proxy requests)
+ * Serve static assets via App Proxy
+ */
+proxyRouter.get("/apps/gsb/*", async (req, res) => {
+  const requestedPath = req.path.replace('/apps/gsb', '');
+  console.log('[proxy] Static asset requested:', requestedPath);
+  
+  const distPath = path.join(process.cwd(), "dist", requestedPath);
+  
+  if (fs.existsSync(distPath)) {
+    res.sendFile(distPath);
+  } else {
+    res.status(404).send('Not found');
   }
 });
 
