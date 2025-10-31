@@ -874,6 +874,73 @@ function changeMode(mode: "dtf" | "gang") {
         </div>
       </details>
 
+      <!-- OPTION C: Quality Analysis Panel -->
+      <details v-if="qualityAnalysis" class="accordion" open>
+        <summary>
+          <span class="accordion-title">
+            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2l3.5 7 7.5 1-5.5 5.5 1.5 7.5-7-4-7 4 1.5-7.5L1 10l7.5-1L12 2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+            </svg>
+            <span>Quality Analysis</span>
+          </span>
+          <span class="accordion-toggle">
+            <svg viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+        </summary>
+        <div class="section-body">
+          <div style="padding: 12px; font-size: 13px;">
+            <div v-if="qualityAnalysis.score" style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-weight: 500;">Overall Quality</span>
+                <span style="font-weight: 600; color: #10b981;">{{ qualityAnalysis.score.toFixed(0) }}%</span>
+              </div>
+              <div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                <div :style="{
+                  width: qualityAnalysis.score + '%',
+                  height: '100%',
+                  background: qualityAnalysis.score >= 80 ? '#10b981' : qualityAnalysis.score >= 60 ? '#f59e0b' : '#ef4444',
+                  transition: 'width 0.3s'
+                }"></div>
+              </div>
+            </div>
+            <div v-for="issue in qualityAnalysis.issues" :key="issue.type" style="margin-bottom: 8px; padding: 8px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 12px;">
+              <strong>{{ issue.type }}:</strong> {{ issue.message }}
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- OPTION C: Smart Suggestions Panel -->
+      <details v-if="suggestions.length > 0" class="accordion" open>
+        <summary>
+          <span class="accordion-title">
+            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" fill="currentColor" />
+              <path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            <span>Smart Suggestions</span>
+          </span>
+          <span class="accordion-toggle">
+            <svg viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+        </summary>
+        <div class="section-body">
+          <div style="padding: 0 12px 12px;">
+            <div v-for="(sug, idx) in suggestions" :key="idx" style="margin-bottom: 8px; padding: 10px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; cursor: pointer; transition: background 0.2s;" @click="console.log('Apply suggestion:', sug)">
+              <div style="font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #065f46;">{{ sug.title }}</div>
+              <div style="font-size: 12px; color: #6b7280;">{{ sug.description }}</div>
+              <div v-if="sug.savings" style="font-size: 11px; color: #10b981; margin-top: 4px; font-weight: 600;">
+                💰 Save {{ sug.savings.toFixed(2) }}%
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
       <details class="accordion" open>
         <summary>
           <span class="accordion-title">
