@@ -145,6 +145,50 @@ function exportMockup() {
 </script>
 
 <style scoped>
+/* Shopify Polaris-inspired styling */
+.accordion {
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.accordion summary {
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  background: #fafbfb;
+  border-bottom: 1px solid #e1e3e5;
+}
+
+.accordion-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #202223;
+}
+
+.accordion-icon {
+  width: 18px;
+  height: 18px;
+  color: #5c5f62;
+}
+
+.accordion-toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-body {
+  background: white;
+  padding: 16px;
+}
+
 .product-selector {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -156,48 +200,50 @@ function exportMockup() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 12px 8px;
-  border: 2px solid #e5e7eb;
+  gap: 8px;
+  padding: 14px 10px;
+  border: 1.5px solid #c9cccf;
   background: white;
   border-radius: 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  color: #202223;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
 }
 
 .product-btn:hover {
-  border-color: #3b82f6;
-  background: #eff6ff;
-  color: #3b82f6;
+  border-color: #006fbb;
+  background: #f1f2f3;
 }
 
 .product-btn.active {
-  border-color: #3b82f6;
-  background: #3b82f6;
-  color: white;
+  border-color: #006fbb;
+  background: #e3f1fb;
+  color: #006fbb;
+  border-width: 2px;
 }
 
 .product-icon {
-  font-size: 24px;
+  font-size: 28px;
 }
 
 .mockup-container {
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border-radius: 12px;
+  background: #f6f6f7;
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
   padding: 20px;
   margin-bottom: 16px;
 }
 
 .mockup-canvas {
-  min-height: 300px;
+  min-height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: white;
   border-radius: 8px;
+  border: 1px solid #e1e3e5;
   position: relative;
   overflow: hidden;
 }
@@ -226,54 +272,66 @@ function exportMockup() {
 }
 
 .mockup-controls button {
-  width: 36px;
-  height: 36px;
-  border: 1px solid #e5e7eb;
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid #c9cccf;
   background: white;
   border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
 }
 
 .mockup-controls button:hover {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: #006fbb;
+  background: #f1f2f3;
+}
+
+.mockup-controls button:active {
+  background: #e3f1fb;
+  border-color: #006fbb;
 }
 
 .rotation-display {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: #374151;
-  min-width: 50px;
+  color: #202223;
+  min-width: 60px;
   text-align: center;
 }
 
 .export-mockup-btn {
   width: 100%;
-  padding: 12px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  padding: 11px 16px;
+  background: #006fbb;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   margin-top: 12px;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 0 0 rgba(0,0,0,0.05);
 }
 
 .export-mockup-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3);
+  background: #005fa3;
+  box-shadow: 0 1px 0 0 rgba(0,0,0,0.1);
+}
+
+.export-mockup-btn:active {
+  background: #00578f;
+  box-shadow: inset 0 1px 0 0 rgba(0,0,0,0.1);
 }
 
 .mockup-settings {
-  background: #f9fafb;
+  background: #f6f6f7;
+  border: 1px solid #e1e3e5;
   border-radius: 6px;
-  padding: 12px;
+  padding: 14px;
   margin-top: 12px;
 }
 
@@ -281,27 +339,33 @@ function exportMockup() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  font-size: 12px;
+  padding: 10px 0;
+  font-size: 13px;
 }
 
 .setting-row label {
-  font-weight: 600;
-  color: #374151;
+  font-weight: 500;
+  color: #202223;
 }
 
 .setting-row input[type="color"] {
-  width: 40px;
-  height: 28px;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  width: 44px;
+  height: 32px;
+  border: 1.5px solid #c9cccf;
+  border-radius: 6px;
   cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.setting-row input[type="color"]:hover {
+  border-color: #006fbb;
 }
 
 .setting-row input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
+  accent-color: #006fbb;
 }
 </style>
 
