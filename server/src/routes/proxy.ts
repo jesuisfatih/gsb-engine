@@ -265,7 +265,11 @@ proxyRouter.get("/apps/gsb/*", async (req, res) => {
  */
 proxyRouter.post("/cart", async (req, res, next) => {
   try {
+    console.log('[proxy/cart] Received request body:', JSON.stringify(req.body, null, 2));
+    
     const payload = checkoutSchema.parse(req.body);
+    console.log('[proxy/cart] Validation passed, payload:', payload);
+    
     const { prisma, tenantId } = req.context;
 
     let design: any;
