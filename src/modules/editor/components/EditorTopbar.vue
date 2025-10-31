@@ -24,6 +24,7 @@ import {
   Settings
 } from 'lucide-vue-next';
 import AIPackingDialog from './AIPackingDialog.vue';
+import ExportPresetsManager from './ExportPresetsManager.vue';
 
 const editorStore = useEditorStore();
 const modeStore = useEditorModeStore();
@@ -93,6 +94,7 @@ async function handleCheckout() {
 // Option C: AI Auto-Pack
 const aiOptimizing = ref(false);
 const showAIDialog = ref(false);
+const showExportDialog = ref(false);
 
 async function handleAIAutoPack() {
   if (aiOptimizing.value) return;
@@ -257,6 +259,9 @@ async function handleAIPackWithSettings(settings: any) {
       
       <!-- AI Packing Dialog -->
       <AIPackingDialog v-model="showAIDialog" @optimize="handleAIPackWithSettings" />
+      
+      <!-- Export Presets Dialog -->
+      <ExportPresetsManager v-model="showExportDialog" />
 
       <div class="divider" />
 
