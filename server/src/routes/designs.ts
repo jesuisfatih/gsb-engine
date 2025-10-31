@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { uploadDesignPreview, uploadDesignHighRes, uploadDesignJSON, uploadFromDataURL } from '../services/r2Upload';
 import { cacheDesign, getCachedDesign, deleteCachedDesign } from '../services/redisCache';
+import { createDraftOrder, fetchProduct } from '../services/shopifyAdmin';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -259,6 +260,89 @@ router.get('/', async (req, res) => {
     });
   } catch (error: any) {
     console.error('[Design] List error:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/designs/create-draft-order
+ * Create Shopify draft order with design
+ */
+router.post('/create-draft-order', async (req, res) => {
+  try {
+    const { designId, shop } = req.body;
+    
+    if (!designId || !shop) {
+      return res.status(400).json({ error: 'designId and shop required' });
+    }
+
+    // Get design from DB
+    const design = await prisma.design.findUnique({
+      where: { designId },
+    });
+
+    if (!design) {
+      return res.status(404).json({ error: 'Design not found' });
+    }
+
+    // Extract numeric variant ID from GID
+    const variantId = design.variantGid.split('/').pop() || '';
+
+    // Create draft order
+    const draftOrder = await createDraftOrder({
+      shop,
+      variantId,
+      designId: design.designId,
+      previewUrl: design.previewUrl || '',
+      properties: {
+        'Sheet Size': design.sheetSize || '',
+        'Item Count': design.itemCount?.toString() || '',
+        'Technique': design.technique || '',
+      },
+      anonymousId: design.anonymousId || undefined,
+    });
+
+    // Update design with draft order ID
+    await prisma.design.update({
+      where: { designId },
+      data: {
+        draftOrderId: BigInt(draftOrder.id),
+      },
+    });
+
+    console.log('[Design] Draft order created:', draftOrder.id);
+
+    res.json({
+      success: true,
+      draftOrderId: draftOrder.id,
+      invoiceUrl: draftOrder.invoice_url,
+    });
+  } catch (error: any) {
+    console.error('[Design] Draft order error:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/shopify/product
+ * Fetch product details from Shopify
+ */
+router.get('/shopify/product', async (req, res) => {
+  try {
+    const { productGid, shop } = req.query;
+    
+    if (!productGid || !shop) {
+      return res.status(400).json({ error: 'productGid and shop required' });
+    }
+
+    const product = await fetchProduct(productGid as string, shop as string);
+
+    res.json({
+      success: true,
+      product,
+    });
+  } catch (error: any) {
+    console.error('[Shopify] Product fetch error:', error);
     res.status(400).json({ error: error.message });
   }
 });

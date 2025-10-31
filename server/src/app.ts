@@ -11,6 +11,7 @@ import { authRouter } from "./routes/auth";
 import { healthRouter } from "./routes/health";
 import { embedRouter } from "./routes/embed";
 import { proxyRouter } from "./routes/proxy";
+import designsRouter from "./routes/designs";
 
 export function createApp() {
   const app = express();
