@@ -28,6 +28,9 @@ import { getQualityAnalyzer } from "../services/qualityAnalysis";
 import { getSuggestionsEngine } from "../services/smartSuggestions";
 import CollaborationCursors from "./CollaborationCursors.vue";
 import CollaborationChat from "./CollaborationChat.vue";
+import AIDesignAssistant from "./AIDesignAssistant.vue";
+import BatchOperationsPanel from "./BatchOperationsPanel.vue";
+import "../styles/responsive.css";
 
 const route = useRoute();
 const modeStore = useEditorModeStore();
@@ -1065,6 +1068,12 @@ function changeMode(mode: "dtf" | "gang") {
     :user-count="collaboration.userCount.value"
     :has-collaborators="collaboration.hasCollaborators.value"
   />
+  
+  <!-- AI Design Assistant (floating) -->
+  <AIDesignAssistant />
+  
+  <!-- Batch Operations Panel (floating) -->
+  <BatchOperationsPanel />
 </template>
 
 <style scoped>

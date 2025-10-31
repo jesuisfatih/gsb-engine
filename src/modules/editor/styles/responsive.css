@@ -1,0 +1,406 @@
+/**
+ * EDITOR RESPONSIVE SYSTEM
+ * Mobile-first, print-on-demand optimized
+ */
+
+/* ==================== MOBILE (< 768px) ==================== */
+@media (max-width: 767px) {
+  /* Stack layout vertically */
+  .editor-root {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto 1fr !important;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height */
+  }
+
+  /* Hide sidebars on mobile by default */
+  .left-pane,
+  .right-pane {
+    display: none !important;
+  }
+
+  /* Full-width topbar */
+  .editor-topbar {
+    padding: 8px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .topbar-section {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  .tool-btn {
+    padding: 8px !important;
+    font-size: 12px !important;
+  }
+
+  .tool-btn .label {
+    display: none !important; /* Icon only on mobile */
+  }
+
+  .tool-btn.icon-only {
+    min-width: 36px !important;
+  }
+
+  /* Mobile stage canvas */
+  .editor-stage {
+    width: 100% !important;
+    height: calc(100vh - 120px) !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Touch-optimized canvas */
+  canvas {
+    touch-action: pan-x pan-y pinch-zoom !important;
+  }
+
+  /* Mobile floating panels */
+  .ai-assistant,
+  .batch-panel,
+  .chat-panel {
+    width: calc(100vw - 32px) !important;
+    max-height: calc(100vh - 100px) !important;
+    left: 16px !important;
+    right: 16px !important;
+    top: 80px !important;
+  }
+
+  /* Mobile modal full-screen */
+  .gsb-modal-content {
+    width: 100vw !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+  }
+
+  /* Floating buttons stack vertically */
+  .ai-trigger,
+  .batch-toggle,
+  .chat-toggle {
+    bottom: calc(70px + (var(--btn-index, 0) * 70px)) !important;
+    right: 16px !important;
+  }
+
+  /* Mobile accordion full width */
+  .accordion {
+    border-radius: 0 !important;
+  }
+
+  /* Mobile toolbar scrollable */
+  .area-toolbar {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Hide collaboration cursors on mobile */
+  .collaboration-cursors {
+    display: none !important;
+  }
+
+  /* Mobile presence panel */
+  .presence-panel {
+    top: auto !important;
+    bottom: 120px !important;
+    right: 16px !important;
+    width: auto !important;
+    max-width: calc(100vw - 32px);
+  }
+}
+
+/* ==================== TABLET (768px - 1023px) ==================== */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .editor-root {
+    grid-template-columns: auto 1fr auto !important;
+  }
+
+  /* Collapsible sidebars */
+  .left-pane,
+  .right-pane {
+    width: 280px !important;
+    transition: width 0.3s ease, transform 0.3s ease;
+  }
+
+  .is-left-collapsed .left-pane {
+    width: 0 !important;
+    transform: translateX(-100%);
+  }
+
+  .is-right-collapsed .right-pane {
+    width: 0 !important;
+    transform: translateX(100%);
+  }
+
+  /* Tablet topbar */
+  .editor-topbar {
+    padding: 10px 16px !important;
+  }
+
+  .tool-btn .label {
+    font-size: 12px !important;
+  }
+
+  /* Tablet canvas */
+  .editor-stage {
+    width: calc(100vw - 560px) !important;
+  }
+
+  .is-left-collapsed .editor-stage {
+    width: calc(100vw - 280px) !important;
+  }
+
+  .is-right-collapsed .editor-stage {
+    width: calc(100vw - 280px) !important;
+  }
+
+  .is-left-collapsed.is-right-collapsed .editor-stage {
+    width: 100vw !important;
+  }
+
+  /* Tablet floating panels */
+  .ai-assistant,
+  .batch-panel {
+    width: 360px !important;
+  }
+
+  /* Tablet presence panel */
+  .presence-panel {
+    top: 80px !important;
+    right: 16px !important;
+  }
+}
+
+/* ==================== LAPTOP (1024px - 1439px) ==================== */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .editor-root {
+    grid-template-columns: 360px 1fr 320px !important;
+  }
+
+  .left-pane {
+    width: 360px !important;
+  }
+
+  .right-pane {
+    width: 320px !important;
+  }
+
+  .editor-topbar {
+    padding: 12px 20px !important;
+  }
+
+  /* Laptop canvas optimal size */
+  .editor-stage {
+    width: calc(100vw - 680px) !important;
+  }
+}
+
+/* ==================== DESKTOP HD (1440px - 1919px) ==================== */
+@media (min-width: 1440px) and (max-width: 1919px) {
+  .editor-root {
+    grid-template-columns: 420px 1fr 380px !important;
+  }
+
+  .left-pane {
+    width: 420px !important;
+  }
+
+  .right-pane {
+    width: 380px !important;
+  }
+
+  /* HD canvas */
+  .editor-stage {
+    width: calc(100vw - 800px) !important;
+  }
+
+  /* Larger UI elements */
+  .tool-btn {
+    padding: 10px 14px !important;
+  }
+
+  .accordion-title {
+    font-size: 15px !important;
+  }
+}
+
+/* ==================== DESKTOP 4K (>= 1920px) ==================== */
+@media (min-width: 1920px) {
+  .editor-root {
+    grid-template-columns: 480px 1fr 420px !important;
+  }
+
+  .left-pane {
+    width: 480px !important;
+  }
+
+  .right-pane {
+    width: 420px !important;
+  }
+
+  /* 4K canvas */
+  .editor-stage {
+    width: calc(100vw - 900px) !important;
+  }
+
+  /* 4K UI scaling */
+  .tool-btn {
+    padding: 12px 16px !important;
+    font-size: 15px !important;
+  }
+
+  .accordion-title {
+    font-size: 16px !important;
+  }
+
+  canvas {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* ==================== LANDSCAPE MOBILE ==================== */
+@media (max-width: 926px) and (orientation: landscape) {
+  .editor-root {
+    grid-template-columns: 1fr !important;
+  }
+
+  .editor-topbar {
+    padding: 6px !important;
+  }
+
+  .editor-stage {
+    height: calc(100vh - 60px) !important;
+  }
+
+  /* Hide all panels in landscape */
+  .left-pane,
+  .right-pane,
+  .ai-assistant,
+  .batch-panel,
+  .chat-panel {
+    display: none !important;
+  }
+
+  /* Full canvas in landscape */
+  .editor-stage {
+    width: 100vw !important;
+  }
+}
+
+/* ==================== TOUCH DEVICE OPTIMIZATIONS ==================== */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  .tool-btn,
+  button,
+  .accordion summary {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  /* Touch-friendly scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-radius: 4px !important;
+  }
+
+  /* Disable hover effects on touch */
+  .tool-btn:hover,
+  button:hover {
+    transform: none !important;
+  }
+
+  /* Active states for touch feedback */
+  .tool-btn:active {
+    transform: scale(0.95) !important;
+    background: #e5e7eb !important;
+  }
+
+  /* Touch-optimized drag handles */
+  .resize-handle {
+    width: 20px !important;
+  }
+
+  /* Prevent text selection during touch */
+  .editor-stage,
+  canvas {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+}
+
+/* ==================== HIGH CONTRAST MODE ==================== */
+@media (prefers-contrast: high) {
+  .tool-btn {
+    border-width: 2px !important;
+  }
+
+  .accordion {
+    border-width: 2px !important;
+  }
+
+  .divider {
+    border-width: 2px !important;
+  }
+}
+
+/* ==================== REDUCED MOTION ==================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .spinner {
+    animation: none !important;
+  }
+}
+
+/* ==================== PRINT STYLES ==================== */
+@media print {
+  .editor-topbar,
+  .left-pane,
+  .right-pane,
+  .ai-assistant,
+  .batch-panel,
+  .chat-panel,
+  .area-toolbar {
+    display: none !important;
+  }
+
+  .editor-stage {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  canvas {
+    page-break-inside: avoid;
+  }
+}
+
+/* ==================== SAFE AREA INSETS (iOS) ==================== */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .editor-root {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .editor-topbar {
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+
+  .ai-trigger,
+  .batch-toggle,
+  .chat-toggle {
+    bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
