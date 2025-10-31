@@ -122,7 +122,22 @@ export const useCatalogStore = defineStore("catalog", {
     sortedProducts(state): ProductDefinition[] {
       return [...state.products].sort((a, b) => a.title.localeCompare(b.title));
     },
-    variantsForProduct: state => (productId: string) => state.shopifyVariants[productId] ?? [],
+    variantsForProduct: state => (productId: string) => {
+      // Try exact match first
+      if (state.shopifyVariants[productId]) {
+        return state.shopifyVariants[productId];
+      }
+      // Try extracting numeric ID and searching
+      const numericId = productId.includes("/") ? productId.split("/").pop() : productId;
+      // Search by numeric ID in keys
+      for (const key in state.shopifyVariants) {
+        const keyNumeric = key.includes("/") ? key.split("/").pop() : key;
+        if (keyNumeric === numericId) {
+          return state.shopifyVariants[key];
+        }
+      }
+      return [];
+    },
     variantMappingLookup(state) {
       const map: Record<string, VariantMapping> = {};
       for (const entry of state.variantMappings)
