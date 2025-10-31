@@ -106,7 +106,7 @@ const surfaceMetrics = computed(() => {
           </div>
         </div>
 
-        <div class="row" v-if="product">
+        <div class="row" v-if="product && product.surfaces && product.surfaces.length > 0">
           <label class="row-label" for="editor-surface-select">
             <svg class="row-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
@@ -124,6 +124,13 @@ const surfaceMetrics = computed(() => {
             >
               <option v-for="s in product.surfaces" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
+          </div>
+        </div>
+        
+        <!-- Debug info for missing surfaces -->
+        <div class="row" v-if="product && (!product.surfaces || product.surfaces.length === 0)">
+          <div class="panel-notice error" style="grid-column: 1 / -1;">
+            Product has no surfaces defined. Please configure surfaces in merchant panel.
           </div>
         </div>
 
@@ -272,21 +279,25 @@ const surfaceMetrics = computed(() => {
 .row {
   display: grid;
   align-items: center;
-  gap: 14px;
-  grid-template-columns: minmax(128px, max-content) 1fr;
+  gap: 12px;
+  grid-template-columns: auto 1fr;
+  width: 100%;
+  min-height: 44px;
 }
 
 .row-label {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-width: 150px;
+  min-width: 120px;
+  max-width: 160px;
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   font-family: var(--editor-font, "Public Sans", "Inter", system-ui, sans-serif);
+  flex-shrink: 0;
 }
 
 .row-label span:last-child {
@@ -304,24 +315,25 @@ const surfaceMetrics = computed(() => {
   position: relative;
   color: var(--editor-accent);
   min-width: 0;
+  flex: 1;
+  width: 100%;
 }
 
 select {
   appearance: none;
   border: 1px solid var(--divider);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--surface-solid);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  padding-block: 10px;
-  padding-inline: 16px;
-  padding-right: 48px;
+  padding: 10px 40px 10px 12px;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   color: var(--text-primary);
-  font: 600 13px/1.25 var(--editor-font, "Public Sans", "Inter", system-ui, sans-serif);
+  font: 500 13px/1.4 var(--editor-font, "Public Sans", "Inter", system-ui, sans-serif);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   background-color: var(--surface-solid);
+  cursor: pointer;
 }
 
 .field::after {

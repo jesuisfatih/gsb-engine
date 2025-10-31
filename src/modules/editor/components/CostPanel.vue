@@ -73,12 +73,13 @@ async function confirmAddToCart() {
   if (cartSubmitting.value) return;
   try {
     cartSubmitting.value = true;
-    await store.addToCart();
+    // Use the real checkout function
+    await store.checkoutWithDesign();
     showCartModal.value = false;
-    window.setTimeout(() => window.alert("Added to Shopify cart (stub)"), 50);
   } catch (err) {
-    console.warn(err);
-    window.alert("Failed to add to cart (stub).");
+    console.error('[cart] Checkout failed', err);
+    const message = err instanceof Error ? err.message : 'Failed to proceed to checkout';
+    window.alert(message);
   } finally {
     cartSubmitting.value = false;
   }
@@ -89,11 +90,12 @@ async function createDtfTransfer() {
   try {
     combinedSubmitting.value = true;
     await gangStore.submitGangSheetPlan();
-    await store.addToCart();
-    window.alert("DTF transfer order created (stub).");
+    // Use the real checkout function
+    await store.checkoutWithDesign();
   } catch (err) {
-    console.warn(err);
-    window.alert("Could not create transfer (stub).");
+    console.error('[dtf] Transfer creation failed', err);
+    const message = err instanceof Error ? err.message : 'Failed to create DTF transfer';
+    window.alert(message);
   } finally {
     combinedSubmitting.value = false;
   }
