@@ -401,38 +401,41 @@
       }
     }
 
-    if (message.type === 'GSB_DESIGN_COMPLETE') {
-        console.log('[GSB Block] Design complete:', message);
-        console.log('[GSB Block] Mode:', message.mode);
-        console.log('[GSB Block] Metadata:', message.metadata);
-        console.log('[GSB Block] Preview URL length:', message.previewUrl?.length || 0);
-
-        // Prepare line item with preview and metadata
-        const lineItem = {
-          id: message.variantId || '{{ product.selected_or_first_available_variant.id }}',
-          quantity: 1,
-          properties: message.properties || {},
-        };
-
-        // Add preview as property (if small enough)
-        if (message.previewUrl && message.previewUrl.length < 5000) {
-          lineItem.properties['_Preview'] = message.previewUrl;
-        }
-
-        // Add metadata
-        if (message.metadata) {
-          if (message.metadata.sheetSize) {
-            lineItem.properties['Sheet Size'] = message.metadata.sheetSize;
-          }
-          if (message.metadata.itemCount) {
-            lineItem.properties['Item Count'] = String(message.metadata.itemCount);
-          }
-          if (message.metadata.utilization) {
-            lineItem.properties['Utilization'] = message.metadata.utilization.toFixed(1) + '%';
-          }
-        }
-
-        console.log('[GSB Block] Adding to cart:', lineItem);
+              if (message.type === 'GSB_DESIGN_COMPLETE') {
+                  console.log('[GSB Block] Design complete:', message);
+                  
+                  // UPDATED: Use CDN preview URL, not base64
+                  const lineItem = {
+                    id: message.variantId || '{{ product.selected_or_first_available_variant.id }}',
+                    quantity: 1,
+                    properties: {},
+                  };
+                  
+                  // Add design ID (CRITICAL!)
+                  if (message.designId) {
+                    lineItem.properties['_Design_ID'] = message.designId;
+                  }
+                  
+                  // Add preview URL from CDN (not base64!)
+                  if (message.previewUrl && message.previewUrl.startsWith('http')) {
+                    lineItem.properties['_Preview_URL'] = message.previewUrl;
+                  }
+                  
+                  // Add download URL (high-res)
+                  if (message.downloadUrl) {
+                    lineItem.properties['_Download_URL'] = message.downloadUrl;
+                  }
+                  
+                  // Add metadata from message.properties
+                  if (message.properties) {
+                    Object.entries(message.properties).forEach(([key, value]) => {
+                      if (!key.startsWith('_')) {
+                        lineItem.properties[key] = value;
+                      }
+                    });
+                  }
+                  
+                  console.log('[GSB Block] Adding to cart:', lineItem);
 
         // Add to Shopify cart
         fetch('/cart/add.js', {
