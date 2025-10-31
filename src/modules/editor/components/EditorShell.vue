@@ -116,22 +116,19 @@ onMounted(async () => {
         console.error("[editor] Failed to load product from API", err);
       }
     }
-
-      // Store Shopify context for checkout (save to localStorage for now)
-      if (shopifyProduct || shopifyVariant) {
-        const shopifyContext = {
-          productGid: shopifyProduct,
-          variantId: shopifyVariant,
-          returnUrl: route.query.returnTo as string | undefined,
-        };
-        console.log("[editor] Storing Shopify context:", shopifyContext);
-        // Store in localStorage for checkout
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('gsb-shopify-context', JSON.stringify(shopifyContext));
-        }
+    
+    // Store Shopify context for checkout (save to localStorage for now)
+    if (shopifyProduct || shopifyVariant) {
+      const shopifyContext = {
+        productGid: shopifyProduct,
+        variantId: shopifyVariant,
+        returnUrl: route.query.returnTo as string | undefined,
+      };
+      console.log("[editor] Storing Shopify context:", shopifyContext);
+      // Store in localStorage for checkout
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('gsb-shopify-context', JSON.stringify(shopifyContext));
       }
-    } else {
-      console.warn("[editor] Product not found:", productSlug);
     }
   }
 });
