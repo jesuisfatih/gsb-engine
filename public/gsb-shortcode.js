@@ -65,13 +65,19 @@
       if (shopifyProductId) params.append('shopifyProductId', shopifyProductId);
       if (shopifyVariantId) params.append('shopifyVariantId', shopifyVariantId);
 
-      const response = await fetch(`${config.mappingUrl}?${params}`);
+      const url = `${config.mappingUrl}?${params.toString()}`;
+      console.log('[GSB] Fetching mapping from:', url);
+      
+      const response = await fetch(url);
+      console.log('[GSB] Mapping response status:', response.status);
+      
       if (!response.ok) {
-        console.warn('[GSB] No mapping found for product/variant');
+        console.warn('[GSB] No mapping found for product/variant', { shopifyProductId, shopifyVariantId });
         return null;
       }
 
       const data = await response.json();
+      console.log('[GSB] Mapping data:', data);
       const mapping = data.data || data;
       productMappingCache.set(cacheKey, mapping);
       return mapping;
