@@ -26,6 +26,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/health",
   "/api/_debug/",
   "/api/embed/",
+  "/api/catalog", // Allow public catalog access for customer editor
 ];
 
 const PUBLIC_EXACT_PATHS = new Set([
