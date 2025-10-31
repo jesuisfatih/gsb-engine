@@ -21,6 +21,27 @@ export function useAutosaveManager() {
       getSnapshot: () => editorStore.serializeSnapshot(),
       enabled: () => isAutosaveMode(modeStore.activeMode),
       debounceMs: 2000,
+      onSave: (timestamp: string) => {
+        // Update editorStore timestamps and history for UI display
+        editorStore.lastAutosaveAt = timestamp;
+        editorStore.lastSavedAt = timestamp;
+        editorStore.recordAutosaveHistory({
+          kind: 'autosave',
+          message: 'Autosaved to browser (anonymous)',
+          timestamp,
+          status: editorStore.designStatus,
+        });
+      },
+      onError: (error: unknown) => {
+        const message = error instanceof Error ? error.message : 'Autosave failed';
+        editorStore.autosaveError = message;
+        editorStore.recordAutosaveHistory({
+          kind: 'error',
+          message: `Autosave error: ${message}`,
+          timestamp: new Date().toISOString(),
+          status: editorStore.designStatus,
+        });
+      },
     });
 
     const snapshotSignature = computed(() => {

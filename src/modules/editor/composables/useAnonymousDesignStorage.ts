@@ -116,6 +116,8 @@ export function useAnonymousDesignStorage(options: {
   getSnapshot: () => Omit<AnonymousDesignSnapshot, 'id' | 'createdAt' | 'updatedAt'>;
   enabled: () => boolean;
   debounceMs?: number;
+  onSave?: (timestamp: string) => void;
+  onError?: (error: unknown) => void;
 }) {
   let saveTimer: number | null = null;
   const isSaving = ref(false);
@@ -141,9 +143,18 @@ export function useAnonymousDesignStorage(options: {
     try {
       const snapshot = options.getSnapshot();
       saveAnonymousDesign(snapshot);
-      lastSaved.value = new Date();
+      const now = new Date();
+      lastSaved.value = now;
+      
+      // Notify parent of successful save
+      if (options.onSave) {
+        options.onSave(now.toISOString());
+      }
     } catch (error) {
       console.warn('[anonymous] Auto-save failed', error);
+      if (options.onError) {
+        options.onError(error);
+      }
     } finally {
       isSaving.value = false;
     }
