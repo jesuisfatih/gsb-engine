@@ -42,9 +42,11 @@ const selectedShopifyProduct = computed<ShopifyProductSummary | undefined>(() =>
   shopifyProducts.value.find(product => product.id === selectedShopifyProductId.value),
 );
 
-const shopifyVariants = computed<ShopifyVariantSummary[]>(() =>
-  selectedShopifyProductId.value ? catalog.variantsForProduct(selectedShopifyProductId.value) : [],
-);
+const shopifyVariants = computed<ShopifyVariantSummary[]>(() => {
+  const variants = selectedShopifyProductId.value ? catalog.variantsForProduct(selectedShopifyProductId.value) : [];
+  console.log('[catalog] shopifyVariants computed:', selectedShopifyProductId.value, '→', variants.length, 'variants');
+  return variants;
+});
 
 const gsbProducts = computed(() => catalog.sortedProducts);
 
@@ -297,7 +299,10 @@ watch(filteredShopifyProducts, products => {
 
 watch(selectedShopifyProductId, async id => {
   if (!id) return;
+  console.log('[catalog] Selected product changed:', id);
   await catalog.fetchShopifyProductVariants(id);
+  console.log('[catalog] Variants fetched, count:', catalog.variantsForProduct(id).length);
+  console.log('[catalog] shopifyVariants state:', Object.keys(catalog.shopifyVariants));
   hydrateRowSelections();
 });
 
