@@ -5,7 +5,7 @@
 
 <!-- Customize Button -->
 <div class="gsb-button-container">
-  <button 
+  <button
     type="button"
     class="gsb-customize-button gsb-btn-{{ block.settings.button_size }}"
     onclick="openGSBEditorModal{{ block.id }}()"
@@ -14,82 +14,101 @@
       color: {{ block.settings.button_text_color }};
     "
   >
-    {{ block.settings.button_icon }}{{ block.settings.button_label }}
+    {{ block.settings.button_icon -}}
+    {{- block.settings.button_label }}
   </button>
 </div>
 
 <!-- Hide default Add to Cart buttons when GSB is active -->
 {% if block.settings.hide_default_buttons %}
-<style>
-  form[action="/cart/add"] .product-form__submit,
-  form[action*="/cart/add"] button[type="submit"],
-  .shopify-payment-button,
-  .product-form__buttons,
-  button[name="add"],
-  input[name="add"] {
-    display: none !important;
-  }
-</style>
+  <style>
+    form[action='/cart/add'] .product-form__submit,
+    form[action*='/cart/add'] button[type='submit'],
+    .shopify-payment-button,
+    .product-form__buttons,
+    button[name='add'],
+    input[name='add'] {
+      display: none !important;
+    }
+  </style>
 {% endif %}
 
 <!-- Modal (hidden by default) -->
-<div class="gsb-editor-modal" id="gsb-modal-{{ block.id }}" style="
-  display: none;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 2147483647 !important;
-  background: rgba(0, 0, 0, 0.85) !important;
-  backdrop-filter: blur(8px);
-  justify-content: center !important;
-  align-items: center !important;
-">
-  <div class="gsb-modal-content" style="
-    position: relative !important;
-    width: 96vw !important;
-    height: 96vh !important;
-    max-width: none !important;
-    margin: 0 auto !important;
-    background: white !important;
-    border-radius: 12px !important;
-    box-shadow: 0 0 100px rgba(0, 0, 0, 0.8) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-  ">
-    <div class="gsb-modal-header" style="
+<div
+  class="gsb-editor-modal"
+  id="gsb-modal-{{ block.id }}"
+  style="
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 2147483647 !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(8px);
+    justify-content: center !important;
+    align-items: center !important;
+  "
+>
+  <div
+    class="gsb-modal-content"
+    style="
+      position: relative !important;
+      width: 96vw !important;
+      height: 96vh !important;
+      max-width: none !important;
+      margin: 0 auto !important;
+      background: white !important;
+      border-radius: 12px !important;
+      box-shadow: 0 0 100px rgba(0, 0, 0, 0.8) !important;
       display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
-      padding: 12px 20px !important;
-      border-bottom: 1px solid #e5e7eb !important;
-      background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%) !important;
-      flex-shrink: 0 !important;
-    ">
-      <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">{{ block.settings.modal_title }}</h2>
-      <button class="gsb-modal-close" onclick="closeGSBEditorModal{{ block.id }}()" aria-label="Close" style="
-        width: 36px !important;
-        height: 36px !important;
-        border: none !important;
-        background: #f3f4f6 !important;
-        border-radius: 8px !important;
-        font-size: 20px !important;
-        cursor: pointer !important;
-        color: #6b7280 !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+    "
+  >
+    <div
+      class="gsb-modal-header"
+      style="
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 12px 20px !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%) !important;
         flex-shrink: 0 !important;
-      ">
+      "
+    >
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">{{ block.settings.modal_title }}</h2>
+      <button
+        class="gsb-modal-close"
+        onclick="closeGSBEditorModal{{ block.id }}()"
+        aria-label="Close"
+        style="
+          width: 36px !important;
+          height: 36px !important;
+          border: none !important;
+          background: #f3f4f6 !important;
+          border-radius: 8px !important;
+          font-size: 20px !important;
+          cursor: pointer !important;
+          color: #6b7280 !important;
+          flex-shrink: 0 !important;
+        "
+      >
         ✕
       </button>
     </div>
-    <div class="gsb-modal-body" style="
-      flex: 1 !important;
-      overflow: hidden !important;
-      background: #f9fafb !important;
-    ">
+    <div
+      class="gsb-modal-body"
+      style="
+        flex: 1 !important;
+        overflow: hidden !important;
+        background: #f9fafb !important;
+      "
+    >
       <iframe
         id="gsb-iframe-{{ block.id }}"
         src=""
@@ -100,6 +119,7 @@
           display: block !important;
         "
         allow="clipboard-write; clipboard-read"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-storage-access-by-user-activation"
         loading="lazy"
       ></iframe>
     </div>
@@ -107,330 +127,330 @@
 </div>
 
 <style>
-.gsb-button-container {
-  margin: {{ block.settings.margin_top }}px 0 {{ block.settings.margin_bottom }}px;
-}
+  .gsb-button-container {
+    margin: {{ block.settings.margin_top }}px 0 {{ block.settings.margin_bottom }}px;
+  }
 
-.gsb-customize-button {
-  width: 100%;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
+  .gsb-customize-button {
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
 
-.gsb-customize-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
+  .gsb-customize-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
 
-.gsb-btn-sm { padding: 10px 20px; font-size: 14px; }
-.gsb-btn-md { padding: 14px 28px; font-size: 16px; }
-.gsb-btn-lg { padding: 18px 36px; font-size: 18px; }
+  .gsb-btn-sm { padding: 10px 20px; font-size: 14px; }
+  .gsb-btn-md { padding: 14px 28px; font-size: 16px; }
+  .gsb-btn-lg { padding: 18px 36px; font-size: 18px; }
 
-.gsb-editor-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 999999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s ease;
-}
+  .gsb-editor-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+  }
 
-.gsb-modal-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-}
+  .gsb-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+  }
 
-.gsb-modal-content {
-  position: relative;
-  width: 96vw !important;
-  height: 96vh !important;
-  max-width: 2560px !important;
-  min-width: 1200px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  z-index: 1;
-}
-
-.gsb-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.gsb-modal-header h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.gsb-modal-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: #f3f4f6;
-  border-radius: 8px;
-  font-size: 20px;
-  cursor: pointer;
-  color: #6b7280;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.gsb-modal-close:hover {
-  background: #e5e7eb;
-  color: #111827;
-  transform: scale(1.05);
-}
-
-.gsb-modal-body {
-  flex: 1;
-  overflow: hidden;
-  background: #f9fafb;
-}
-
-.gsb-editor-iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* Mobile: tam ekran */
-@media (max-width: 768px) {
   .gsb-modal-content {
-    width: 100vw !important;
-    height: 100vh !important;
-    min-width: auto !important;
-    border-radius: 0 !important;
+    position: relative;
+    width: 96vw !important;
+    height: 96vh !important;
+    max-width: 2560px !important;
+    min-width: 1200px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1;
   }
-  
+
   .gsb-modal-header {
-    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
-  
+
   .gsb-modal-header h2 {
-    font-size: 14px;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
   }
-  
+
   .gsb-modal-close {
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.2s;
+    flex-shrink: 0;
   }
-}
+
+  .gsb-modal-close:hover {
+    background: #e5e7eb;
+    color: #111827;
+    transform: scale(1.05);
+  }
+
+  .gsb-modal-body {
+    flex: 1;
+    overflow: hidden;
+    background: #f9fafb;
+  }
+
+  .gsb-editor-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* Mobile: tam ekran */
+  @media (max-width: 768px) {
+    .gsb-modal-content {
+      width: 100vw !important;
+      height: 100vh !important;
+      min-width: auto !important;
+      border-radius: 0 !important;
+    }
+
+    .gsb-modal-header {
+      padding: 10px 16px;
+    }
+
+    .gsb-modal-header h2 {
+      font-size: 14px;
+    }
+
+    .gsb-modal-close {
+      width: 32px;
+      height: 32px;
+      font-size: 18px;
+    }
+  }
 </style>
 
 <script>
-(function() {
-  'use strict';
-  
-  const modalId = 'gsb-modal-{{ block.id }}';
-  const iframeId = 'gsb-iframe-{{ block.id }}';
-  
-  // CRITICAL: Move modal to body (escape container!)
-  document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById(modalId);
-    if (modal && modal.parentElement !== document.body) {
-      document.body.appendChild(modal);
-      console.log('[GSB] Modal moved to body - escaped container!');
-    }
-  });
-  
-  // Open modal
-  window['openGSBEditorModal{{ block.id }}'] = function() {
-    const modal = document.getElementById(modalId);
-    const iframe = document.getElementById(iframeId);
-    
-    if (!modal || !iframe) {
-      console.error('[GSB] Modal or iframe not found!');
-      return;
-    }
-    
-    // Build editor URL with proper parameters
-    const productHandle = '{{ product.handle }}';
-    const productGid = '{{ product.admin_graphql_api_id }}';
-    const variantGid = '{{ product.selected_or_first_available_variant.admin_graphql_api_id }}';
-    const variantId = '{{ product.selected_or_first_available_variant.id }}';
-    const tenantId = '{{ shop.metafields.gsb.tenant_id | default: "9ea467b0-edd2-4fdf-a306-3e2dee620d26" }}';
-    
-    const params = new URLSearchParams({
-      product: productHandle,
-      shopifyProduct: productGid,
-      shopifyVariant: variantGid,
-      variantId: variantId,
-      t: tenantId,
-      embed: 'shopify'
-    });
-    
-    console.log('[GSB] Opening editor with params:', {
-      product: productHandle,
-      productGid: productGid,
-      variantGid: variantGid,
-      variantId: variantId,
-      tenantId: tenantId
-    });
-    
-    iframe.src = 'https://app.gsb-engine.dev/editor?' + params.toString();
-    
-    // Force display
-    modal.style.display = 'flex';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.right = '0';
-    modal.style.bottom = '0';
-    modal.style.zIndex = '2147483647';
-    
-    // Lock body scroll
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    
-    console.log('[GSB] Editor modal opened - FULL SCREEN');
-  };
-  
-  // Close modal
-  window['closeGSBEditorModal{{ block.id }}'] = function() {
-    const modal = document.getElementById(modalId);
-    const iframe = document.getElementById(iframeId);
-    
-    if (modal) {
-      modal.style.display = 'none';
-    }
-    
-    // Unlock body scroll
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.width = '';
-    
-    if (iframe) {
-      iframe.src = '';
-    }
-    
-    console.log('[GSB] Editor modal closed');
-  };
-  
-  // Get iframe reference
-  const iframe = document.getElementById(iframeId);
-  
-  // Listen for messages from editor
-  window.addEventListener('message', function(event) {
-    // Verify origin
-    if (!event.origin.includes('app.gsb-engine.dev')) {
-      return;
-    }
-    
-    const message = event.data;
-    
-    if (message.type === 'GSB_DESIGN_COMPLETE') {
-      console.log('[GSB Block] Design complete:', message);
-      console.log('[GSB Block] Mode:', message.mode);
-      console.log('[GSB Block] Metadata:', message.metadata);
-      console.log('[GSB Block] Preview URL length:', message.previewUrl?.length || 0);
-      
-      // Prepare line item with preview and metadata
-      const lineItem = {
-        id: message.variantId || '{{ product.selected_or_first_available_variant.id }}',
-        quantity: 1,
-        properties: message.properties || {},
-      };
-      
-      // Add preview as property (if small enough)
-      if (message.previewUrl && message.previewUrl.length < 5000) {
-        lineItem.properties['_Preview'] = message.previewUrl;
+  (function() {
+    'use strict';
+
+    const modalId = 'gsb-modal-{{ block.id }}';
+    const iframeId = 'gsb-iframe-{{ block.id }}';
+
+    // CRITICAL: Move modal to body (escape container!)
+    document.addEventListener('DOMContentLoaded', function() {
+      const modal = document.getElementById(modalId);
+      if (modal && modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+        console.log('[GSB] Modal moved to body - escaped container!');
       }
-      
-      // Add metadata
-      if (message.metadata) {
-        if (message.metadata.sheetSize) {
-          lineItem.properties['Sheet Size'] = message.metadata.sheetSize;
-        }
-        if (message.metadata.itemCount) {
-          lineItem.properties['Item Count'] = String(message.metadata.itemCount);
-        }
-        if (message.metadata.utilization) {
-          lineItem.properties['Utilization'] = message.metadata.utilization.toFixed(1) + '%';
-        }
+    });
+
+    // Open modal
+    window['openGSBEditorModal{{ block.id }}'] = function() {
+      const modal = document.getElementById(modalId);
+      const iframe = document.getElementById(iframeId);
+
+      if (!modal || !iframe) {
+        console.error('[GSB] Modal or iframe not found!');
+        return;
       }
-      
-      console.log('[GSB Block] Adding to cart:', lineItem);
-      
-      // Add to Shopify cart
-      fetch('/cart/add.js', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(lineItem)
-      })
-      .then(response => response.json())
-      .then(item => {
-        console.log('[GSB Block] ✅ Added to cart successfully!', item);
-        
-        // Close modal first
-        window['closeGSBEditorModal{{ block.id }}']();
-        
-        // Small delay then redirect/drawer
-        setTimeout(() => {
-          {% if block.settings.after_add_action == 'drawer' %}
-            if (typeof window.theme !== 'undefined' && window.theme.openCart) {
-              window.theme.openCart();
-            } else {
-              window.location.href = '/cart';
-            }
-          {% else %}
-            window.location.href = '/cart';
-          {% endif %}
-        }, 300);
-      })
-      .catch(error => {
-        console.error('[GSB Block] ❌ Cart add failed:', error);
-        alert('Failed to add to cart: ' + error.message + '\n\nPlease try again or contact support.');
+
+      // Build editor URL with proper parameters
+      const productHandle = '{{ product.handle }}';
+      const productGid = '{{ product.admin_graphql_api_id }}';
+      const variantGid = '{{ product.selected_or_first_available_variant.admin_graphql_api_id }}';
+      const variantId = '{{ product.selected_or_first_available_variant.id }}';
+      const tenantId = '{{ shop.metafields.gsb.tenant_id | default: "9ea467b0-edd2-4fdf-a306-3e2dee620d26" }}';
+
+      const params = new URLSearchParams({
+        product: productHandle,
+        shopifyProduct: productGid,
+        shopifyVariant: variantGid,
+        variantId: variantId,
+        t: tenantId,
+        embed: 'shopify'
       });
-    }
-  });
-  
-  // Send ready message to iframe
-  iframe.addEventListener('load', function() {
-    iframe.contentWindow.postMessage({
-      type: 'GSB_PARENT_READY',
-      shop: '{{ shop.permanent_domain }}',
-      product: {
-        id: '{{ product.admin_graphql_api_id }}',
-        handle: '{{ product.handle }}',
-        title: '{{ product.title | escape }}'
+
+      console.log('[GSB] Opening editor with params:', {
+        product: productHandle,
+        productGid: productGid,
+        variantGid: variantGid,
+        variantId: variantId,
+        tenantId: tenantId
+      });
+
+      iframe.src = 'https://app.gsb-engine.dev/editor?' + params.toString();
+
+      // Force display
+      modal.style.display = 'flex';
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.right = '0';
+      modal.style.bottom = '0';
+      modal.style.zIndex = '2147483647';
+
+      // Lock body scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+
+      console.log('[GSB] Editor modal opened - FULL SCREEN');
+    };
+
+    // Close modal
+    window['closeGSBEditorModal{{ block.id }}'] = function() {
+      const modal = document.getElementById(modalId);
+      const iframe = document.getElementById(iframeId);
+
+      if (modal) {
+        modal.style.display = 'none';
       }
-    }, '*');
-  });
-})();
+
+      // Unlock body scroll
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+
+      if (iframe) {
+        iframe.src = '';
+      }
+
+      console.log('[GSB] Editor modal closed');
+    };
+
+    // Get iframe reference
+    const iframe = document.getElementById(iframeId);
+
+    // Listen for messages from editor
+    window.addEventListener('message', function(event) {
+      // Verify origin
+      if (!event.origin.includes('app.gsb-engine.dev')) {
+        return;
+      }
+
+      const message = event.data;
+
+      if (message.type === 'GSB_DESIGN_COMPLETE') {
+        console.log('[GSB Block] Design complete:', message);
+        console.log('[GSB Block] Mode:', message.mode);
+        console.log('[GSB Block] Metadata:', message.metadata);
+        console.log('[GSB Block] Preview URL length:', message.previewUrl?.length || 0);
+
+        // Prepare line item with preview and metadata
+        const lineItem = {
+          id: message.variantId || '{{ product.selected_or_first_available_variant.id }}',
+          quantity: 1,
+          properties: message.properties || {},
+        };
+
+        // Add preview as property (if small enough)
+        if (message.previewUrl && message.previewUrl.length < 5000) {
+          lineItem.properties['_Preview'] = message.previewUrl;
+        }
+
+        // Add metadata
+        if (message.metadata) {
+          if (message.metadata.sheetSize) {
+            lineItem.properties['Sheet Size'] = message.metadata.sheetSize;
+          }
+          if (message.metadata.itemCount) {
+            lineItem.properties['Item Count'] = String(message.metadata.itemCount);
+          }
+          if (message.metadata.utilization) {
+            lineItem.properties['Utilization'] = message.metadata.utilization.toFixed(1) + '%';
+          }
+        }
+
+        console.log('[GSB Block] Adding to cart:', lineItem);
+
+        // Add to Shopify cart
+        fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(lineItem)
+        })
+        .then(response => response.json())
+        .then(item => {
+          console.log('[GSB Block] ✅ Added to cart successfully!', item);
+
+          // Close modal first
+          window['closeGSBEditorModal{{ block.id }}']();
+
+          // Small delay then redirect/drawer
+          setTimeout(() => {
+            {% if block.settings.after_add_action == 'drawer' %}
+              if (typeof window.theme !== 'undefined' && window.theme.openCart) {
+                window.theme.openCart();
+              } else {
+                window.location.href = '/cart';
+              }
+            {% else %}
+              window.location.href = '/cart';
+            {% endif %}
+          }, 300);
+        })
+        .catch(error => {
+          console.error('[GSB Block] ❌ Cart add failed:', error);
+          alert('Failed to add to cart: ' + error.message + '\n\nPlease try again or contact support.');
+        });
+      }
+    });
+
+    // Send ready message to iframe
+    iframe.addEventListener('load', function() {
+      iframe.contentWindow.postMessage({
+        type: 'GSB_PARENT_READY',
+        shop: '{{ shop.permanent_domain }}',
+        product: {
+          id: '{{ product.admin_graphql_api_id }}',
+          handle: '{{ product.handle }}',
+          title: '{{ product.title | escape }}'
+        }
+      }, '*');
+    });
+  })();
 </script>
 
 {% schema %}
@@ -550,4 +570,3 @@
   ]
 }
 {% endschema %}
-

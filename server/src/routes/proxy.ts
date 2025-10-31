@@ -8,9 +8,9 @@ import fs from "fs";
 
 const checkoutSchema = z.object({
   designId: z.string().optional(),
-  productGid: z.string().min(3),
+  productGid: z.string().min(1).optional(), // More lenient
   productTitle: z.string().optional(),
-  quantity: z.number().int().positive().default(1),
+  quantity: z.number().int().positive().default(1).optional(),
   variantId: z.string().optional(),
   technique: z.string().optional(),
   surfaceId: z.string().optional(),
@@ -24,7 +24,7 @@ const checkoutSchema = z.object({
   note: z.string().max(500).optional(),
   returnUrl: z.string().optional(),
   designSnapshot: z.any().optional(),
-});
+}).passthrough(); // Allow extra fields
 
 const orderLineSchema = z.object({
   designId: z.string().uuid(),
