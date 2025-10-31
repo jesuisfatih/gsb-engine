@@ -42,13 +42,16 @@ export function createApp() {
   // Serve uploaded files (static)
   app.use("/uploads", express.static("uploads"));
 
+  // CRITICAL: App Proxy routes FIRST (before static files)
+  app.use("/apps/gsb", proxyRouter);
+  app.use("/api/proxy", proxyRouter);
+
   // Serve static files from dist folder (SPA frontend)
-  // This must come BEFORE API routes to handle SPA routing correctly
   const distPath = path.join(__dirname, "../../../dist");
   
   // Serve static assets (JS, CSS, images, etc.)
   app.use(express.static(distPath, {
-    maxAge: "1h", // Cache static assets for 1 hour
+    maxAge: "1h",
     etag: true,
     lastModified: true,
   }));
@@ -57,7 +60,6 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/health", healthRouter);
   app.use("/api/embed", embedRouter);
-  app.use("/api/proxy", proxyRouter);
   app.use("/api", requireAuthMiddleware, createApiRouter());
 
   // SPA fallback: Serve index.html for all non-API routes
