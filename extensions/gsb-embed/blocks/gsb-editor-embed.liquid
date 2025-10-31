@@ -19,20 +19,71 @@
 </div>
 
 <!-- Modal (hidden by default) -->
-<div class="gsb-editor-modal" id="gsb-modal-{{ block.id }}" style="display: none;">
-  <div class="gsb-modal-overlay" onclick="closeGSBEditorModal{{ block.id }}()"></div>
-  <div class="gsb-modal-content">
-    <div class="gsb-modal-header">
-      <h2>{{ block.settings.modal_title }}</h2>
-      <button class="gsb-modal-close" onclick="closeGSBEditorModal{{ block.id }}()" aria-label="Close">
+<div class="gsb-editor-modal" id="gsb-modal-{{ block.id }}" style="
+  display: none;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 2147483647 !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(8px);
+">
+  <div class="gsb-modal-content" style="
+    position: absolute !important;
+    top: 2vh !important;
+    left: 2vw !important;
+    width: 96vw !important;
+    height: 96vh !important;
+    max-width: none !important;
+    background: white !important;
+    border-radius: 12px !important;
+    box-shadow: 0 0 100px rgba(0, 0, 0, 0.8) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  ">
+    <div class="gsb-modal-header" style="
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 12px 20px !important;
+      border-bottom: 1px solid #e5e7eb !important;
+      background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%) !important;
+      flex-shrink: 0 !important;
+    ">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">{{ block.settings.modal_title }}</h2>
+      <button class="gsb-modal-close" onclick="closeGSBEditorModal{{ block.id }}()" aria-label="Close" style="
+        width: 36px !important;
+        height: 36px !important;
+        border: none !important;
+        background: #f3f4f6 !important;
+        border-radius: 8px !important;
+        font-size: 20px !important;
+        cursor: pointer !important;
+        color: #6b7280 !important;
+        flex-shrink: 0 !important;
+      ">
         ✕
       </button>
     </div>
-    <div class="gsb-modal-body">
+    <div class="gsb-modal-body" style="
+      flex: 1 !important;
+      overflow: hidden !important;
+      background: #f9fafb !important;
+    ">
       <iframe
         id="gsb-iframe-{{ block.id }}"
         src=""
-        class="gsb-editor-iframe"
+        style="
+          width: 100% !important;
+          height: 100% !important;
+          border: none !important;
+          display: block !important;
+        "
         allow="clipboard-write; clipboard-read"
         loading="lazy"
       ></iframe>
@@ -208,10 +259,22 @@
     });
     
     iframe.src = 'https://app.gsb-engine.dev/editor?' + params.toString();
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
     
-    console.log('[GSB] Editor modal opened');
+    // Force display
+    modal.style.display = 'flex';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.right = '0';
+    modal.style.bottom = '0';
+    modal.style.zIndex = '2147483647';
+    
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    
+    console.log('[GSB] Editor modal opened - FULL SCREEN');
   };
   
   // Close modal
@@ -221,8 +284,12 @@
     
     if (modal) {
       modal.style.display = 'none';
-      document.body.style.overflow = '';
     }
+    
+    // Unlock body scroll
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
     
     if (iframe) {
       iframe.src = '';
