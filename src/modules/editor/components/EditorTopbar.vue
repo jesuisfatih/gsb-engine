@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useEditorStore } from '../store/editorStore';
+import { useEditorModeStore } from '../store/editorModeStore';
 import { useSessionStore } from '@/modules/auth/stores/sessionStore';
 import { 
   Undo2, 
@@ -14,11 +15,21 @@ import {
   Grid3x3,
   Download,
   ShoppingCart,
-  Loader2
+  Loader2,
+  Layers,
+  Sparkles
 } from 'lucide-vue-next';
 
 const editorStore = useEditorStore();
+const modeStore = useEditorModeStore();
 const sessionStore = useSessionStore();
+
+const isGangMode = computed(() => modeStore.activeMode === 'gang');
+const isDtfMode = computed(() => modeStore.activeMode === 'dtf');
+
+function changeMode(mode: 'gang' | 'dtf') {
+  modeStore.switchTo(mode);
+}
 
 const canUndo = computed(() => {
   return editorStore.historyIdx !== undefined && editorStore.historyIdx > 0;
@@ -94,6 +105,30 @@ async function handleCheckout() {
     </div>
 
     <div class="topbar-section center">
+      <!-- Mode Switch -->
+      <div class="mode-switch-group">
+        <button 
+          class="mode-btn" 
+          :class="{ active: isGangMode }"
+          @click="changeMode('gang')"
+          title="Gang Sheet Mode"
+        >
+          <Layers :size="18" :stroke-width="2" />
+          <span>Gang Sheet</span>
+        </button>
+        <button 
+          class="mode-btn" 
+          :class="{ active: isDtfMode }"
+          @click="changeMode('dtf')"
+          title="DTF Transfer Mode"
+        >
+          <Sparkles :size="18" :stroke-width="2" />
+          <span>DTF Transfer</span>
+        </button>
+      </div>
+
+      <div class="divider" />
+
       <!-- History Controls -->
       <div class="tool-group history">
         <button 
@@ -383,6 +418,43 @@ async function handleCheckout() {
   border-width: 0 2px 2px 0;
   rotate: 45deg;
   margin-top: -1px;
+}
+
+/* Mode Switch */
+.mode-switch-group {
+  display: flex;
+  gap: 2px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.mode-btn:hover:not(.active) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.mode-btn.active {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
 /* Divider */
