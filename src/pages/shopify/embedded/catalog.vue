@@ -340,7 +340,7 @@ const isBusy = computed(() => catalog.shopifyLoading || catalog.variantMappingsL
               density="comfortable"
               variant="outlined"
               placeholder="Ürün ara"
-              prepend-inner-icon="tabler-search"
+              prepend-inner-icon="mdi-search"
               hide-details
             />
           </VCardText>
@@ -421,18 +421,18 @@ const isBusy = computed(() => catalog.shopifyLoading || catalog.variantMappingsL
               >
                 <template #item.variant="{ item }">
                   <div class="variant-cell">
-                    <div class="variant-title">{{ item.raw.title }}</div>
+                    <div class="variant-title">{{ item.title }}</div>
                     <div class="variant-meta">
-                      <span v-if="item.raw.sku">SKU: {{ item.raw.sku }}</span>
-                      <span v-if="item.raw.price"> · {{ item.raw.price }}</span>
+                      <span v-if="item.sku">SKU: {{ item.sku }}</span>
+                      <span v-if="item.price"> · {{ item.price }}</span>
                     </div>
                     <div class="variant-status">
                       <VChip
-                        v-if="catalog.mappingForVariant(item.raw.id)"
+                        v-if="catalog.mappingForVariant(item.id)"
                         color="success"
                         size="x-small"
                         variant="tonal"
-                        prepend-icon="tabler-link"
+                        prepend-icon="mdi-link"
                       >
                         Eşlenmiş
                       </VChip>
@@ -441,7 +441,7 @@ const isBusy = computed(() => catalog.shopifyLoading || catalog.variantMappingsL
                         color="grey"
                         size="x-small"
                         variant="tonal"
-                        prepend-icon="tabler-unlink"
+                        prepend-icon="mdi-link-off"
                       >
                         Eşlenmemiş
                       </VChip>
@@ -451,7 +451,7 @@ const isBusy = computed(() => catalog.shopifyLoading || catalog.variantMappingsL
 
                 <template #item.options="{ item }">
                   <div class="options-cell">
-                    <span v-for="(value, key) in item.raw.options" :key="key" class="option-pill">
+                    <span v-for="(value, key) in item.options" :key="key" class="option-pill">
                       <strong>{{ key }}:</strong> {{ value }}
                     </span>
                   </div>
@@ -459,57 +459,57 @@ const isBusy = computed(() => catalog.shopifyLoading || catalog.variantMappingsL
 
                 <template #item.product="{ item }">
                   <VSelect
-                    :model-value="getRowSelection(item.raw.id).productSlug"
+                    :model-value="getRowSelection(item.id).productSlug"
                     :items="productOptions"
                     density="comfortable"
                     variant="outlined"
                     hide-details
                     clearable
-                    :disabled="rowSaving[item.raw.id]"
-                    @update:model-value="value => handleProductChange(item.raw.id, value as string | null)"
+                    :disabled="rowSaving[item.id]"
+                    @update:model-value="value => handleProductChange(item.id, value as string | null)"
                   />
                 </template>
 
                 <template #item.surface="{ item }">
                   <VSelect
-                    :model-value="getRowSelection(item.raw.id).surfaceId"
-                    :items="surfaceOptionsForVariant(item.raw.id)"
+                    :model-value="getRowSelection(item.id).surfaceId"
+                    :items="surfaceOptionsForVariant(item.id)"
                     density="comfortable"
                     variant="outlined"
                     hide-details
                     clearable
-                    :disabled="rowSaving[item.raw.id] || !getRowSelection(item.raw.id).productSlug"
-                    :error="!!rowError[item.raw.id] && !getRowSelection(item.raw.id).productSlug"
-                    @update:model-value="value => handleSurfaceChange(item.raw.id, value as string | null)"
+                    :disabled="rowSaving[item.id] || !getRowSelection(item.id).productSlug"
+                    :error="!!rowError[item.id] && !getRowSelection(item.id).productSlug"
+                    @update:model-value="value => handleSurfaceChange(item.id, value as string | null)"
                   />
                 </template>
 
                 <template #item.technique="{ item }">
                   <VAutocomplete
-                    :model-value="getRowSelection(item.raw.id).technique"
+                    :model-value="getRowSelection(item.id).technique"
                     :items="techniqueOptions"
                     density="comfortable"
                     variant="outlined"
                     hide-details
                     clearable
-                    :disabled="rowSaving[item.raw.id]"
-                    @update:model-value="value => handleTechniqueChange(item.raw.id, value as string | null)"
+                    :disabled="rowSaving[item.id]"
+                    @update:model-value="value => handleTechniqueChange(item.id, value as string | null)"
                   />
                 </template>
 
                 <template #item.shortcode="{ item }">
                   <VAutocomplete
-                    :model-value="getRowSelection(item.raw.id).shortcodeHandle"
+                    :model-value="getRowSelection(item.id).shortcodeHandle"
                     :items="shortcodeOptions"
                     density="comfortable"
                     variant="outlined"
                     hide-details
                     clearable
-                    :disabled="rowSaving[item.raw.id]"
+                    :disabled="rowSaving[item.id]"
                     :loading="shortcodeStore.loading"
                     item-title="title"
                     item-value="value"
-                    @update:model-value="value => handleShortcodeChange(item.raw.id, value as string | null)"
+                    @update:model-value="value => handleShortcodeChange(item.id, value as string | null)"
                   />
                 </template>
 
@@ -517,31 +517,31 @@ const isBusy = computed(() => catalog.shopifyLoading || catalog.variantMappingsL
                   <div class="status-cell">
                     <div class="status-actions">
                       <VBtn
-                        icon="tabler-refresh"
+                        icon="mdi-refresh"
                         variant="text"
                         density="comfortable"
-                        :loading="rowSaving[item.raw.id]"
-                        @click="commitRow(item.raw.id)"
+                        :loading="rowSaving[item.id]"
+                        @click="commitRow(item.id)"
                       />
                       <VBtn
-                        icon="tabler-x"
+                        icon="mdi-x"
                         variant="text"
                         density="comfortable"
                         color="error"
-                        :disabled="rowSaving[item.raw.id]"
-                        @click="clearMapping(item.raw.id)"
+                        :disabled="rowSaving[item.id]"
+                        @click="clearMapping(item.id)"
                       />
                     </div>
                     <div class="status-feedback">
                       <VProgressCircular
-                        v-if="rowSaving[item.raw.id]"
+                        v-if="rowSaving[item.id]"
                         indeterminate
                         size="16"
                         width="2"
                         color="primary"
                       />
-                      <span v-else-if="rowError[item.raw.id]" class="status-error">{{ rowError[item.raw.id] }}</span>
-                      <span v-else-if="catalog.mappingForVariant(item.raw.id)" class="status-ok">Kaydedildi</span>
+                      <span v-else-if="rowError[item.id]" class="status-error">{{ rowError[item.id] }}</span>
+                      <span v-else-if="catalog.mappingForVariant(item.id)" class="status-ok">Kaydedildi</span>
                     </div>
                   </div>
                 </template>
