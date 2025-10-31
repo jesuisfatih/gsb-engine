@@ -363,16 +363,45 @@
     // Get iframe reference
     const iframe = document.getElementById(iframeId);
 
-    // Listen for messages from editor
-    window.addEventListener('message', function(event) {
-      // Verify origin
-      if (!event.origin.includes('app.gsb-engine.dev')) {
-        return;
+  // Storage in parent window (bypasses iframe localStorage issues)
+  const STORAGE_KEY = 'gsb_design_{{ block.id }}';
+  
+  // Listen for messages from editor
+  window.addEventListener('message', function(event) {
+    // Verify origin
+    if (!event.origin.includes('app.gsb-engine.dev')) {
+      return;
+    }
+    
+    const message = event.data;
+    
+    // Auto-save design to parent window
+    if (message.type === 'GSB_DESIGN_SAVE') {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(message.snapshot));
+        console.log('[GSB Block] Design saved to parent sessionStorage');
+      } catch (error) {
+        console.warn('[GSB Block] Failed to save design:', error);
       }
-
-      const message = event.data;
-
-      if (message.type === 'GSB_DESIGN_COMPLETE') {
+    }
+    
+    // Request saved design
+    if (message.type === 'GSB_REQUEST_SAVED_DESIGN') {
+      try {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        if (saved && iframe) {
+          iframe.contentWindow.postMessage({
+            type: 'GSB_RESTORE_DESIGN',
+            snapshot: JSON.parse(saved)
+          }, '*');
+          console.log('[GSB Block] Restored design from parent sessionStorage');
+        }
+      } catch (error) {
+        console.warn('[GSB Block] Failed to restore design:', error);
+      }
+    }
+    
+    if (message.type === 'GSB_DESIGN_COMPLETE') {
         console.log('[GSB Block] Design complete:', message);
         console.log('[GSB Block] Mode:', message.mode);
         console.log('[GSB Block] Metadata:', message.metadata);

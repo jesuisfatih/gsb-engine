@@ -3,6 +3,7 @@ import { useEditorStore } from "../store/editorStore";
 import { useEditorModeStore } from "../store/editorModeStore";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useAnonymousDesignStorage } from "./useAnonymousDesignStorage";
+import { useParentStorage } from "@/composables/useParentStorage";
 
 function isAutosaveMode(mode?: string | null) {
   return mode === "dtf" || mode === "gang";
@@ -13,8 +14,51 @@ export function useAutosaveManager() {
   const editorStore = useEditorStore();
   const modeStore = useEditorModeStore();
 
-  // For anonymous users, use localStorage-based autosave
+  // For anonymous users, use parent storage if in iframe, else localStorage
   if (!sessionStore?.isAuthenticated) {
+    const parentStorage = useParentStorage();
+    
+    // Check if in iframe (Shopify modal)
+    if (parentStorage.isInIframe.value) {
+      console.log('[autosave] Using parent window storage (iframe mode)');
+      
+      // Save to parent window
+      const snapshotSignature = computed(() => {
+        try {
+          return JSON.stringify(editorStore.serializeSnapshot());
+        } catch (error) {
+          return Math.random().toString(36);
+        }
+      });
+
+      watch(snapshotSignature, () => {
+        const snapshot = editorStore.serializeSnapshot();
+        parentStorage.saveToParent({
+          ...snapshot,
+          timestamp: new Date().toISOString(),
+        });
+        
+        // Update UI
+        editorStore.lastAutosaveAt = new Date().toISOString();
+        editorStore.lastSavedAt = new Date().toISOString();
+        editorStore.recordAutosaveHistory({
+          kind: 'autosave',
+          message: 'Autosaved (parent storage)',
+          timestamp: new Date().toISOString(),
+          status: editorStore.designStatus,
+        });
+      }, { flush: 'post' });
+
+      // Restore from parent
+      parentStorage.onRestoreFromParent((snapshot) => {
+        editorStore.applySnapshot(snapshot);
+        console.log('[autosave] Design restored from parent window');
+      });
+
+      return;
+    }
+    
+    // Fallback: localStorage (non-iframe)
     console.log('[autosave] Using anonymous localStorage mode');
     
     const { scheduleSave } = useAnonymousDesignStorage({
