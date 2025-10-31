@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import type { $Enums } from "../../src/generated/prisma/client";
 import { env } from "../env";
+import { saveDesignToShopifyMetaobject } from "../services/shopifyMetaobjects";
 
 const checkoutSchema = z.object({
   designId: z.string().optional(), // Can be UUID or anonymous ID
@@ -184,6 +185,30 @@ proxyRouter.post("/cart", async (req, res, next) => {
         },
       });
       console.log('[proxy] Created anonymous design:', design.id);
+    }
+
+    // Save design to Shopify Metaobject (async, don't block)
+    if (design.tenantId) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: design.tenantId },
+        select: { settings: true },
+      });
+      
+      const shopifyDomain = (tenant?.settings as any)?.shopify?.domain;
+      const shopifyAccessToken = (tenant?.settings as any)?.shopify?.accessToken;
+      
+      if (shopifyDomain && shopifyAccessToken) {
+        // Fire and forget - don't await
+        saveDesignToShopifyMetaobject(design, shopifyDomain, shopifyAccessToken)
+          .then(result => {
+            if (result) {
+              console.log('[proxy] Design saved to Shopify metaobject:', result.handle);
+            }
+          })
+          .catch(err => {
+            console.warn('[proxy] Failed to save to Shopify metaobject:', err);
+          });
+      }
     }
 
     const previewUrl = payload.previewUrl ?? design.previewUrl ?? undefined;

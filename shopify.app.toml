@@ -22,3 +22,7 @@ embedded = false
 [build]
 automatically_update_urls_on_dev = false
 dev_store_url = "
+
+# Extensions
+[[extension_directories]]
+directory = "extensions/*"

@@ -17,10 +17,12 @@ import { uploadRouter } from "./upload";
 import { shopifyRouter } from "./shopify";
 import { webhooksRouter } from "./webhooks";
 import { analyticsRouter } from "./analytics";
+import { graphqlRouter } from "./graphql";
 
 export function createApiRouter() {
   const router = Router();
 
+  router.use("/graphql", graphqlRouter);
   router.use("/catalog", catalogRouter);
   router.use("/designs", designsRouter);
   router.use("/gang-sheets", gangSheetRouter);

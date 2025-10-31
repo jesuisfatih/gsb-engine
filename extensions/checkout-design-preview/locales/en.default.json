@@ -1,0 +1,17 @@
+{
+  "title": "Your Custom Design",
+  "edit_button": "Edit Design",
+  "download_button": "Download Preview",
+  "loading": "Loading design preview...",
+  "surface_label": "Surface:",
+  "size_label": "Size:",
+  "technique_label": "Technique:",
+  "print_area_label": "Print Area:",
+  "colors_label": "Colors:",
+  "quality_label": "Quality:",
+  "quality_warning_title": "Print Quality Notice",
+  "quality_warning_message": "Your design has a minimum DPI of {dpi}. For best print quality, we recommend 300 DPI or higher.",
+  "success_title": "Design Ready",
+  "success_message": "Your custom design has been added to your order. Our production team will review it before printing."
+}
+

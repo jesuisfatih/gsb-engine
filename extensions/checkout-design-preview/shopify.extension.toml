@@ -1,0 +1,36 @@
+api_version = "2024-10"
+
+[[extensions]]
+type = "ui_extension"
+name = "Design Preview"
+handle = "design-preview"
+
+[extensions.targeting]
+[[extensions.targeting.target]]
+target = "purchase.checkout.block.render"
+
+[[extensions.settings]]
+[[extensions.settings.fields]]
+key = "title"
+type = "single_line_text_field"
+name = "Section Title"
+default = "Your Custom Design"
+
+[[extensions.settings.fields]]
+key = "show_dimensions"
+type = "boolean"
+name = "Show Dimensions"
+default = true
+
+[[extensions.settings.fields]]
+key = "show_edit_button"
+type = "boolean"
+name = "Show Edit Button"
+default = true
+
+[[extensions.settings.fields]]
+key = "show_download_button"
+type = "boolean"
+name = "Show Download Button"
+default = true
+
