@@ -22,74 +22,12 @@
 
       <!-- 3D Preview Container - SIMPLIFIED -->
       <div class="mockup-container-simple">
-        <div class="mockup-canvas" ref="mockupCanvas">
-          <!-- Placeholder for actual 3D mockup -->
-          <div class="mockup-placeholder">
-            <div class="product-shape" :data-product="selectedProduct">
-              <svg v-if="selectedProduct === 'tshirt'" width="200" height="200" viewBox="0 0 200 200">
-                <path d="M30 50 L70 30 L100 40 L130 30 L170 50 L170 180 L30 180 Z" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2" />
-                <rect x="60" y="70" width="80" height="80" fill="white" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4 2" />
-                <text x="100" y="115" text-anchor="middle" font-size="10" fill="#6b7280">Design Here</text>
-              </svg>
-              
-              <svg v-else-if="selectedProduct === 'mug'" width="200" height="200" viewBox="0 0 200 200">
-                <ellipse cx="100" cy="100" rx="60" ry="80" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2" />
-                <path d="M160 80 Q180 100 160 120" fill="none" stroke="#d1d5db" stroke-width="2" />
-                <rect x="70" y="70" width="60" height="60" fill="white" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4 2" />
-                <text x="100" y="105" text-anchor="middle" font-size="10" fill="#6b7280">Design</text>
-              </svg>
-              
-              <svg v-else-if="selectedProduct === 'cap'" width="200" height="200" viewBox="0 0 200 200">
-                <ellipse cx="100" cy="80" rx="80" ry="40" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2" />
-                <rect x="20" y="80" width="160" height="60" rx="10" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2" />
-                <rect x="60" y="95" width="80" height="30" fill="white" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4 2" />
-                <text x="100" y="115" text-anchor="middle" font-size="10" fill="#6b7280">Design</text>
-              </svg>
-              
-              <svg v-else-if="selectedProduct === 'bag'" width="200" height="200" viewBox="0 0 200 200">
-                <rect x="40" y="50" width="120" height="130" rx="5" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2" />
-                <path d="M70 50 Q100 30 130 50" fill="none" stroke="#d1d5db" stroke-width="2" />
-                <rect x="60" y="80" width="80" height="60" fill="white" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4 2" />
-                <text x="100" y="115" text-anchor="middle" font-size="10" fill="#6b7280">Design</text>
-              </svg>
-            </div>
+        <!-- SIMPLE Mockup Preview -->
+        <div class="mockup-preview-simple">
+          <div class="product-icon-large">
+            {{ products.find(p => p.id === selectedProduct)?.icon || '👕' }}
           </div>
-        </div>
-
-        <!-- 3D Controls -->
-        <div class="mockup-controls">
-          <button @click="rotate(-45)" title="Rotate Left">
-            <RotateCcw :size="18" :stroke-width="2" />
-          </button>
-          <span class="rotation-display">{{ currentRotation }}°</span>
-          <button @click="rotate(45)" title="Rotate Right">
-            <RotateCw :size="18" :stroke-width="2" />
-          </button>
-          <button @click="resetView" title="Reset View">
-            <Maximize2 :size="18" :stroke-width="2" />
-          </button>
-        </div>
-
-        <!-- Export Mockup -->
-        <button class="export-mockup-btn" @click="exportMockup">
-          <Camera :size="16" :stroke-width="2" />
-          Export Mockup Image
-        </button>
-      </div>
-
-      <!-- Mockup Settings -->
-      <div class="mockup-settings">
-        <div class="setting-row">
-          <label>Background</label>
-          <input v-model="backgroundColor" type="color" />
-        </div>
-        <div class="setting-row">
-          <label>Shadows</label>
-          <input v-model="shadowEnabled" type="checkbox" />
-        </div>
-        <div class="setting-row">
-          <label>Reflections</label>
-          <input v-model="reflectionEnabled" type="checkbox" />
+          <div class="preview-label">Design will appear on {{ products.find(p => p.id === selectedProduct)?.name }}</div>
         </div>
       </div>
     </div>
@@ -175,78 +113,63 @@ function exportMockup() {
   padding: 16px;
 }
 
-.product-selector {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
+.product-selector-simple {
+  margin-bottom: 12px;
 }
 
-.product-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 10px;
+.product-dropdown {
+  width: 100%;
+  padding: 10px 12px;
   border: 1.5px solid #c9cccf;
-  background: white;
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 14px;
   font-weight: 500;
   color: #202223;
+  background: white;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.product-btn:hover {
+.product-dropdown:hover {
   border-color: #006fbb;
-  background: #f1f2f3;
 }
 
-.product-btn.active {
+.product-dropdown:focus {
+  outline: none;
   border-color: #006fbb;
-  background: #e3f1fb;
-  color: #006fbb;
-  border-width: 2px;
+  box-shadow: 0 0 0 1px #006fbb;
 }
 
-.product-icon {
-  font-size: 28px;
-}
-
-.mockup-container {
+.mockup-container-simple {
   background: #f6f6f7;
   border: 1px solid #e1e3e5;
   border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 16px;
+  padding: 16px;
+  margin-bottom: 0;
 }
 
-.mockup-canvas {
-  min-height: 280px;
+.mockup-preview-simple {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 30px 16px;
   background: white;
-  border-radius: 8px;
   border: 1px solid #e1e3e5;
-  position: relative;
-  overflow: hidden;
+  border-radius: 6px;
+  text-align: center;
 }
 
-.mockup-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  min-height: 300px;
+.product-icon-large {
+  font-size: 64px;
+  margin-bottom: 12px;
+  opacity: 0.9;
 }
 
-.product-shape {
-  transform: rotateY(var(--rotation, 0deg));
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.1));
+.preview-label {
+  font-size: 13px;
+  color: #6d7175;
+  font-weight: 500;
 }
 
 .mockup-controls {
