@@ -145,18 +145,30 @@ proxyRouter.get("/apps/gsb/editor", async (req, res) => {
     const distPath = path.join(process.cwd(), "dist", "index.html");
     
     if (fs.existsSync(distPath)) {
-      const html = fs.readFileSync(distPath, "utf-8");
+      let html = fs.readFileSync(distPath, "utf-8");
       
-      // Inject embed mode flag
-      const modifiedHtml = html.replace(
+      // Fix all asset paths to include /apps/gsb prefix
+      html = html.replace(/href="\/assets\//g, 'href="/apps/gsb/assets/');
+      html = html.replace(/src="\/assets\//g, 'src="/apps/gsb/assets/');
+      html = html.replace(/href="\/loader\.css"/g, 'href="/apps/gsb/loader.css"');
+      html = html.replace(/href="\/favicon\.ico"/g, 'href="/apps/gsb/favicon.ico"');
+      html = html.replace(/href="\/manifest\.json"/g, 'href="/apps/gsb/manifest.json"');
+      html = html.replace(/href="\/icon-192\.png"/g, 'href="/apps/gsb/icon-192.png"');
+      html = html.replace(/register\('\/sw\.js'\)/g, "register('/apps/gsb/sw.js')");
+      
+      // Inject embed mode flag and base URL
+      html = html.replace(
         '</head>',
-        '<script>window.__GSB_EMBED_MODE__ = true;</script></head>'
+        `<script>
+          window.__GSB_EMBED_MODE__ = true;
+          window.__GSB_BASE_PATH__ = '/apps/gsb';
+        </script></head>`
       );
       
       res.setHeader('Content-Type', 'text/html');
       res.setHeader('X-Frame-Options', 'ALLOW-FROM https://*.myshopify.com');
       res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://*.myshopify.com");
-      res.send(modifiedHtml);
+      res.send(html);
     } else {
       console.error('[proxy] dist/index.html not found');
       res.status(404).send('Editor not found. Please build the frontend first.');
@@ -168,18 +180,81 @@ proxyRouter.get("/apps/gsb/editor", async (req, res) => {
 });
 
 /**
- * GET /apps/gsb/* (Catch-all for other proxy requests)
- * Serve static assets via App Proxy
+ * GET /apps/gsb/assets/* - Serve static assets
+ */
+proxyRouter.get("/apps/gsb/assets/*", async (req, res) => {
+  const assetPath = req.path.replace('/apps/gsb', '');
+  const distPath = path.join(process.cwd(), "dist", assetPath);
+  
+  console.log('[proxy] Asset requested:', assetPath);
+  
+  if (fs.existsSync(distPath)) {
+    // Set proper content type
+    const ext = path.extname(distPath);
+    const contentTypes: Record<string, string> = {
+      '.js': 'application/javascript',
+      '.css': 'text/css',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.svg': 'image/svg+xml',
+      '.woff2': 'font/woff2',
+      '.woff': 'font/woff',
+    };
+    
+    if (contentTypes[ext]) {
+      res.setHeader('Content-Type', contentTypes[ext]);
+    }
+    
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.sendFile(distPath);
+  } else {
+    console.warn('[proxy] Asset not found:', distPath);
+    res.status(404).send('Not found');
+  }
+});
+
+/**
+ * GET /apps/gsb/* (Other files - sw.js, manifest.json, loader.css, etc.)
  */
 proxyRouter.get("/apps/gsb/*", async (req, res) => {
-  const requestedPath = req.path.replace('/apps/gsb', '');
-  console.log('[proxy] Static asset requested:', requestedPath);
+  let requestedPath = req.path.replace('/apps/gsb', '');
+  
+  // Remove leading slash
+  if (requestedPath.startsWith('/')) {
+    requestedPath = requestedPath.substring(1);
+  }
+  
+  console.log('[proxy] Resource requested:', requestedPath);
   
   const distPath = path.join(process.cwd(), "dist", requestedPath);
   
   if (fs.existsSync(distPath)) {
+    // Set proper content type
+    const ext = path.extname(distPath);
+    const contentTypes: Record<string, string> = {
+      '.js': 'application/javascript',
+      '.css': 'text/css',
+      '.json': 'application/json',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.svg': 'image/svg+xml',
+      '.ico': 'image/x-icon',
+      '.woff2': 'font/woff2',
+      '.woff': 'font/woff',
+      '.ttf': 'font/ttf',
+      '.eot': 'application/vnd.ms-fontobject',
+    };
+    
+    if (contentTypes[ext]) {
+      res.setHeader('Content-Type', contentTypes[ext]);
+    }
+    
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.sendFile(distPath);
   } else {
+    console.warn('[proxy] Resource not found:', distPath);
     res.status(404).send('Not found');
   }
 });
