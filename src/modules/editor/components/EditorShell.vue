@@ -995,8 +995,7 @@ function changeMode(mode: "dtf" | "gang") {
         </div>
       </details>
 
-      <!-- Advanced Cost Calculator (replaces old CostPanel) -->
-      <AdvancedCostCalculator />
+      <!-- Cost Calculator REMOVED - not suitable for our system -->
 
       <details v-if="isGangMode" class="accordion" open>
         <summary>
@@ -1023,15 +1022,11 @@ function changeMode(mode: "dtf" | "gang") {
     </div>
   </div>
   
-  <!-- Keyboard Shortcuts Overlay - Keep only this -->
+  <!-- Keyboard Shortcuts Overlay -->
   <KeyboardShortcuts />
   
-  <!-- Floating panels HIDDEN - causing icon clutter -->
-  <!-- 
-  <CollaborationChat />
+  <!-- AI Design Assistant - FLOATING -->
   <AIDesignAssistant />
-  <BatchOperationsPanel />
-  -->
 </template>
 
 <style scoped>

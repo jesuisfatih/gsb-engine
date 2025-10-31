@@ -83,6 +83,9 @@ function exportMockup() {
   user-select: none;
   background: #fafbfb;
   border-bottom: 1px solid #e1e3e5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .accordion-title {
@@ -106,6 +109,12 @@ function exportMockup() {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #5c5f62;
+  transition: transform 0.2s ease;
+}
+
+.accordion[open] .accordion-toggle {
+  transform: rotate(180deg);
 }
 
 .section-body {
