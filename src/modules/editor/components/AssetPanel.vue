@@ -14,7 +14,6 @@ const tabs = [
   { key: "patterns", label: "Patterns", icon: Image },
   { key: "models", label: "Mockups", icon: Box },
   { key: "tools", label: "Workflow", icon: Wrench },
-  { key: "external", label: "External", icon: Image },
 ] as const;
 
 const activeTab = ref<(typeof tabs)[number]["key"]>(tabs[0].key);
@@ -220,86 +219,7 @@ function connectDropbox() {
         </details>
       </template>
 
-      <!-- EXTERNAL SOURCES TAB -->
-      <template v-else-if="activeTab === 'external'">
-        <div class="external-sources">
-          <!-- Source Selector -->
-          <div class="source-selector">
-            <button 
-              v-for="source in externalSources" 
-              :key="source.id"
-              :class="['source-btn', { active: activeExternalSource === source.id }]"
-              @click="activeExternalSource = source.id"
-            >
-              <span class="source-icon">{{ source.icon }}</span>
-              <div class="source-info">
-                <div class="source-name">{{ source.name }}</div>
-                <div class="source-desc">{{ source.description }}</div>
-              </div>
-            </button>
-          </div>
-
-          <!-- Unsplash/Pexels Search -->
-          <div v-if="activeExternalSource === 'unsplash' || activeExternalSource === 'pexels'" class="search-section">
-            <div class="search-input-group">
-              <input 
-                v-model="externalSearchQuery" 
-                type="text" 
-                placeholder="Search for images..."
-                @keyup.enter="searchExternal"
-              />
-              <button @click="searchExternal" class="search-btn">Search</button>
-            </div>
-            
-            <div v-if="externalResults.length > 0" class="external-gallery">
-              <div 
-                v-for="img in externalResults" 
-                :key="img.id"
-                class="external-item"
-                @click="addExternalImage(img)"
-              >
-                <img :src="img.thumb" :alt="img.name" />
-                <div class="item-name">{{ img.name }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- URL Import -->
-          <div v-else-if="activeExternalSource === 'url'" class="url-import-section">
-            <label>Paste Image URL</label>
-            <div class="url-input-group">
-              <input 
-                v-model="externalUrl" 
-                type="url" 
-                placeholder="https://example.com/image.png"
-                @keyup.enter="importFromUrl"
-              />
-              <button @click="importFromUrl" class="import-btn">Import</button>
-            </div>
-            <p class="hint">Paste a direct link to an image (PNG, JPG, GIF, WebP)</p>
-          </div>
-
-          <!-- Google Drive -->
-          <div v-else-if="activeExternalSource === 'gdrive'" class="connect-section">
-            <div class="connect-card">
-              <span class="connect-icon">📁</span>
-              <h3>Google Drive</h3>
-              <p>Import images directly from your Google Drive</p>
-              <button @click="connectGoogleDrive" class="connect-btn">Connect Google Drive</button>
-            </div>
-          </div>
-
-          <!-- Dropbox -->
-          <div v-else-if="activeExternalSource === 'dropbox'" class="connect-section">
-            <div class="connect-card">
-              <span class="connect-icon">☁️</span>
-              <h3>Dropbox</h3>
-              <p>Import images directly from your Dropbox</p>
-              <button @click="connectDropbox" class="connect-btn">Connect Dropbox</button>
-            </div>
-          </div>
-        </div>
-      </template>
+      <!-- External tab removed - moved to left sidebar below Layers -->
     </div>
   </div>
 </template>

@@ -31,7 +31,8 @@ import BatchOperationsPanel from "./BatchOperationsPanel.vue";
 import KeyboardShortcuts from "./KeyboardShortcuts.vue";
 import AdvancedCostCalculator from "./AdvancedCostCalculator.vue";
 import MockupPreview3D from "./MockupPreview3D.vue";
-import { Star, Lightbulb, ChevronDown, AlertCircle, Check, DollarSign } from "lucide-vue-next";
+import ExternalSourcesPanel from "./ExternalSourcesPanel.vue";
+import { Star, Lightbulb, ChevronDown, AlertCircle, Check, DollarSign, Cloud } from "lucide-vue-next";
 
 const route = useRoute();
 const modeStore = useEditorModeStore();
@@ -765,6 +766,22 @@ function changeMode(mode: "dtf" | "gang") {
         </summary>
         <div class="section-body">
           <LayersPanel />
+        </div>
+      </details>
+
+      <!-- EXTERNAL SOURCES - NEW DROPDOWN -->
+      <details class="accordion" open>
+        <summary>
+          <span class="accordion-title">
+            <Cloud :size="18" :stroke-width="2" style="color: #3b82f6;" />
+            <span>External Sources</span>
+          </span>
+          <span class="accordion-toggle">
+            <ChevronDown :size="16" />
+          </span>
+        </summary>
+        <div class="section-body">
+          <ExternalSourcesPanel />
         </div>
       </details>
 
