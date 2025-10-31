@@ -32,6 +32,7 @@ import AIDesignAssistant from "./AIDesignAssistant.vue";
 import BatchOperationsPanel from "./BatchOperationsPanel.vue";
 import KeyboardShortcuts from "./KeyboardShortcuts.vue";
 import AdvancedCostCalculator from "./AdvancedCostCalculator.vue";
+import MockupPreview3D from "./MockupPreview3D.vue";
 import "../styles/responsive.css";
 
 const route = useRoute();
@@ -919,25 +920,8 @@ function changeMode(mode: "dtf" | "gang") {
         </div>
       </details>
 
-      <details class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 5h16v14H4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-              <path d="M4 11h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-            </svg>
-            <span>Mockup Preview</span>
-          </span>
-          <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-        </summary>
-        <div class="section-body">
-          <MockupPreview />
-        </div>
-      </details>
+      <!-- 3D Mockup Preview (replaces old MockupPreview) -->
+      <MockupPreview3D />
 
       <!-- OPTION C: Quality Analysis Panel -->
       <details v-if="qualityAnalysis" class="accordion" open>
