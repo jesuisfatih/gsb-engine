@@ -58,16 +58,19 @@ onMounted(async () => {
       
       if (data.data && Array.isArray(data.data)) {
         // Directly set products to catalogStore
-        catalogStore.$patch({ products: data.data, loaded: true });
+        catalogStore.$patch({ products: data.data, loaded: true, loading: false });
         console.log("[editor] ✅ Loaded", data.data.length, "products:", data.data.map((p: any) => p.slug).join(', '));
       } else {
         console.error("[editor] Invalid catalog response:", data);
+        catalogStore.$patch({ loaded: true, loading: false });
       }
     } catch (err) {
       console.error("[editor] Failed to load catalog for customer", err);
+      catalogStore.$patch({ loaded: true, loading: false });
     }
   } else {
     console.log("[editor] Public access - no tenant ID, using hardcoded products");
+    catalogStore.$patch({ loaded: true, loading: false });
   }
 
   // Check for URL params to auto-load product/surface
