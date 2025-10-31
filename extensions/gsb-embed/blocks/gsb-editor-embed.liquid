@@ -1,0 +1,193 @@
+{% comment %}
+  GSB Editor Embed Block
+  Renders editor DIRECTLY in Shopify theme (no external domain)
+{% endcomment %}
+
+<div class="gsb-editor-container" id="gsb-editor-{{ block.id }}">
+  <div class="gsb-editor-wrapper">
+    <iframe
+      src="https://app.gsb-engine.dev/editor?product={{ product.handle }}&shopifyProduct={{ product.admin_graphql_api_id }}&shopifyVariant={{ product.selected_or_first_available_variant.admin_graphql_api_id }}&t={{ shop.metafields.gsb.tenant_id | default: '9ea467b0-edd2-4fdf-a306-3e2dee620d26' }}&embed=shopify"
+      class="gsb-editor-iframe"
+      allow="clipboard-write; clipboard-read"
+      loading="lazy"
+    ></iframe>
+  </div>
+</div>
+
+<style>
+.gsb-editor-container {
+  width: 100%;
+  min-height: {{ block.settings.min_height }}px;
+  background: #f9fafb;
+  border-radius: {{ block.settings.border_radius }}px;
+  overflow: hidden;
+  margin: {{ block.settings.margin_top }}px 0 {{ block.settings.margin_bottom }}px;
+}
+
+.gsb-editor-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: {{ block.settings.aspect_ratio }}%;
+}
+
+.gsb-editor-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+@media (max-width: 768px) {
+  .gsb-editor-container {
+    min-height: 600px;
+  }
+  
+  .gsb-editor-wrapper {
+    padding-bottom: 150%;
+  }
+}
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  const iframe = document.querySelector('#gsb-editor-{{ block.id }} .gsb-editor-iframe');
+  
+  // Listen for messages from editor
+  window.addEventListener('message', function(event) {
+    // Verify origin
+    if (!event.origin.includes('app.gsb-engine.dev')) {
+      return;
+    }
+    
+    const message = event.data;
+    
+    if (message.type === 'GSB_DESIGN_COMPLETE') {
+      console.log('[GSB Block] Design complete:', message);
+      
+      // Add to Shopify cart
+      fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: message.variantId || '{{ product.selected_or_first_available_variant.id }}',
+          quantity: 1,
+          properties: message.properties || {}
+        })
+      })
+      .then(response => response.json())
+      .then(item => {
+        console.log('[GSB Block] Added to cart:', item);
+        
+        // Redirect to cart or open cart drawer
+        {% if block.settings.after_add_action == 'drawer' %}
+          if (typeof window.theme !== 'undefined' && window.theme.openCart) {
+            window.theme.openCart();
+          } else {
+            window.location.href = '/cart';
+          }
+        {% else %}
+          window.location.href = '/cart';
+        {% endif %}
+      })
+      .catch(error => {
+        console.error('[GSB Block] Cart add failed:', error);
+        alert('Failed to add to cart. Please try again.');
+      });
+    }
+  });
+  
+  // Send ready message to iframe
+  iframe.addEventListener('load', function() {
+    iframe.contentWindow.postMessage({
+      type: 'GSB_PARENT_READY',
+      shop: '{{ shop.permanent_domain }}',
+      product: {
+        id: '{{ product.admin_graphql_api_id }}',
+        handle: '{{ product.handle }}',
+        title: '{{ product.title | escape }}'
+      }
+    }, '*');
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Gang Sheet Builder Editor",
+  "target": "section",
+  "templates": ["product"],
+  "settings": [
+    {
+      "type": "range",
+      "id": "min_height",
+      "min": 400,
+      "max": 1200,
+      "step": 50,
+      "unit": "px",
+      "label": "Minimum height",
+      "default": 800
+    },
+    {
+      "type": "range",
+      "id": "aspect_ratio",
+      "min": 50,
+      "max": 200,
+      "step": 5,
+      "unit": "%",
+      "label": "Aspect ratio (desktop)",
+      "default": 75
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "label": "Border radius",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Margin top",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Margin bottom",
+      "default": 20
+    },
+    {
+      "type": "select",
+      "id": "after_add_action",
+      "label": "After add to cart",
+      "options": [
+        { "value": "cart", "label": "Go to cart page" },
+        { "value": "drawer", "label": "Open cart drawer" }
+      ],
+      "default": "cart"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Gang Sheet Editor",
+      "category": "Custom"
+    }
+  ]
+}
+{% endschema %}
+
