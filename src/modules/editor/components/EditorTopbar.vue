@@ -20,8 +20,14 @@ import {
 const editorStore = useEditorStore();
 const sessionStore = useSessionStore();
 
-const canUndo = computed(() => editorStore.historyIdx > 0);
-const canRedo = computed(() => editorStore.historyIdx < editorStore.history.length - 1);
+const canUndo = computed(() => {
+  return editorStore.historyIdx !== undefined && editorStore.historyIdx > 0;
+});
+const canRedo = computed(() => {
+  const history = editorStore.history || [];
+  const idx = editorStore.historyIdx ?? 0;
+  return idx < history.length - 1;
+});
 const isSaving = computed(() => editorStore.designSaving);
 
 const lastSavedLabel = computed(() => {

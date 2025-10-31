@@ -858,6 +858,11 @@ function changeMode(mode: "dtf" | "gang") {
   border-radius: 0;
 }
 
+/* EditorTopbar takes full width */
+.editor-root > :first-child {
+  grid-column: 1 / -1;
+}
+
 .v-theme--dark .editor-root {
   --panel-bg: linear-gradient(180deg, #1f2937 0%, #111827 100%);
   --divider: rgba(55, 65, 81, 0.8);

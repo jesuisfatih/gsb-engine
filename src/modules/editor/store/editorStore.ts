@@ -521,12 +521,14 @@ export const useEditorStore = defineStore("editor", {
 
       const areaIn2 = analysis.stats.areaIn2;
 
-      const perSqIn = product.pricing.perSqIn ?? 0;
-      const colorAdder = (product.pricing.colorAdder ?? 0) * colorCount;
-      const techMul = product.pricing.techMultipliers?.[this.printTech] ?? 1;
-      let unit = (product.pricing.base + perSqIn * areaIn2 + colorAdder) * techMul;
+      // Fallback for anonymous users without pricing data
+      const pricing = product.pricing || { base: 0, perSqIn: 0, colorAdder: 0, techMultipliers: {} };
+      const perSqIn = pricing.perSqIn ?? 0;
+      const colorAdder = (pricing.colorAdder ?? 0) * colorCount;
+      const techMul = pricing.techMultipliers?.[this.printTech] ?? 1;
+      let unit = (pricing.base + perSqIn * areaIn2 + colorAdder) * techMul;
 
-      const breaks = product.pricing.quantityBreaks ?? [];
+      const breaks = pricing.quantityBreaks ?? [];
       const best = [...breaks].filter(b => this.quantity >= b.qty).sort((a, b) => b.qty - a.qty)[0];
       if (best) unit = unit * (1 - best.discountPct / 100);
 
@@ -602,6 +604,13 @@ export const useEditorStore = defineStore("editor", {
     },
 
     async ensurePricingTechniques(force = false) {
+      // Skip for anonymous users
+      const sessionStore = useSessionStore();
+      if (!sessionStore?.isAuthenticated) {
+        console.log('[pricing] Skipping for anonymous user');
+        return;
+      }
+      
       if (this.pricingConfigsLoaded && !force)
         return;
       try {
@@ -640,6 +649,15 @@ export const useEditorStore = defineStore("editor", {
     },
 
     async refreshPricingQuote(force = false) {
+      // Skip for anonymous users
+      const sessionStore = useSessionStore();
+      if (!sessionStore?.isAuthenticated) {
+        this.pricingQuote = null;
+        this.pricingLoading = false;
+        this.pricingError = null;
+        return;
+      }
+      
       try {
         await this.ensurePricingTechniques();
         const product = this.activeProduct;
