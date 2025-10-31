@@ -1,51 +1,163 @@
 {% comment %}
-  GSB Editor Embed Block
-  Renders editor DIRECTLY in Shopify theme (no external domain)
+  GSB Editor Modal Block
+  Opens editor in modal on button click (stays on Shopify domain)
 {% endcomment %}
 
-<div class="gsb-editor-container" id="gsb-editor-{{ block.id }}">
-  <div class="gsb-editor-wrapper">
-    <iframe
-      src="https://app.gsb-engine.dev/editor?product={{ product.handle }}&shopifyProduct={{ product.admin_graphql_api_id }}&shopifyVariant={{ product.selected_or_first_available_variant.admin_graphql_api_id }}&t={{ shop.metafields.gsb.tenant_id | default: '9ea467b0-edd2-4fdf-a306-3e2dee620d26' }}&embed=shopify"
-      class="gsb-editor-iframe"
-      allow="clipboard-write; clipboard-read"
-      loading="lazy"
-    ></iframe>
+<!-- Customize Button -->
+<div class="gsb-button-container">
+  <button 
+    type="button"
+    class="gsb-customize-button gsb-btn-{{ block.settings.button_size }}"
+    onclick="openGSBEditorModal{{ block.id }}()"
+    style="
+      background: {{ block.settings.button_color }};
+      color: {{ block.settings.button_text_color }};
+    "
+  >
+    {{ block.settings.button_icon }}{{ block.settings.button_label }}
+  </button>
+</div>
+
+<!-- Modal (hidden by default) -->
+<div class="gsb-editor-modal" id="gsb-modal-{{ block.id }}" style="display: none;">
+  <div class="gsb-modal-overlay" onclick="closeGSBEditorModal{{ block.id }}()"></div>
+  <div class="gsb-modal-content">
+    <div class="gsb-modal-header">
+      <h2>{{ block.settings.modal_title }}</h2>
+      <button class="gsb-modal-close" onclick="closeGSBEditorModal{{ block.id }}()" aria-label="Close">
+        ✕
+      </button>
+    </div>
+    <div class="gsb-modal-body">
+      <iframe
+        id="gsb-iframe-{{ block.id }}"
+        src=""
+        class="gsb-editor-iframe"
+        allow="clipboard-write; clipboard-read"
+        loading="lazy"
+      ></iframe>
+    </div>
   </div>
 </div>
 
 <style>
-.gsb-editor-container {
-  width: 100%;
-  min-height: {{ block.settings.min_height }}px;
-  background: #f9fafb;
-  border-radius: {{ block.settings.border_radius }}px;
-  overflow: hidden;
+.gsb-button-container {
   margin: {{ block.settings.margin_top }}px 0 {{ block.settings.margin_bottom }}px;
 }
 
-.gsb-editor-wrapper {
-  position: relative;
+.gsb-customize-button {
   width: 100%;
-  padding-bottom: {{ block.settings.aspect_ratio }}%;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.gsb-editor-iframe {
+.gsb-customize-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.gsb-btn-sm { padding: 10px 20px; font-size: 14px; }
+.gsb-btn-md { padding: 14px 28px; font-size: 16px; }
+.gsb-btn-lg { padding: 18px 36px; font-size: 18px; }
+
+.gsb-editor-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.gsb-modal-overlay {
   position: absolute;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+}
+
+.gsb-modal-content {
+  position: relative;
+  width: 95vw;
+  height: 95vh;
+  max-width: 1920px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.gsb-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.gsb-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.gsb-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s;
+}
+
+.gsb-modal-close:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.gsb-modal-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.gsb-editor-iframe {
   width: 100%;
   height: 100%;
   border: none;
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (max-width: 768px) {
-  .gsb-editor-container {
-    min-height: 600px;
-  }
-  
-  .gsb-editor-wrapper {
-    padding-bottom: 150%;
+  .gsb-modal-content {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
   }
 }
 </style>
@@ -54,7 +166,51 @@
 (function() {
   'use strict';
   
-  const iframe = document.querySelector('#gsb-editor-{{ block.id }} .gsb-editor-iframe');
+  const modalId = 'gsb-modal-{{ block.id }}';
+  const iframeId = 'gsb-iframe-{{ block.id }}';
+  
+  // Open modal
+  window['openGSBEditorModal{{ block.id }}'] = function() {
+    const modal = document.getElementById(modalId);
+    const iframe = document.getElementById(iframeId);
+    
+    if (!modal || !iframe) return;
+    
+    // Build editor URL
+    const params = new URLSearchParams({
+      product: '{{ product.handle }}',
+      shopifyProduct: '{{ product.admin_graphql_api_id }}',
+      shopifyVariant: '{{ product.selected_or_first_available_variant.admin_graphql_api_id }}',
+      t: '{{ shop.metafields.gsb.tenant_id | default: "9ea467b0-edd2-4fdf-a306-3e2dee620d26" }}',
+      embed: 'shopify'
+    });
+    
+    iframe.src = 'https://app.gsb-engine.dev/editor?' + params.toString();
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    console.log('[GSB] Editor modal opened');
+  };
+  
+  // Close modal
+  window['closeGSBEditorModal{{ block.id }}'] = function() {
+    const modal = document.getElementById(modalId);
+    const iframe = document.getElementById(iframeId);
+    
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+    
+    if (iframe) {
+      iframe.src = '';
+    }
+    
+    console.log('[GSB] Editor modal closed');
+  };
+  
+  // Get iframe reference
+  const iframe = document.getElementById(iframeId);
   
   // Listen for messages from editor
   window.addEventListener('message', function(event) {
@@ -121,6 +277,47 @@
   "target": "section",
   "templates": ["product"],
   "settings": [
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button Label",
+      "default": "🎨 Customize & Add to Cart"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button Background",
+      "default": "#6366f1"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button Text Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "select",
+      "id": "button_size",
+      "label": "Button Size",
+      "options": [
+        { "value": "sm", "label": "Small" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Large" }
+      ],
+      "default": "md"
+    },
+    {
+      "type": "text",
+      "id": "button_icon",
+      "label": "Button Icon (emoji)",
+      "default": "🎨 "
+    },
+    {
+      "type": "text",
+      "id": "modal_title",
+      "label": "Modal Title",
+      "default": "Customize Your Design"
+    },
     {
       "type": "range",
       "id": "min_height",
