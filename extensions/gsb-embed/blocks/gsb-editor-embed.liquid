@@ -297,11 +297,15 @@
       }
 
       // Build editor URL with proper parameters
-      const productHandle = '{{ product.handle }}';
-      const productGid = '{{ product.admin_graphql_api_id }}';
-      const variantGid = '{{ product.selected_or_first_available_variant.admin_graphql_api_id }}';
-      const variantId = '{{ product.selected_or_first_available_variant.id }}';
-      const tenantId = '{{ shop.metafields.gsb.tenant_id | default: "9ea467b0-edd2-4fdf-a306-3e2dee620d26" }}';
+              const productHandle = '{{ product.handle }}';
+              const productGid = '{{ product.admin_graphql_api_id | default: "" }}';
+              const variantGid = '{{ product.selected_or_first_available_variant.admin_graphql_api_id | default: "" }}';
+              const variantId = '{{ product.selected_or_first_available_variant.id }}';
+              const tenantId = '{{ shop.metafields.gsb.tenant_id | default: "9ea467b0-edd2-4fdf-a306-3e2dee620d26" }}';
+              
+              // FALLBACK: If GIDs empty, construct from numeric ID
+              const finalProductGid = productGid || 'gid://shopify/Product/{{ product.id }}';
+              const finalVariantGid = variantGid || 'gid://shopify/ProductVariant/{{ product.selected_or_first_available_variant.id }}';
 
       const params = new URLSearchParams({
         product: productHandle,
@@ -312,15 +316,25 @@
         embed: 'shopify'
       });
 
-      console.log('[GSB] Opening editor with params:', {
-        product: productHandle,
-        productGid: productGid,
-        variantGid: variantGid,
-        variantId: variantId,
-        tenantId: tenantId
-      });
-
-      iframe.src = 'https://app.gsb-engine.dev/editor?' + params.toString();
+              console.log('[GSB] Opening editor with params:', {
+                product: productHandle,
+                productGid: finalProductGid,
+                variantGid: finalVariantGid,
+                variantId: variantId,
+                tenantId: tenantId
+              });
+              
+              // Use final GIDs with fallback
+              const finalParams = new URLSearchParams({
+                product: productHandle,
+                shopifyProduct: finalProductGid,
+                shopifyVariant: finalVariantGid,
+                variantId: variantId,
+                t: tenantId,
+                embed: 'shopify'
+              });
+              
+              iframe.src = 'https://app.gsb-engine.dev/editor?' + finalParams.toString();
 
       // Force display
       modal.style.display = 'flex';
