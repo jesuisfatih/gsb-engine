@@ -1518,35 +1518,10 @@ export const useEditorStore = defineStore("editor", {
     async checkoutWithDesign(options?: { returnUrl?: string }) {
       const previewDataUrl = this.capturePreview({ pixelRatio: 1, mimeType: "image/png" }) ?? undefined;
       
-      // For anonymous users, ensure design is persisted to backend
+      // For authenticated users, use existing submit flow
       const sessionStore = useSessionStore();
-      if (!sessionStore.isAuthenticated) {
-        // For anonymous users, directly create design document via proxy endpoint
-        const snapshot = this.serializeSnapshot();
-        const payload = {
-          ...snapshot,
-          status: 'SUBMITTED',
-          previewUrl: previewDataUrl,
-        };
-        
-        // Try to persist as anonymous design
-        try {
-          const response = await $api<{ data: any }>("/proxy/designs/anonymous", {
-            method: "POST",
-            body: payload,
-          });
-          this.designId = response.data?.id ?? this.designId;
-        } catch (error) {
-          console.warn('[checkout] Failed to persist anonymous design, continuing anyway', error);
-        }
-      } else {
-        // For authenticated users, use existing submit flow
+      if (sessionStore.isAuthenticated) {
         await this.submitDesign({ previewUrl: previewDataUrl });
-      }
-      
-      if (!this.designId) {
-        // Generate temporary ID for anonymous designs if backend failed
-        this.designId = `anon-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       }
 
       const catalog = useCatalogStore();
@@ -1568,10 +1543,14 @@ export const useEditorStore = defineStore("editor", {
       if (safeMarginMm) lineItemProperties["Safe Margin (mm)"] = String(safeMarginMm);
       if (this.activeSurface?.name) lineItemProperties["Surface Label"] = this.activeSurface.name;
 
+      // For anonymous users, send design snapshot
+      const designSnapshot = !sessionStore.isAuthenticated ? this.serializeSnapshot() : undefined;
+
       const response = await $api<{ data: { checkoutUrl?: string; lineItem?: Record<string, unknown> } }>("/proxy/cart", {
         method: "POST",
         body: {
           designId: this.designId,
+          designSnapshot,
           productGid,
           productTitle: product?.title,
           quantity: this.quantity,
@@ -1589,12 +1568,23 @@ export const useEditorStore = defineStore("editor", {
         },
       });
 
+      // Update designId from backend response (for anonymous users)
+      if (response.data?.designId) {
+        this.designId = response.data.designId;
+        console.log('[checkout] Design ID from backend:', this.designId);
+      }
+
       const checkoutUrl = response.data?.checkoutUrl;
       if (checkoutUrl) {
         const absolute = checkoutUrl.startsWith("http")
           ? checkoutUrl
           : `${window.location.origin}${checkoutUrl.startsWith("/") ? checkoutUrl : `/${checkoutUrl}`}`;
+        
+        console.log('[checkout] Redirecting to:', absolute);
         window.location.href = absolute;
+      } else {
+        console.error('[checkout] No checkout URL received from backend');
+        throw new Error('No checkout URL received');
       }
       return checkoutUrl;
     },

@@ -4,7 +4,7 @@ import type { $Enums } from "../../src/generated/prisma/client";
 import { env } from "../env";
 
 const checkoutSchema = z.object({
-  designId: z.string().uuid(),
+  designId: z.string().optional(), // Can be UUID or anonymous ID
   productGid: z.string().min(3),
   productTitle: z.string().optional(),
   quantity: z.number().int().positive().default(1),
@@ -20,6 +20,8 @@ const checkoutSchema = z.object({
   lineItemProperties: z.record(z.string(), z.string()).optional(),
   note: z.string().max(500).optional(),
   returnUrl: z.string().optional(),
+  // For anonymous users
+  designSnapshot: z.any().optional(),
 });
 
 const orderLineSchema = z.object({
@@ -132,53 +134,93 @@ export const proxyRouter = Router();
 proxyRouter.post("/cart", async (req, res, next) => {
   try {
     const payload = checkoutSchema.parse(req.body);
-    const { prisma } = req.context;
+    const { prisma, tenantId } = req.context;
 
-    const existing = await prisma.designDocument.findUnique({
-      where: { id: payload.designId },
-    });
-    if (!existing) return res.status(404).json({ error: "Design not found" });
-
-    const previewUrl = payload.previewUrl ?? existing.previewUrl ?? undefined;
-
-    const design = await prisma.designDocument.update({
-      where: { id: existing.id },
-      data: {
-        status: SUBMITTED_STATUS,
-        submittedAt: existing.submittedAt ?? new Date(),
-        previewUrl,
-        autosaveSnapshot: null,
-        autosaveAt: null,
-      },
-    });
-
-    const previewAsset = previewUrl ?? design.previewUrl ?? `https://cdn.gsb.dev/mockups/${design.id}.png`;
-    if (design.tenantId) {
-      await prisma.designOutput.deleteMany({
-        where: {
-          designId: design.id,
-          kind: { in: ['MOCKUP_2D', 'MOCKUP_3D'] },
+    let design: any;
+    
+    // Check if design exists in database
+    if (payload.designId) {
+      const existing = await prisma.designDocument.findUnique({
+        where: { id: payload.designId },
+      });
+      
+      if (existing) {
+        // Update existing design
+        const previewUrl = payload.previewUrl ?? existing.previewUrl ?? undefined;
+        design = await prisma.designDocument.update({
+          where: { id: existing.id },
+          data: {
+            status: SUBMITTED_STATUS,
+            submittedAt: existing.submittedAt ?? new Date(),
+            previewUrl,
+            autosaveSnapshot: null,
+            autosaveAt: null,
+          },
+        });
+      }
+    }
+    
+    // If design doesn't exist, create it (for anonymous users)
+    if (!design) {
+      const snapshot = payload.designSnapshot || {};
+      design = await prisma.designDocument.create({
+        data: {
+          tenantId: tenantId || undefined,
+          status: SUBMITTED_STATUS,
+          submittedAt: new Date(),
+          previewUrl: payload.previewUrl,
+          title: `Anonymous Design - ${new Date().toLocaleString()}`,
+          snapshot: snapshot.items || [],
+          productSlug: snapshot.productSlug || 'canvas-poster',
+          surfaceId: snapshot.surfaceId || payload.surfaceId,
+          color: snapshot.color,
+          printTech: snapshot.printTech || payload.technique || 'dtf',
+          sheetWidthPx: snapshot.sheetWidthPx,
+          sheetHeightPx: snapshot.sheetHeightPx,
+          metadata: {
+            source: 'anonymous-checkout',
+            createdAt: new Date().toISOString(),
+          },
         },
       });
+      console.log('[proxy] Created anonymous design:', design.id);
+    }
 
-      await prisma.designOutput.createMany({
-        data: [
-          {
+    const previewUrl = payload.previewUrl ?? design.previewUrl ?? undefined;
+
+    const previewAsset = previewUrl ?? design.previewUrl ?? `https://cdn.gsb.dev/mockups/${design.id}.png`;
+    
+    // Create design outputs if we have tenantId
+    if (design.tenantId) {
+      try {
+        await prisma.designOutput.deleteMany({
+          where: {
             designId: design.id,
-            tenantId: design.tenantId,
-            kind: 'MOCKUP_2D',
-            url: previewAsset,
-            metadata: { mode: '2d', source: 'proxy.cart', generatedAt: new Date().toISOString() },
+            kind: { in: ['MOCKUP_2D', 'MOCKUP_3D'] },
           },
-          {
-            designId: design.id,
-            tenantId: design.tenantId,
-            kind: 'MOCKUP_3D',
-            url: `${previewAsset}?view=3d`,
-            metadata: { mode: '3d', source: 'proxy.cart', generatedAt: new Date().toISOString() },
-          },
-        ],
-      });
+        });
+
+        await prisma.designOutput.createMany({
+          data: [
+            {
+              designId: design.id,
+              tenantId: design.tenantId,
+              kind: 'MOCKUP_2D',
+              url: previewAsset,
+              metadata: { mode: '2d', source: 'proxy.cart', generatedAt: new Date().toISOString() },
+            },
+            {
+              designId: design.id,
+              tenantId: design.tenantId,
+              kind: 'MOCKUP_3D',
+              url: `${previewAsset}?view=3d`,
+              metadata: { mode: '3d', source: 'proxy.cart', generatedAt: new Date().toISOString() },
+            },
+          ],
+        });
+      } catch (outputError) {
+        console.warn('[proxy] Failed to create design outputs:', outputError);
+      }
     }
 
     const properties: Record<string, string> = {};
@@ -251,6 +293,7 @@ proxyRouter.post("/cart", async (req, res, next) => {
 
     res.json({
       data: {
+        designId: design.id,
         checkoutUrl: remoteCheckout?.checkoutUrl ?? checkoutPath,
         lineItem: {
           ...lineItem,
