@@ -1581,11 +1581,33 @@ export const useEditorStore = defineStore("editor", {
       if (isInIframe()) {
         console.log('[checkout] Running in iframe, notifying parent window');
         
+        const modeStore = useEditorModeStore();
+        const isGangMode = modeStore.activeMode === 'gang';
+        
+        // Enhanced line item properties with preview and metadata
+        const enhancedProperties = {
+          ...lineItemProperties,
+          '_design_id': this.designId || '',
+          '_preview_image': previewDataUrl || '',
+          '_mode': isGangMode ? 'gang' : 'dtf',
+          '_sheet_dimensions': `${Math.round(sheetWidthMm)}mm × ${Math.round(sheetHeightMm)}mm`,
+          '_item_count': String(this.items.length),
+        };
+        
         notifyDesignComplete({
           designId: this.designId || '',
           variantId: variantId || '',
-          properties: lineItemProperties,
+          properties: enhancedProperties,
           previewUrl: previewDataUrl,
+          mode: isGangMode ? 'gang' : 'dtf',
+          metadata: {
+            sheetSize: `${Math.round(sheetWidthMm)} × ${Math.round(sheetHeightMm)} mm`,
+            utilization: stats.areaIn2 ? (stats.areaIn2 / (sheetWidthMm * sheetHeightMm / 645.16)) * 100 : 0,
+            itemCount: this.items.length,
+            technique: this.printTech,
+            colorCount: stats.colorCount,
+            minDpi: stats.lowestImageDpi,
+          },
         });
         
         // Don't redirect, parent will handle cart add

@@ -9,6 +9,15 @@ export interface EditorMessage {
   variantId?: string;
   properties?: Record<string, string>;
   previewUrl?: string;
+  mode?: 'gang' | 'dtf';
+  metadata?: {
+    sheetSize?: string;
+    utilization?: number;
+    itemCount?: number;
+    technique?: string;
+    colorCount?: number;
+    minDpi?: number;
+  };
 }
 
 /**

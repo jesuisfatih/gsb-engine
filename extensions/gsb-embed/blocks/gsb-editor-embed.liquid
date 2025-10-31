@@ -18,6 +18,20 @@
   </button>
 </div>
 
+<!-- Hide default Add to Cart buttons when GSB is active -->
+{% if block.settings.hide_default_buttons %}
+<style>
+  form[action="/cart/add"] .product-form__submit,
+  form[action*="/cart/add"] button[type="submit"],
+  .shopify-payment-button,
+  .product-form__buttons,
+  button[name="add"],
+  input[name="add"] {
+    display: none !important;
+  }
+</style>
+{% endif %}
+
 <!-- Modal (hidden by default) -->
 <div class="gsb-editor-modal" id="gsb-modal-{{ block.id }}" style="
   display: none;
@@ -325,35 +339,66 @@
     
     if (message.type === 'GSB_DESIGN_COMPLETE') {
       console.log('[GSB Block] Design complete:', message);
+      console.log('[GSB Block] Mode:', message.mode);
+      console.log('[GSB Block] Metadata:', message.metadata);
+      console.log('[GSB Block] Preview URL length:', message.previewUrl?.length || 0);
+      
+      // Prepare line item with preview and metadata
+      const lineItem = {
+        id: message.variantId || '{{ product.selected_or_first_available_variant.id }}',
+        quantity: 1,
+        properties: message.properties || {},
+      };
+      
+      // Add preview as property (if small enough)
+      if (message.previewUrl && message.previewUrl.length < 5000) {
+        lineItem.properties['_Preview'] = message.previewUrl;
+      }
+      
+      // Add metadata
+      if (message.metadata) {
+        if (message.metadata.sheetSize) {
+          lineItem.properties['Sheet Size'] = message.metadata.sheetSize;
+        }
+        if (message.metadata.itemCount) {
+          lineItem.properties['Item Count'] = String(message.metadata.itemCount);
+        }
+        if (message.metadata.utilization) {
+          lineItem.properties['Utilization'] = message.metadata.utilization.toFixed(1) + '%';
+        }
+      }
+      
+      console.log('[GSB Block] Adding to cart:', lineItem);
       
       // Add to Shopify cart
       fetch('/cart/add.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: message.variantId || '{{ product.selected_or_first_available_variant.id }}',
-          quantity: 1,
-          properties: message.properties || {}
-        })
+        body: JSON.stringify(lineItem)
       })
       .then(response => response.json())
       .then(item => {
-        console.log('[GSB Block] Added to cart:', item);
+        console.log('[GSB Block] ✅ Added to cart successfully!', item);
         
-        // Redirect to cart or open cart drawer
-        {% if block.settings.after_add_action == 'drawer' %}
-          if (typeof window.theme !== 'undefined' && window.theme.openCart) {
-            window.theme.openCart();
-          } else {
+        // Close modal first
+        window['closeGSBEditorModal{{ block.id }}']();
+        
+        // Small delay then redirect/drawer
+        setTimeout(() => {
+          {% if block.settings.after_add_action == 'drawer' %}
+            if (typeof window.theme !== 'undefined' && window.theme.openCart) {
+              window.theme.openCart();
+            } else {
+              window.location.href = '/cart';
+            }
+          {% else %}
             window.location.href = '/cart';
-          }
-        {% else %}
-          window.location.href = '/cart';
-        {% endif %}
+          {% endif %}
+        }, 300);
       })
       .catch(error => {
-        console.error('[GSB Block] Cart add failed:', error);
-        alert('Failed to add to cart. Please try again.');
+        console.error('[GSB Block] ❌ Cart add failed:', error);
+        alert('Failed to add to cart: ' + error.message + '\n\nPlease try again or contact support.');
       });
     }
   });
@@ -419,6 +464,13 @@
       "id": "modal_title",
       "label": "Modal Title",
       "default": "Customize Your Design"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_default_buttons",
+      "label": "Hide default Add to Cart buttons",
+      "default": true,
+      "info": "Hides standard Add to Cart and Buy Now buttons when customization is required"
     },
     {
       "type": "range",
