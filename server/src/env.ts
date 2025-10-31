@@ -17,6 +17,7 @@ const envSchema = z.object({
   SHOPIFY_API_SECRET: z.string().trim().optional(),
   SHOPIFY_DEFAULT_TENANT_SLUG: z.string().trim().optional(),
   SHOPIFY_VALIDATE_SESSION_SIGNATURE: z.coerce.boolean().default(false),
+  REDIS_URL: z.string().default('redis://localhost:6379'),
   MOCKUP_SERVICE_URL: z.string().trim().optional(),
   MOCKUP_SERVICE_TOKEN: z.string().trim().optional(),
   NOTIFICATION_MODE: z.enum(["mock", "webhook", "disabled"]).default("mock"),

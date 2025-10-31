@@ -7,6 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy"
     content="frame-ancestors https://admin.shopify.com https://*.myshopify.com;" />
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#6366f1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GSB Engine" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  
   <!-- App Bridge meta tag will be injected by Vite plugin -->
   <!-- App Bridge script will be injected by Vite plugin -->
   <title>GSB-DT PLATFORM</title>
@@ -39,12 +48,22 @@
     </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
+  
+  <!-- Service Worker Registration -->
   <script>
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('[PWA] Service worker registered:', reg.scope))
+          .catch(err => console.error('[PWA] Service worker registration failed:', err));
+      });
+    }
+    
+    // Loader colors
     const loaderColor = localStorage.getItem('vuexy-initial-loader-bg') || '#FFFFFF'
     const primaryColor = localStorage.getItem('vuexy-initial-loader-color') || '#7367F0'
 
-    if (loaderColor)
-      document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
     if (loaderColor)
       document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
 
