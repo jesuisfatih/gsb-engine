@@ -14,9 +14,24 @@ const tabs = [
   { key: "patterns", label: "Patterns", icon: Image },
   { key: "models", label: "Mockups", icon: Box },
   { key: "tools", label: "Workflow", icon: Wrench },
+  { key: "external", label: "External", icon: Image },
 ] as const;
 
 const activeTab = ref<(typeof tabs)[number]["key"]>(tabs[0].key);
+
+// External sources
+const externalSources = [
+  { id: 'unsplash', name: 'Unsplash', icon: '🖼️', description: 'Free high-quality photos' },
+  { id: 'pexels', name: 'Pexels', icon: '📸', description: 'Free stock photos & videos' },
+  { id: 'url', name: 'URL Import', icon: '🌐', description: 'Import from any URL' },
+  { id: 'gdrive', name: 'Google Drive', icon: '📁', description: 'Import from Drive' },
+  { id: 'dropbox', name: 'Dropbox', icon: '☁️', description: 'Import from Dropbox' },
+];
+
+const activeExternalSource = ref('unsplash');
+const externalSearchQuery = ref('');
+const externalUrl = ref('');
+const externalResults = ref<any[]>([]);
 
 function addIcon(icon: (typeof TABLER_ICONS)[number]) {
   store.addIconPath(icon);
@@ -37,6 +52,58 @@ async function addToolSticker(tool: (typeof TOOL_ASSETS)[number]) {
 
 function openLink(link: string) {
   window.open(link, "_blank", "noopener");
+}
+
+// External asset functions
+async function searchExternal() {
+  if (!externalSearchQuery.value.trim()) return;
+  
+  console.log('[External] Searching:', activeExternalSource.value, externalSearchQuery.value);
+  
+  // Simulate search results
+  externalResults.value = [
+    { id: 1, url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe', thumb: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200', name: 'Abstract Design' },
+    { id: 2, url: 'https://images.unsplash.com/photo-1618556450991-2f1af64e8191', thumb: 'https://images.unsplash.com/photo-1618556450991-2f1af64e8191?w=200', name: 'Colorful Pattern' },
+    { id: 3, url: 'https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead', thumb: 'https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=200', name: 'Geometric Art' },
+  ];
+}
+
+async function importFromUrl() {
+  if (!externalUrl.value.trim()) return;
+  
+  try {
+    await store.addRemoteImage({ 
+      url: externalUrl.value, 
+      name: 'Imported Image',
+      maxWidthRatio: 0.7 
+    });
+    externalUrl.value = '';
+    console.log('[External] URL imported successfully');
+  } catch (error) {
+    console.error('[External] Import failed:', error);
+    alert('Failed to import image from URL');
+  }
+}
+
+async function addExternalImage(image: any) {
+  try {
+    await store.addRemoteImage({ 
+      url: image.url, 
+      name: image.name,
+      maxWidthRatio: 0.7 
+    });
+    console.log('[External] Added:', image.name);
+  } catch (error) {
+    console.error('[External] Add failed:', error);
+  }
+}
+
+function connectGoogleDrive() {
+  alert('Google Drive integration coming soon!\n\nFor now, use URL Import to add images.');
+}
+
+function connectDropbox() {
+  alert('Dropbox integration coming soon!\n\nFor now, use URL Import to add images.');
 }
 </script>
 
