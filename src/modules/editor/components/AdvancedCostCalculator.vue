@@ -2,12 +2,8 @@
   <details class="accordion" open>
     <summary>
       <span class="accordion-title">
-        <svg class="accordion-icon" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
-          <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <text x="16" y="8" font-size="8" fill="currentColor">$</text>
-        </svg>
-        <span>💰 Cost Calculator</span>
+        <DollarSign :size="18" :stroke-width="2" style="color: #10b981;" />
+        <span>Cost Calculator</span>
       </span>
       <span class="profit-badge" :class="profitClass">
         {{ profitMargin.toFixed(0) }}% Profit
@@ -38,7 +34,10 @@
         <!-- Material Costs -->
         <div class="cost-item">
           <div class="item-header" @click="materialExpanded = !materialExpanded">
-            <span>🎨 Material Costs</span>
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <Package :size="16" :stroke-width="2" />
+              Material Costs
+            </span>
             <span class="value">${{ materialCostsTotal.toFixed(2) }}</span>
           </div>
           <div v-if="materialExpanded" class="item-details">
@@ -66,7 +65,10 @@
         <!-- Labor Costs -->
         <div class="cost-item">
           <div class="item-header" @click="laborExpanded = !laborExpanded">
-            <span>⏱️ Labor Costs</span>
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <Clock :size="16" :stroke-width="2" />
+              Labor Costs
+            </span>
             <span class="value">${{ laborCostsTotal.toFixed(2) }}</span>
           </div>
           <div v-if="laborExpanded" class="item-details">
@@ -94,7 +96,10 @@
         <!-- Equipment Costs -->
         <div class="cost-item">
           <div class="item-header" @click="equipmentExpanded = !equipmentExpanded">
-            <span>🖨️ Equipment Costs</span>
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <Printer :size="16" :stroke-width="2" />
+              Equipment Costs
+            </span>
             <span class="value">${{ equipmentCostsTotal.toFixed(2) }}</span>
           </div>
           <div v-if="equipmentExpanded" class="item-details">
@@ -119,7 +124,10 @@
         <!-- Overhead -->
         <div class="cost-item">
           <div class="item-header" @click="overheadExpanded = !overheadExpanded">
-            <span>🏢 Overhead</span>
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <Building :size="16" :stroke-width="2" />
+              Overhead
+            </span>
             <span class="value">${{ overheadCostsTotal.toFixed(2) }}</span>
           </div>
           <div v-if="overheadExpanded" class="item-details">
@@ -154,7 +162,10 @@
 
       <!-- Profitability Analysis -->
       <div class="profitability">
-        <h4>📊 Profitability Analysis</h4>
+        <h4 style="display: flex; align-items: center; gap: 8px;">
+          <TrendingUp :size="16" :stroke-width="2" />
+          Profitability Analysis
+        </h4>
         <div class="profit-grid">
           <div class="profit-item">
             <div class="label">ROI</div>
@@ -177,7 +188,8 @@
 
       <!-- Export Quote -->
       <button class="export-quote" @click="exportQuote">
-        📄 Export Quote PDF
+        <FileText :size="16" :stroke-width="2" />
+        Export Quote PDF
       </button>
     </div>
   </details>
@@ -186,6 +198,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useEditorStore } from '../store/editorStore';
+import { DollarSign, ChevronDown, Package, Clock, Printer, Building, TrendingUp, FileText } from 'lucide-vue-next';
 
 const editorStore = useEditorStore();
 
@@ -647,21 +660,31 @@ function exportQuote() {
 
 .export-quote {
   width: 100%;
-  padding: 12px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 16px;
+  background: #006fbb;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   margin-top: 16px;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 0 0 rgba(0,0,0,0.05);
 }
 
 .export-quote:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  background: #005fa3;
+  box-shadow: 0 1px 0 0 rgba(0,0,0,0.1);
+}
+
+.export-quote:active {
+  background: #00578f;
+  box-shadow: inset 0 1px 0 0 rgba(0,0,0,0.1);
 }
 </style>
 
