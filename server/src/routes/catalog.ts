@@ -95,10 +95,10 @@ catalogRouter.post("/seed", async (req, res, next) => {
     res.json({ 
       success: true, 
       data: { 
-        id: product.id, 
-        slug: product.slug, 
-        title: product.title,
-        surfaceCount: product.surfaces.length 
+        id: refreshed?.id ?? product.id, 
+        slug: refreshed?.slug ?? product.slug, 
+        title: refreshed?.title ?? product.title,
+        surfaceCount: refreshed?.surfaces.length ?? 0
       } 
     });
   } catch (error: any) {
