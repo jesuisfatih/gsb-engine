@@ -39,7 +39,7 @@
         <div class="cost-item">
           <div class="item-header" @click="materialExpanded = !materialExpanded">
             <span>🎨 Material Costs</span>
-            <span class="value">${{ materialCosts.total.toFixed(2) }}</span>
+            <span class="value">${{ materialCostsTotal.toFixed(2) }}</span>
           </div>
           <div v-if="materialExpanded" class="item-details">
             <div class="detail-row">
@@ -67,7 +67,7 @@
         <div class="cost-item">
           <div class="item-header" @click="laborExpanded = !laborExpanded">
             <span>⏱️ Labor Costs</span>
-            <span class="value">${{ laborCosts.total.toFixed(2) }}</span>
+            <span class="value">${{ laborCostsTotal.toFixed(2) }}</span>
           </div>
           <div v-if="laborExpanded" class="item-details">
             <div class="detail-row">
@@ -86,7 +86,7 @@
               <span>$/hr</span>
             </div>
             <div class="calculated">
-              Total Time: {{ laborCosts.totalMinutes }} minutes
+              Total Time: {{ laborCostsTotalMinutes }} minutes
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@
         <div class="cost-item">
           <div class="item-header" @click="equipmentExpanded = !equipmentExpanded">
             <span>🖨️ Equipment Costs</span>
-            <span class="value">${{ equipmentCosts.total.toFixed(2) }}</span>
+            <span class="value">${{ equipmentCostsTotal.toFixed(2) }}</span>
           </div>
           <div v-if="equipmentExpanded" class="item-details">
             <div class="detail-row">
@@ -120,7 +120,7 @@
         <div class="cost-item">
           <div class="item-header" @click="overheadExpanded = !overheadExpanded">
             <span>🏢 Overhead</span>
-            <span class="value">${{ overheadCosts.total.toFixed(2) }}</span>
+            <span class="value">${{ overheadCostsTotal.toFixed(2) }}</span>
           </div>
           <div v-if="overheadExpanded" class="item-details">
             <div class="detail-row">
@@ -200,14 +200,15 @@ const materialCosts = ref({
   filmCostPerSqFt: 0.85, // DTF film cost
   inkCostPerSqFt: 1.20, // Ink/powder cost
   adhesiveCost: 2.50, // Adhesive per sheet
-  total: computed(() => {
-    const area = sheetAreaSqFt.value;
-    return (
-      materialCosts.value.filmCostPerSqFt * area +
-      materialCosts.value.inkCostPerSqFt * area +
-      materialCosts.value.adhesiveCost
-    );
-  })
+});
+
+const materialCostsTotal = computed(() => {
+  const area = sheetAreaSqFt.value || 1;
+  return (
+    materialCosts.value.filmCostPerSqFt * area +
+    materialCosts.value.inkCostPerSqFt * area +
+    materialCosts.value.adhesiveCost
+  );
 });
 
 // Labor costs
@@ -215,11 +216,12 @@ const laborCosts = ref({
   designMinutes: 15,
   printMinutes: 10,
   hourlyRate: 25,
-  totalMinutes: computed(() => laborCosts.value.designMinutes + laborCosts.value.printMinutes),
-  total: computed(() => {
-    const hours = laborCosts.value.totalMinutes / 60;
-    return hours * laborCosts.value.hourlyRate;
-  })
+});
+
+const laborCostsTotalMinutes = computed(() => laborCosts.value.designMinutes + laborCosts.value.printMinutes);
+const laborCostsTotal = computed(() => {
+  const hours = laborCostsTotalMinutes.value / 60;
+  return hours * laborCosts.value.hourlyRate;
 });
 
 // Equipment costs
@@ -227,22 +229,24 @@ const equipmentCosts = ref({
   depreciation: 1.50, // Machine depreciation per sheet
   maintenance: 0.75,
   electricity: 0.25,
-  total: computed(() => {
-    return (
-      equipmentCosts.value.depreciation +
-      equipmentCosts.value.maintenance +
-      equipmentCosts.value.electricity
-    );
-  })
+});
+
+const equipmentCostsTotal = computed(() => {
+  return (
+    equipmentCosts.value.depreciation +
+    equipmentCosts.value.maintenance +
+    equipmentCosts.value.electricity
+  );
 });
 
 // Overhead
 const overheadCosts = ref({
   percentage: 20,
-  total: computed(() => {
-    const directCosts = materialCosts.value.total + laborCosts.value.total + equipmentCosts.value.total;
-    return directCosts * (overheadCosts.value.percentage / 100);
-  })
+});
+
+const overheadCostsTotal = computed(() => {
+  const directCosts = materialCostsTotal.value + laborCostsTotal.value + equipmentCostsTotal.value;
+  return directCosts * (overheadCosts.value.percentage / 100);
 });
 
 // Pricing
@@ -257,10 +261,10 @@ const sheetAreaSqFt = computed(() => {
 
 const totalCost = computed(() => {
   return (
-    materialCosts.value.total +
-    laborCosts.value.total +
-    equipmentCosts.value.total +
-    overheadCosts.value.total
+    materialCostsTotal.value +
+    laborCostsTotal.value +
+    equipmentCostsTotal.value +
+    overheadCostsTotal.value
   );
 });
 
