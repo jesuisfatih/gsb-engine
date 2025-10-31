@@ -35,13 +35,30 @@ const { global } = useTheme();
 const isDarkTheme = computed(() => Boolean(global.current.value.dark));
 
 onMounted(async () => {
-  // Load catalog first (skip if public/customer access)
+  // Load catalog with tenantId from URL if public customer
+  const tenantId = route.query.t as string | undefined;
   const hasAuth = sessionStore?.isAuthenticated;
+  
   if (hasAuth) {
     await catalogStore.ensureLoaded().catch(err => console.warn("[catalog] load failed", err));
     gangStore.ensureLoaded().catch(err => console.warn("[gang-sheet] load failed", err));
+  } else if (tenantId) {
+    console.log("[editor] Public customer - loading catalog with tenant ID");
+    // Manually fetch catalog with tenant header
+    try {
+      const response = await fetch('https://app.gsb-engine.dev/api/catalog', {
+        headers: { 'X-Tenant-Id': tenantId }
+      });
+      const data = await response.json();
+      if (data.data && Array.isArray(data.data)) {
+        catalogStore.products = data.data;
+        console.log("[editor] Loaded", data.data.length, "products for customer");
+      }
+    } catch (err) {
+      console.error("[editor] Failed to load catalog for customer", err);
+    }
   } else {
-    console.log("[editor] Public access - skipping catalog/gangsheet load");
+    console.log("[editor] Public access - no tenant ID, using hardcoded products");
   }
 
   // Check for URL params to auto-load product/surface
