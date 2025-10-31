@@ -243,12 +243,24 @@
   const modalId = 'gsb-modal-{{ block.id }}';
   const iframeId = 'gsb-iframe-{{ block.id }}';
   
+  // CRITICAL: Move modal to body (escape container!)
+  document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById(modalId);
+    if (modal && modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+      console.log('[GSB] Modal moved to body - escaped container!');
+    }
+  });
+  
   // Open modal
   window['openGSBEditorModal{{ block.id }}'] = function() {
     const modal = document.getElementById(modalId);
     const iframe = document.getElementById(iframeId);
     
-    if (!modal || !iframe) return;
+    if (!modal || !iframe) {
+      console.error('[GSB] Modal or iframe not found!');
+      return;
+    }
     
     // Build editor URL
     const params = new URLSearchParams({
