@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { Prisma } from "../../../src/generated/prisma/client";
+import { parseDimensionsFromVariantOptions, dimensionsToMm } from "../utils/variant-parser";
 
 export const merchantConfigRouter = Router();
 
@@ -120,13 +121,54 @@ merchantConfigRouter.put("/catalog/mappings", async (req, res, next) => {
         });
       }
 
-      // Verify that the surface exists and belongs to this product
-      const surface = await prisma.surface.findFirst({
+      // Try to find existing surface or create one from variant dimensions
+      let surface = await prisma.surface.findFirst({
         where: {
           id: input.surfaceId,
           productId: product.id,
         },
       });
+
+      // If surface doesn't exist, try to create from variant dimensions
+      if (!surface && input.options) {
+        console.log(`[merchant-config] Surface not found, trying to create from variant options`);
+        
+        const dimensions = parseDimensionsFromVariantOptions(input.options as Record<string, string>);
+        if (dimensions) {
+          console.log(`[merchant-config] Parsed dimensions:`, dimensions);
+          const { widthMm, heightMm } = dimensionsToMm(dimensions);
+          
+          // Create surface with parsed dimensions
+          surface = await prisma.surface.create({
+            data: {
+              productId: product.id,
+              name: dimensions.originalText,
+              widthMm,
+              heightMm,
+              safeArea: { marginMm: 5 },
+              ppi: 300,
+              metadata: {
+                autoCreated: true,
+                sourceVariant: input.shopifyVariantId,
+                parsedFrom: dimensions.originalText,
+              },
+            },
+          });
+          
+          console.log(`[merchant-config] ✅ Auto-created surface:`, surface.name, `(${widthMm}x${heightMm}mm)`);
+          
+          // Update input to use new surface
+          input.surfaceId = surface.id;
+        } else {
+          console.warn(`[merchant-config] Could not parse dimensions from variant options:`, input.options);
+          return res.status(404).json({
+            error: "Surface not found and could not auto-create from variant dimensions",
+            surfaceId: input.surfaceId,
+            productId: product.id,
+            variantOptions: input.options,
+          });
+        }
+      }
 
       if (!surface) {
         console.warn(`[merchant-config] Surface not found: ${input.surfaceId} for product: ${product.id}`);
