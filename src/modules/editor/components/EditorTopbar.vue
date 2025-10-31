@@ -20,8 +20,10 @@ import {
   Sparkles,
   Zap,
   Brain,
-  Users
+  Users,
+  Settings
 } from 'lucide-vue-next';
+import AIPackingDialog from './AIPackingDialog.vue';
 
 const editorStore = useEditorStore();
 const modeStore = useEditorModeStore();
@@ -90,6 +92,7 @@ async function handleCheckout() {
 
 // Option C: AI Auto-Pack
 const aiOptimizing = ref(false);
+const showAIDialog = ref(false);
 
 async function handleAIAutoPack() {
   if (aiOptimizing.value) return;
@@ -109,6 +112,31 @@ async function handleAIAutoPack() {
     editorStore.snapshot();
     
     console.log('[AI] Optimized! Utilization:', result.utilization.toFixed(1) + '%');
+  } catch (error) {
+    console.error('[AI] Auto-pack failed:', error);
+  } finally {
+    aiOptimizing.value = false;
+  }
+}
+
+async function handleAIPackWithSettings(settings: any) {
+  if (aiOptimizing.value) return;
+  
+  aiOptimizing.value = true;
+  try {
+    const { getAIOptimizer } = await import('../services/aiPacking');
+    const optimizer = getAIOptimizer();
+    
+    const result = await optimizer.optimize(
+      editorStore.items,
+      { w: editorStore.sheetWpx, h: editorStore.sheetHpx },
+      settings
+    );
+    
+    editorStore.items = result.items;
+    editorStore.snapshot();
+    
+    console.log('[AI] Optimized with settings! Utilization:', result.utilization.toFixed(1) + '%');
   } catch (error) {
     console.error('[AI] Auto-pack failed:', error);
   } finally {
@@ -210,14 +238,25 @@ async function handleAIAutoPack() {
         <button 
           class="tool-btn ai-btn" 
           :disabled="aiOptimizing || editorStore.items.length === 0"
-          title="AI Auto-Pack (95% utilization)"
+          title="AI Auto-Pack (Quick)"
           @click="handleAIAutoPack"
         >
           <Zap v-if="!aiOptimizing" :size="18" :stroke-width="2" />
           <Loader2 v-else :size="18" class="spinner" />
           <span class="label">AI Pack</span>
         </button>
+        <button 
+          class="tool-btn icon-only" 
+          :disabled="editorStore.items.length === 0"
+          title="AI Pack Settings"
+          @click="showAIDialog = true"
+        >
+          <Settings :size="18" :stroke-width="2" />
+        </button>
       </div>
+      
+      <!-- AI Packing Dialog -->
+      <AIPackingDialog v-model="showAIDialog" @optimize="handleAIPackWithSettings" />
 
       <div class="divider" />
 

@@ -26,6 +26,7 @@ import { useCollaboration } from "../composables/useCollaboration";
 import { getAIOptimizer } from "../services/aiPacking";
 import { getQualityAnalyzer } from "../services/qualityAnalysis";
 import { getSuggestionsEngine } from "../services/smartSuggestions";
+import CollaborationCursors from "./CollaborationCursors.vue";
 
 const route = useRoute();
 const modeStore = useEditorModeStore();
@@ -114,6 +115,64 @@ watch(() => editorStore.items.length, () => {
   analyzeQuality();
   loadSuggestions();
 }, { flush: 'post' });
+
+// Apply suggestion function
+async function applySuggestion(suggestion: any) {
+  try {
+    console.log('[Suggestions] Applying:', suggestion.title);
+    
+    // Handle different suggestion types
+    switch (suggestion.type) {
+      case 'optimize-spacing':
+        await handleAIAutoPack();
+        break;
+      
+      case 'reduce-sheet-size':
+        // Find optimal sheet size
+        const optimalSize = suggestion.data?.optimalSize;
+        if (optimalSize) {
+          editorStore.sheetWin = optimalSize.width;
+          editorStore.sheetHin = optimalSize.height;
+          editorStore.snapshot();
+        }
+        break;
+      
+      case 'group-similar':
+        // Group similar items together
+        const groups = suggestion.data?.groups || [];
+        groups.forEach((group: any) => {
+          // Apply grouping logic
+          console.log('[Suggestions] Grouping items:', group);
+        });
+        break;
+      
+      case 'rotate-items':
+        // Rotate specific items for better fit
+        const itemsToRotate = suggestion.data?.items || [];
+        itemsToRotate.forEach((itemId: string) => {
+          const item = editorStore.items.find(i => i.id === itemId);
+          if (item) {
+            item.rotation = (item.rotation || 0) + 90;
+          }
+        });
+        editorStore.snapshot();
+        break;
+      
+      default:
+        console.log('[Suggestions] Unknown suggestion type:', suggestion.type);
+    }
+    
+    // Refresh analysis after applying
+    setTimeout(() => {
+      analyzeQuality();
+      loadSuggestions();
+    }, 500);
+    
+  } catch (error) {
+    console.error('[Suggestions] Apply failed:', error);
+    alert('Failed to apply suggestion: ' + error);
+  }
+}
 
 const { activeMode } = storeToRefs(modeStore);
 const configStore = useConfigStore();
@@ -930,11 +989,25 @@ function changeMode(mode: "dtf" | "gang") {
         </summary>
         <div class="section-body">
           <div style="padding: 0 12px 12px;">
-            <div v-for="(sug, idx) in suggestions" :key="idx" style="margin-bottom: 8px; padding: 10px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; cursor: pointer; transition: background 0.2s;" @click="console.log('Apply suggestion:', sug)">
-              <div style="font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #065f46;">{{ sug.title }}</div>
-              <div style="font-size: 12px; color: #6b7280;">{{ sug.description }}</div>
-              <div v-if="sug.savings" style="font-size: 11px; color: #10b981; margin-top: 4px; font-weight: 600;">
-                💰 Save {{ sug.savings.toFixed(2) }}%
+              <div v-for="(sug, idx) in suggestions" :key="idx" style="margin-bottom: 8px; padding: 10px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; transition: all 0.2s; border: 1px solid transparent;" :style="{'&:hover': {background: '#dcfce7', borderColor: '#10b981'}}">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
+                <div style="font-size: 13px; font-weight: 500; color: #065f46;">{{ sug.title }}</div>
+                <button
+                  @click="applySuggestion(sug)"
+                  style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
+                  :style="{'&:hover': {background: '#059669'}}"
+                >
+                  Apply
+                </button>
+              </div>
+              <div style="font-size: 12px; color: #6b7280; margin-bottom: 6px;">{{ sug.description }}</div>
+              <div style="display: flex; gap: 12px; font-size: 11px;">
+                <span v-if="sug.savings" style="color: #10b981; font-weight: 600;">
+                  💰 Save {{ sug.savings.toFixed(2) }}%
+                </span>
+                <span v-if="sug.impact" style="color: #6b7280;">
+                  Impact: {{ sug.impact }}
+                </span>
               </div>
             </div>
           </div>
