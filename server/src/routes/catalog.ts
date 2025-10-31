@@ -46,48 +46,51 @@ catalogRouter.post("/seed", async (req, res, next) => {
 
     console.log("[catalog] Seeding sample product for tenant:", tenantId);
 
-    const product = await prisma.product.create({
-      data: {
-        tenant: { connect: { id: tenantId } },
+    const product = await prisma.product.upsert({
+      where: { tenantId_slug: { tenantId, slug: "canvas-poster" } },
+      update: {},
+      create: {
+        tenantId,
         slug: "canvas-poster",
         title: "Canvas Poster",
         category: "textile",
-        description: "Customizable canvas poster - sample product",
+        description: "Customizable canvas poster",
         attributes: {
           materials: ["canvas"],
           techniques: ["dtf", "sublimation"],
-        },
-        status: "ACTIVE",
-        surfaces: {
-          create: [
-            {
-              name: "20x30 cm",
-              widthMm: 200,
-              heightMm: 300,
-              safeArea: { marginMm: 5 },
-              ppi: 300,
-            },
-            {
-              name: "30x40 cm",
-              widthMm: 300,
-              heightMm: 400,
-              safeArea: { marginMm: 5 },
-              ppi: 300,
-            },
-            {
-              name: "40x60 cm",
-              widthMm: 400,
-              heightMm: 600,
-              safeArea: { marginMm: 5 },
-              ppi: 300,
-            },
-          ],
         },
       },
       include: { surfaces: true },
     });
 
-    console.log("[catalog] Sample product created:", product.title, "with", product.surfaces.length, "surfaces");
+    const surfaces = [
+      { name: "20x30 cm", widthMm: 200, heightMm: 300 },
+      { name: "30x40 cm", widthMm: 300, heightMm: 400 },
+      { name: "40x60 cm", widthMm: 400, heightMm: 600 },
+    ];
+
+    const existing = new Set(product.surfaces.map(s => s.name));
+    
+    for (const surf of surfaces) {
+      if (existing.has(surf.name)) continue;
+      await prisma.surface.create({
+        data: {
+          productId: product.id,
+          name: surf.name,
+          widthMm: surf.widthMm,
+          heightMm: surf.heightMm,
+          safeArea: { marginMm: 5 },
+          ppi: 300,
+        },
+      });
+    }
+
+    const refreshed = await prisma.product.findUnique({
+      where: { id: product.id },
+      include: { surfaces: true },
+    });
+
+    console.log("[catalog] Sample product ready:", refreshed?.title, "with", refreshed?.surfaces.length, "surfaces");
 
     res.json({ 
       success: true, 
