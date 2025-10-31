@@ -14,6 +14,22 @@ import { proxyRouter } from "./routes/proxy";
 
 export function createApp() {
   const app = express();
+  
+  // Detailed request logging
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    
+    // Log response
+    const originalSend = res.send;
+    res.send = function(data) {
+      if (res.statusCode === 404) {
+        console.error(`[404] ${req.method} ${req.path} - NOT FOUND`);
+      }
+      return originalSend.call(this, data);
+    };
+    
+    next();
+  });
 
   app.set("trust proxy", 1);
   app.use(cors({ origin: true, credentials: true }));
