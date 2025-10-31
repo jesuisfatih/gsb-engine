@@ -3,9 +3,11 @@ import { z } from "zod";
 import type { $Enums } from "../../src/generated/prisma/client";
 import { env } from "../env";
 import { saveDesignToShopifyMetaobject } from "../services/shopifyMetaobjects";
+import path from "path";
+import fs from "fs";
 
 const checkoutSchema = z.object({
-  designId: z.string().optional(), // Can be UUID or anonymous ID
+  designId: z.string().optional(),
   productGid: z.string().min(3),
   productTitle: z.string().optional(),
   quantity: z.number().int().positive().default(1),
@@ -21,7 +23,6 @@ const checkoutSchema = z.object({
   lineItemProperties: z.record(z.string(), z.string()).optional(),
   note: z.string().max(500).optional(),
   returnUrl: z.string().optional(),
-  // For anonymous users
   designSnapshot: z.any().optional(),
 });
 
@@ -65,7 +66,7 @@ async function createShopifyCart(options: {
   if (!variantId || !variantId.startsWith("gid://")) return null;
 
   const domain = SHOPIFY_STORE_DOMAIN.replace(/^https?:\/\//i, "");
-  const endpoint = `https://${domain}/api/${SHOPIFY_STOREFRONT_API_VERSION}/graphql.json`;
+  const endpoint = `https://${domain}/admin/api/${SHOPIFY_STOREFRONT_API_VERSION}/graphql.json`;
 
   const customAttributes = Object.entries(properties).map(([key, value]) => ({
     key,
@@ -132,6 +133,40 @@ async function createShopifyCart(options: {
 
 export const proxyRouter = Router();
 
+/**
+ * GET /apps/gsb/editor
+ * Serve editor page via App Proxy (stays on Shopify domain)
+ */
+proxyRouter.get("/editor", async (req, res) => {
+  try {
+    // Serve the built frontend
+    const distPath = path.join(process.cwd(), "dist", "index.html");
+    
+    if (fs.existsSync(distPath)) {
+      const html = fs.readFileSync(distPath, "utf-8");
+      
+      // Inject embed mode flag
+      const modifiedHtml = html.replace(
+        '</head>',
+        '<script>window.__GSB_EMBED_MODE__ = true;</script></head>'
+      );
+      
+      res.setHeader('Content-Type', 'text/html');
+      res.setHeader('X-Frame-Options', 'ALLOW-FROM https://*.myshopify.com');
+      res.send(modifiedHtml);
+    } else {
+      res.status(404).send('Editor not found. Please build the frontend first.');
+    }
+  } catch (error) {
+    console.error('[proxy] Editor serve error:', error);
+    res.status(500).send('Failed to load editor');
+  }
+});
+
+/**
+ * POST /api/proxy/cart
+ * Add design to cart (existing implementation)
+ */
 proxyRouter.post("/cart", async (req, res, next) => {
   try {
     const payload = checkoutSchema.parse(req.body);
@@ -139,14 +174,12 @@ proxyRouter.post("/cart", async (req, res, next) => {
 
     let design: any;
     
-    // Check if design exists in database
     if (payload.designId) {
       const existing = await prisma.designDocument.findUnique({
         where: { id: payload.designId },
       });
       
       if (existing) {
-        // Update existing design
         const previewUrl = payload.previewUrl ?? existing.previewUrl ?? undefined;
         design = await prisma.designDocument.update({
           where: { id: existing.id },
@@ -161,7 +194,6 @@ proxyRouter.post("/cart", async (req, res, next) => {
       }
     }
     
-    // If design doesn't exist, create it (for anonymous users)
     if (!design) {
       const snapshot = payload.designSnapshot || {};
       design = await prisma.designDocument.create({
@@ -187,7 +219,6 @@ proxyRouter.post("/cart", async (req, res, next) => {
       console.log('[proxy] Created anonymous design:', design.id);
     }
 
-    // Save design to Shopify Metaobject (async, don't block)
     if (design.tenantId) {
       const tenant = await prisma.tenant.findUnique({
         where: { id: design.tenantId },
@@ -198,7 +229,6 @@ proxyRouter.post("/cart", async (req, res, next) => {
       const shopifyAccessToken = (tenant?.settings as any)?.shopify?.accessToken;
       
       if (shopifyDomain && shopifyAccessToken) {
-        // Fire and forget - don't await
         saveDesignToShopifyMetaobject(design, shopifyDomain, shopifyAccessToken)
           .then(result => {
             if (result) {
@@ -215,7 +245,6 @@ proxyRouter.post("/cart", async (req, res, next) => {
 
     const previewAsset = previewUrl ?? design.previewUrl ?? `https://cdn.gsb.dev/mockups/${design.id}.png`;
     
-    // Create design outputs if we have tenantId
     if (design.tenantId) {
       try {
         await prisma.designOutput.deleteMany({
@@ -256,7 +285,7 @@ proxyRouter.post("/cart", async (req, res, next) => {
       }
     };
 
-    setProp("Design ID", payload.designId);
+    setProp("Design ID", payload.designId || design.id);
     setProp("Product", payload.productTitle);
     setProp("Surface ID", payload.surfaceId);
     setProp("Technique", payload.technique);

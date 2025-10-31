@@ -23,6 +23,12 @@ embedded = false
 automatically_update_urls_on_dev = false
 dev_store_url = "
 
+# App Proxy - Customer storefront access
+[app_proxy]
+url = "https://app.gsb-engine.dev"
+subpath = "gsb"
+prefix = "apps"
+
 # Extensions
 [[extension_directories]]
 directory = "extensions/*"

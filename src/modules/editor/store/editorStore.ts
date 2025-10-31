@@ -12,6 +12,7 @@ import { FONT_LIBRARY } from "../constants/fonts";
 import { $api } from "@/utils/api";
 import { fetchPricingConfigs, fetchPricingQuote, type PricingQuote } from "../services/pricingService";
 import type { TemplateDefinition } from "@/modules/templates/types";
+import { isInIframe, notifyDesignComplete, requestModalClose } from "@/utils/iframeMessaging";
 
 import type {
   CircleItem,
@@ -1575,6 +1576,23 @@ export const useEditorStore = defineStore("editor", {
       }
 
       const checkoutUrl = response.data?.checkoutUrl;
+      
+      // If in iframe (Shopify modal), send message to parent instead of redirect
+      if (isInIframe()) {
+        console.log('[checkout] Running in iframe, notifying parent window');
+        
+        notifyDesignComplete({
+          designId: this.designId || '',
+          variantId: variantId || '',
+          properties: lineItemProperties,
+          previewUrl: previewDataUrl,
+        });
+        
+        // Don't redirect, parent will handle cart add
+        return checkoutUrl;
+      }
+      
+      // Normal flow: redirect to checkout
       if (checkoutUrl) {
         const absolute = checkoutUrl.startsWith("http")
           ? checkoutUrl
