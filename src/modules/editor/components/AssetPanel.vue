@@ -41,6 +41,20 @@ function openLink(link: string) {
 
 <template>
   <div class="asset-panel">
+    <!-- External Asset Sources -->
+    <div class="asset-sources">
+      <button 
+        v-for="source in sources" 
+        :key="source.id"
+        :class="['source-btn', { active: activeSource === source.id }]"
+        @click="activeSource = source.id"
+      >
+        <component :is="source.icon" :size="16" :stroke-width="2" />
+        {{ source.name }}
+      </button>
+    </div>
+    
+    <div
     <label class="selector" for="asset-library-select">
       <span class="selector-label">
         <svg class="selector-icon" viewBox="0 0 24 24" aria-hidden="true">
