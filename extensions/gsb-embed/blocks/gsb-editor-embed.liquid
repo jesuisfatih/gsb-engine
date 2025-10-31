@@ -403,29 +403,29 @@
 
               if (message.type === 'GSB_DESIGN_COMPLETE') {
                   console.log('[GSB Block] Design complete:', message);
-                  
+
                   // UPDATED: Use CDN preview URL, not base64
                   const lineItem = {
                     id: message.variantId || '{{ product.selected_or_first_available_variant.id }}',
                     quantity: 1,
                     properties: {},
                   };
-                  
+
                   // Add design ID (CRITICAL!)
                   if (message.designId) {
                     lineItem.properties['_Design_ID'] = message.designId;
                   }
-                  
+
                   // Add preview URL from CDN (not base64!)
                   if (message.previewUrl && message.previewUrl.startsWith('http')) {
                     lineItem.properties['_Preview_URL'] = message.previewUrl;
                   }
-                  
+
                   // Add download URL (high-res)
                   if (message.downloadUrl) {
                     lineItem.properties['_Download_URL'] = message.downloadUrl;
                   }
-                  
+
                   // Add metadata from message.properties
                   if (message.properties) {
                     Object.entries(message.properties).forEach(([key, value]) => {
@@ -434,7 +434,7 @@
                       }
                     });
                   }
-                  
+
                   console.log('[GSB Block] Adding to cart:', lineItem);
 
         // Add to Shopify cart
