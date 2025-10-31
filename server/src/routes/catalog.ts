@@ -64,9 +64,33 @@ catalogRouter.post("/seed", async (req, res, next) => {
     });
 
     const surfaces = [
-      { name: "20x30 cm", widthMm: 200, heightMm: 300 },
-      { name: "30x40 cm", widthMm: 300, heightMm: 400 },
-      { name: "40x60 cm", widthMm: 400, heightMm: 600 },
+      { 
+        name: "20x30 cm", 
+        widthMm: 200, 
+        heightMm: 300,
+        metadata: {
+          previewImage: "/images/mockups/canvas-20x30.png",
+          note: "Canvas 20x30 cm"
+        }
+      },
+      { 
+        name: "30x40 cm", 
+        widthMm: 300, 
+        heightMm: 400,
+        metadata: {
+          previewImage: "/images/mockups/canvas-30x40.png",
+          note: "Canvas 30x40 cm"
+        }
+      },
+      { 
+        name: "40x60 cm", 
+        widthMm: 400, 
+        heightMm: 600,
+        metadata: {
+          previewImage: "/images/mockups/canvas-40x60.png",
+          note: "Canvas 40x60 cm"
+        }
+      },
     ];
 
     const existing = new Set(product.surfaces.map(s => s.name));
@@ -81,6 +105,7 @@ catalogRouter.post("/seed", async (req, res, next) => {
           heightMm: surf.heightMm,
           safeArea: { marginMm: 5 },
           ppi: 300,
+          metadata: surf.metadata,
         },
       });
     }
