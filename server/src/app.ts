@@ -43,8 +43,9 @@ export function createApp() {
   app.use("/uploads", express.static("uploads"));
 
   // CRITICAL: App Proxy routes FIRST (before static files)
-  app.use("/apps/gsb", proxyRouter);
-  app.use("/api/proxy", proxyRouter);
+app.use("/apps/gsb", proxyRouter);
+app.use("/api/proxy", proxyRouter);
+app.use("/api/designs", designsRouter);
 
   // Serve static files from dist folder (SPA frontend)
   const distPath = path.join(__dirname, "../../../dist");

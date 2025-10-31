@@ -20,16 +20,8 @@ import { useConfigStore } from "@core/stores/config";
 import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useAutosaveManager } from "../composables/useAutosaveManager";
-import { useCollaboration } from "../composables/useCollaboration";
-import { getAIOptimizer } from "../services/aiPacking";
-import { getQualityAnalyzer } from "../services/qualityAnalysis";
-import { getSuggestionsEngine } from "../services/smartSuggestions";
-import CollaborationCursors from "./CollaborationCursors.vue";
-import CollaborationChat from "./CollaborationChat.vue";
-import AIDesignAssistant from "./AIDesignAssistant.vue";
-import BatchOperationsPanel from "./BatchOperationsPanel.vue";
 import KeyboardShortcuts from "./KeyboardShortcuts.vue";
-import AdvancedCostCalculator from "./AdvancedCostCalculator.vue";
+import AIDesignAssistant from "./AIDesignAssistant.vue";
 import MockupPreview3D from "./MockupPreview3D.vue";
 import ExternalSourcesPanel from "./ExternalSourcesPanel.vue";
 import { Star, Lightbulb, ChevronDown, AlertCircle, Check, DollarSign, Cloud } from "lucide-vue-next";
@@ -42,17 +34,7 @@ const catalogStore = useCatalogStore();
 const sessionStore = useSessionStore();
 useAutosaveManager();
 
-// Option C: Real-time Collaboration
-const designId = computed(() => editorStore.designId || `temp-${Date.now()}`);
-const collaboration = useCollaboration(designId.value, true);
-
-// Option C: AI Services
-const aiOptimizer = getAIOptimizer();
-const qualityAnalyzer = getQualityAnalyzer();
-const suggestionsEngine = getSuggestionsEngine();
-
-// AI State
-const aiOptimizing = ref(false);
+// Quality & Suggestions state (will be real data later)
 const qualityAnalysis = ref<any>(null);
 const suggestions = ref<any[]>([]);
 

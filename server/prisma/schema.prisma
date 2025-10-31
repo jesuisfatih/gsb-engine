@@ -1,0 +1,62 @@
+// Prisma Schema - GSB Engine Design Storage
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Design {
+  id        String   @id @default(uuid())
+  designId  String   @unique @map("design_id")
+  
+  // Tenant & Shop
+  tenantId  String   @map("tenant_id")
+  shopDomain String? @map("shop_domain")
+  
+  // Product & Variant
+  productGid String  @map("product_gid")
+  variantGid String  @map("variant_gid")
+  productHandle String? @map("product_handle")
+  
+  // Design Data
+  snapshot  Json     // Full design snapshot
+  previewUrl String? @map("preview_url")
+  downloadUrl String? @map("download_url")
+  thumbnailUrl String? @map("thumbnail_url")
+  
+  // Metadata
+  status    String   @default("draft") // draft, completed, archived
+  itemCount Int?     @map("item_count")
+  sheetSize String?  @map("sheet_size")
+  technique String?  @map("print_technique")
+  utilization Float?
+  
+  // Shopify References
+  draftOrderId BigInt? @map("draft_order_id")
+  orderId BigInt? @map("order_id")
+  lineItemId BigInt? @map("line_item_id")
+  customerId BigInt? @map("customer_id")
+  
+  // Anonymous Tracking
+  anonymousId String? @map("anonymous_id")
+  sessionId String? @map("session_id")
+  fingerprint String?
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+  
+  @@index([designId])
+  @@index([productGid, variantGid])
+  @@index([anonymousId])
+  @@index([sessionId])
+  @@index([customerId])
+  @@index([status, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("designs")
+}
+
