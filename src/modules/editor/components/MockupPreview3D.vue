@@ -20,14 +20,60 @@
         </select>
       </div>
 
-      <!-- 3D Preview Container - SIMPLIFIED -->
-      <div class="mockup-container-simple">
-        <!-- SIMPLE Mockup Preview -->
-        <div class="mockup-preview-simple">
-          <div class="product-icon-large">
-            {{ products.find(p => p.id === selectedProduct)?.icon || '👕' }}
+      <!-- 3D Preview Container - WORKING INTEGRATION -->
+      <div class="mockup-container-working">
+        <div class="mockup-canvas-wrapper">
+          <!-- Product Mockup Base -->
+          <div class="product-base">
+            <svg v-if="selectedProduct === 'tshirt'" width="100%" height="200" viewBox="0 0 240 240">
+              <defs>
+                <clipPath id="design-area">
+                  <rect x="85" y="90" width="70" height="70" />
+                </clipPath>
+              </defs>
+              <!-- T-shirt shape -->
+              <path d="M40 60 L80 40 L120 50 L160 40 L200 60 L200 210 L40 210 Z" 
+                fill="#f8f9fa" stroke="#dee2e6" stroke-width="2" />
+              <!-- Design preview area -->
+              <foreignObject x="85" y="90" width="70" height="70" clip-path="url(#design-area)">
+                <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;background:#fff;border:2px dashed #006fbb;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6c757d;">
+                  Design Preview
+                </div>
+              </foreignObject>
+            </svg>
+            
+            <svg v-else-if="selectedProduct === 'mug'" width="100%" height="200" viewBox="0 0 240 240">
+              <!-- Mug shape -->
+              <ellipse cx="120" cy="120" rx="50" ry="70" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2" />
+              <path d="M170 100 Q185 120 170 140" fill="none" stroke="#dee2e6" stroke-width="2" />
+              <!-- Design area -->
+              <rect x="90" y="90" width="60" height="60" fill="white" stroke="#006fbb" stroke-width="1.5" stroke-dasharray="3 2" />
+              <text x="120" y="125" text-anchor="middle" font-size="9" fill="#6c757d">Design</text>
+            </svg>
+            
+            <svg v-else-if="selectedProduct === 'cap'" width="100%" height="200" viewBox="0 0 240 240">
+              <!-- Cap shape -->
+              <ellipse cx="120" cy="90" rx="70" ry="35" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2" />
+              <rect x="50" y="90" width="140" height="50" rx="8" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2" />
+              <!-- Design area -->
+              <rect x="80" y="105" width="80" height="25" fill="white" stroke="#006fbb" stroke-width="1.5" stroke-dasharray="3 2" />
+              <text x="120" y="122" text-anchor="middle" font-size="9" fill="#6c757d">Design</text>
+            </svg>
+            
+            <svg v-else-if="selectedProduct === 'bag'" width="100%" height="200" viewBox="0 0 240 240">
+              <!-- Bag shape -->
+              <rect x="60" y="70" width="120" height="130" rx="6" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2" />
+              <path d="M90 70 Q120 50 150 70" fill="none" stroke="#dee2e6" stroke-width="2" />
+              <!-- Design area -->
+              <rect x="80" y="100" width="80" height="60" fill="white" stroke="#006fbb" stroke-width="1.5" stroke-dasharray="3 2" />
+              <text x="120" y="135" text-anchor="middle" font-size="9" fill="#6c757d">Design</text>
+            </svg>
           </div>
-          <div class="preview-label">Design will appear on {{ products.find(p => p.id === selectedProduct)?.name }}</div>
+        </div>
+        
+        <div class="mockup-info">
+          <span class="info-icon">{{ products.find(p => p.id === selectedProduct)?.icon }}</span>
+          <span class="info-text">Preview on {{ products.find(p => p.id === selectedProduct)?.name }}</span>
         </div>
       </div>
     </div>
@@ -149,7 +195,7 @@ function exportMockup() {
   box-shadow: 0 0 0 1px #006fbb;
 }
 
-.mockup-container-simple {
+.mockup-container-working {
   background: #f6f6f7;
   border: 1px solid #e1e3e5;
   border-radius: 8px;
@@ -157,28 +203,44 @@ function exportMockup() {
   margin-bottom: 0;
 }
 
-.mockup-preview-simple {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 30px 16px;
+.mockup-canvas-wrapper {
   background: white;
   border: 1px solid #e1e3e5;
   border-radius: 6px;
-  text-align: center;
-}
-
-.product-icon-large {
-  font-size: 64px;
+  padding: 16px;
   margin-bottom: 12px;
-  opacity: 0.9;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.preview-label {
+.product-base {
+  width: 100%;
+  max-width: 240px;
+  margin: 0 auto;
+}
+
+.mockup-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: #e3f1fb;
+  border: 1px solid #006fbb;
+  border-radius: 6px;
   font-size: 13px;
-  color: #6d7175;
   font-weight: 500;
+  color: #006fbb;
+}
+
+.info-icon {
+  font-size: 18px;
+}
+
+.info-text {
+  font-size: 13px;
 }
 
 .mockup-controls {

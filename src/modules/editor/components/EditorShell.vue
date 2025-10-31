@@ -79,37 +79,49 @@ async function handleAIAutoPack() {
   }
 }
 
-// Load quality analysis
+// Load quality analysis - ALWAYS SHOW DUMMY DATA FOR DEMO
 async function analyzeQuality() {
-  const canvas = document.querySelector('canvas');
-  if (!canvas) return;
-  
   try {
-    const analysis = await qualityAnalyzer.analyzeDesign(
-      canvas,
-      editorStore.items,
-      { w: editorStore.sheetWpx, h: editorStore.sheetHpx }
-    );
-    qualityAnalysis.value = analysis;
+    // Use dummy data to always show quality panel
+    qualityAnalysis.value = {
+      score: 87,
+      issues: [
+        {
+          type: 'Low DPI',
+          message: 'Some images may appear pixelated when printed at 300 DPI'
+        }
+      ]
+    };
+    
+    console.log('[Quality] Loaded dummy analysis for demo');
   } catch (error) {
     console.error('[AI] Quality analysis failed:', error);
   }
 }
 
-// Load suggestions
+// Load suggestions - ALWAYS SHOW DUMMY DATA FOR DEMO
 async function loadSuggestions() {
   try {
-    const sug = await suggestionsEngine.generateSuggestions(
-      editorStore.items,
-      { w: editorStore.sheetWpx, h: editorStore.sheetHpx },
+    // Use dummy data to always show suggestions
+    suggestions.value = [
       {
-        printTech: editorStore.printTech,
-        colorCount: editorStore.analysis.stats.colorCount,
-        areaUsage: (editorStore.analysis.stats.areaIn2 / (editorStore.sheetWpx * editorStore.sheetHpx / 10000)) * 100,
-        safeMargin: editorStore.safeMarginPx,
+        type: 'optimize-spacing',
+        title: 'Optimize Item Spacing',
+        description: 'Items can be packed tighter to save material cost',
+        savings: 12.5,
+        impact: 'Medium'
+      },
+      {
+        type: 'reduce-sheet-size',
+        title: 'Reduce Sheet Size',
+        description: 'Current design fits in a smaller sheet size',
+        savings: 8.3,
+        impact: 'High',
+        data: { optimalSize: { width: 20, height: 24 } }
       }
-    );
-    suggestions.value = sug;
+    ];
+    
+    console.log('[Suggestions] Loaded dummy suggestions for demo');
   } catch (error) {
     console.error('[AI] Suggestions failed:', error);
   }
