@@ -1527,12 +1527,21 @@ export const useEditorStore = defineStore("editor", {
 
       const catalog = useCatalogStore();
       const product = this.activeProduct;
-      const variantId = catalog.variantIdFor({
-        productSlug: this.productSlug,
-        surfaceId: this.surfaceId,
-        color: this.color,
-        material: undefined,
-      }) ?? null;
+      
+      // Safe variantIdFor with fallback
+      let variantId: string | null = null;
+      try {
+        if (catalog && typeof catalog.variantIdFor === 'function') {
+          variantId = catalog.variantIdFor({
+            productSlug: this.productSlug,
+            surfaceId: this.surfaceId,
+            color: this.color,
+            material: undefined,
+          }) ?? null;
+        }
+      } catch (error) {
+        console.warn('[checkout] variantIdFor failed, using fallback', error);
+      }
       const productGid = product?.shopifyProductId ?? product?.slug ?? this.productSlug;
       const sheetWidthMm = pxToMm(this.sheetWpx, this.ppi);
       const sheetHeightMm = pxToMm(this.sheetHpx, this.ppi);
