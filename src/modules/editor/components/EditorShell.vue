@@ -35,9 +35,14 @@ const { global } = useTheme();
 const isDarkTheme = computed(() => Boolean(global.current.value.dark));
 
 onMounted(async () => {
-  // Load catalog first
-  await catalogStore.ensureLoaded().catch(err => console.warn("[catalog] load failed", err));
-  gangStore.ensureLoaded().catch(err => console.warn("[gang-sheet] load failed", err));
+  // Load catalog first (skip if public/customer access)
+  const hasAuth = sessionStore?.isAuthenticated;
+  if (hasAuth) {
+    await catalogStore.ensureLoaded().catch(err => console.warn("[catalog] load failed", err));
+    gangStore.ensureLoaded().catch(err => console.warn("[gang-sheet] load failed", err));
+  } else {
+    console.log("[editor] Public access - skipping catalog/gangsheet load");
+  }
 
   // Check for URL params to auto-load product/surface
   const productSlug = route.query.product as string | undefined;
@@ -51,9 +56,11 @@ onMounted(async () => {
   console.log("[editor] URL params:", { productSlug, surfaceId, color, material, technique, shopifyProduct, shopifyVariant });
 
   if (productSlug) {
+    // Try to find product in catalog
     const product = catalogStore.sortedProducts.find(p => p.slug === productSlug);
+    
     if (product) {
-      console.log("[editor] Auto-loading product:", product.title);
+      console.log("[editor] Auto-loading product from catalog:", product.title);
       
       // Set active product
       editorStore.setProduct(productSlug);
@@ -80,6 +87,35 @@ onMounted(async () => {
       if (technique) {
         editorStore.setPrintTech(technique as any);
       }
+    } else if (surfaceId) {
+      // Public customer access - fetch product directly from API
+      console.log("[editor] Public access - fetching product via API");
+      try {
+        const tenantId = route.query.t as string | undefined;
+        const headers: Record<string, string> = {};
+        if (tenantId) headers['X-Tenant-Id'] = tenantId;
+        
+        const response = await fetch(`https://app.gsb-engine.dev/api/catalog`, { headers });
+        const catalogData = await response.json();
+        const products = catalogData.data || [];
+        
+        const foundProduct = products.find((p: any) => p.slug === productSlug);
+        if (foundProduct) {
+          console.log("[editor] Product loaded from API:", foundProduct.title);
+          editorStore.setProduct(productSlug);
+          
+          if (surfaceId) {
+            editorStore.setSurface(surfaceId);
+          }
+          
+          if (technique) {
+            editorStore.setPrintTech(technique as any);
+          }
+        }
+      } catch (err) {
+        console.error("[editor] Failed to load product from API", err);
+      }
+    }
 
       // Store Shopify context for checkout (save to localStorage for now)
       if (shopifyProduct || shopifyVariant) {
