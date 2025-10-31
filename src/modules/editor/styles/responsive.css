@@ -1,46 +1,49 @@
 /**
  * EDITOR RESPONSIVE SYSTEM
  * Mobile-first, print-on-demand optimized
+ * NON-AGGRESSIVE: Only applies when needed, doesn't override existing styles
  */
 
 /* ==================== MOBILE (< 768px) ==================== */
 @media (max-width: 767px) {
-  /* Stack layout vertically */
-  .editor-root {
-    grid-template-columns: 1fr !important;
-    grid-template-rows: auto auto 1fr !important;
+  /* Stack layout vertically - SOFT override */
+  body .editor-root {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
     height: 100vh;
     height: 100dvh; /* Dynamic viewport height */
   }
 
-  /* Hide sidebars on mobile by default */
+  /* Hide sidebars on mobile by default - COMMENTED OUT to avoid breaking desktop */
+  /* 
   .left-pane,
   .right-pane {
-    display: none !important;
+    display: none;
+  }
+  */
+
+  /* Full-width topbar - SOFT */
+  body .editor-topbar {
+    padding: 8px;
+    flex-wrap: wrap;
   }
 
-  /* Full-width topbar */
-  .editor-topbar {
-    padding: 8px !important;
-    flex-wrap: wrap !important;
+  body .topbar-section {
+    flex-wrap: wrap;
+    gap: 4px;
   }
 
-  .topbar-section {
-    flex-wrap: wrap !important;
-    gap: 4px !important;
+  body .tool-btn {
+    padding: 8px;
+    font-size: 12px;
   }
 
-  .tool-btn {
-    padding: 8px !important;
-    font-size: 12px !important;
+  body .tool-btn .label {
+    display: none; /* Icon only on mobile */
   }
 
-  .tool-btn .label {
-    display: none !important; /* Icon only on mobile */
-  }
-
-  .tool-btn.icon-only {
-    min-width: 36px !important;
+  body .tool-btn.icon-only {
+    min-width: 36px;
   }
 
   /* Mobile stage canvas */
