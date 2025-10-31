@@ -9,18 +9,23 @@
 (function () {
   'use strict';
 
-  // Configuration from script tag data attributes or defaults
+  console.log('[GSB] Script loaded and initializing...');
+
+  // Configuration from window.GSB_SCRIPT_CONFIG or script tag data attributes or defaults
   const script = document.currentScript || document.querySelector('script[src*="gsb-shortcode"]');
+  const blockConfig = window.GSB_SCRIPT_CONFIG || {};
   const config = {
-    editorUrl: script?.dataset?.editorUrl || '/editor',
-    apiUrl: script?.dataset?.apiUrl || '/api/embed/shortcodes',
-    mappingUrl: script?.dataset?.mappingUrl || '/api/embed/catalog/mappings',
-    buttonLabel: script?.dataset?.buttonLabel || 'Customize & Add to cart',
+    editorUrl: blockConfig.editorUrl || script?.dataset?.editorUrl || '/editor',
+    apiUrl: blockConfig.apiUrl || script?.dataset?.apiUrl || '/api/embed/shortcodes',
+    mappingUrl: blockConfig.mappingUrl || script?.dataset?.mappingUrl || '/api/embed/catalog/mappings',
+    buttonLabel: blockConfig.buttonLabel || script?.dataset?.buttonLabel || 'Customize & Add to cart',
     buttonClass: script?.dataset?.buttonClass || '',
-    buttonBg: script?.dataset?.buttonBg || '#4c1d95',
-    buttonColor: script?.dataset?.buttonColor || '#ffffff',
+    buttonBg: blockConfig.buttonBg || script?.dataset?.buttonBg || '#4c1d95',
+    buttonColor: blockConfig.buttonColor || script?.dataset?.buttonColor || '#ffffff',
     openMode: script?.dataset?.openMode || 'navigate', // 'navigate' | 'popup'
   };
+
+  console.log('[GSB] Configuration:', config);
 
   // Shortcode cache to avoid redundant API calls
   const shortcodeCache = new Map();
@@ -281,7 +286,9 @@
    * Initialize all shortcode placeholders
    */
   function init() {
+    console.log('[GSB] Initializing...');
     const elements = document.querySelectorAll('[data-gsb-shortcode]');
+    console.log('[GSB] Found', elements.length, 'shortcode elements');
     elements.forEach(processElement);
 
     // Watch for dynamically added elements (e.g., AJAX-loaded products)

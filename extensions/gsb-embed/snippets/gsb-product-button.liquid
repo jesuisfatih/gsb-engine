@@ -55,11 +55,20 @@
 
 {%- unless gsb_short_code_loader_included -%}
   {%- assign gsb_short_code_loader_included = true -%}
+  <script>
+    // Override config with block settings
+    window.GSB_SCRIPT_CONFIG = {
+      editorUrl: '{{ gsb_editor_url }}',
+      apiUrl: '{{ gsb_api_url }}',
+      mappingUrl: '{{ gsb_mapping_url }}',
+      buttonLabel: '{{ gsb_button_label }}',
+      buttonBg: '{{ gsb_button_bg }}',
+      buttonColor: '{{ gsb_button_text }}'
+    };
+  </script>
   <script
     src="{{ gsb_script_url }}"
-    data-api-url="{{ gsb_api_url }}"
-    data-editor-url="{{ gsb_editor_url }}"
-    data-mapping-url="{{ gsb_mapping_url }}"
     defer
+    crossorigin="anonymous"
   ></script>
 {%- endunless -%}
