@@ -79,8 +79,8 @@ const variantHeaders = [
   { title: "GSB Product", key: "product" },
   { title: "Surface", key: "surface" },
   { title: "Technique", key: "technique" },
-  { title: "Shortcode", key: "shortcode" },
-  { title: "Status", key: "status", sortable: false },
+  { title: "Customizable", key: "customizable", sortable: false, width: "140px" },
+  { title: "Actions", key: "status", sortable: false, width: "120px" },
 ];
 
 function ensureRow(variantId: string) {
@@ -513,36 +513,53 @@ const isBusy = computed(() => catalog.shopifyLoading || catalog.variantMappingsL
                   />
                 </template>
 
+                <template #item.customizable="{ item }">
+                  <div class="customizable-cell">
+                    <VSwitch
+                      :model-value="!!catalog.mappingForVariant(item.id) && !!getRowSelection(item.id).productSlug && !!getRowSelection(item.id).surfaceId"
+                      :disabled="!getRowSelection(item.id).productSlug || !getRowSelection(item.id).surfaceId || rowSaving[item.id]"
+                      color="success"
+                      hide-details
+                      density="compact"
+                      inset
+                      readonly
+                    />
+                  </div>
+                </template>
+
                 <template #item.status="{ item }">
                   <div class="status-cell">
-                    <div class="status-actions">
-                      <VBtn
-                        icon="mdi-refresh"
-                        variant="text"
-                        density="comfortable"
-                        :loading="rowSaving[item.id]"
-                        @click="commitRow(item.id)"
-                      />
-                      <VBtn
-                        icon="mdi-x"
-                        variant="text"
-                        density="comfortable"
-                        color="error"
-                        :disabled="rowSaving[item.id]"
-                        @click="clearMapping(item.id)"
-                      />
-                    </div>
-                    <div class="status-feedback">
-                      <VProgressCircular
-                        v-if="rowSaving[item.id]"
-                        indeterminate
-                        size="16"
-                        width="2"
-                        color="primary"
-                      />
-                      <span v-else-if="rowError[item.id]" class="status-error">{{ rowError[item.id] }}</span>
-                      <span v-else-if="catalog.mappingForVariant(item.id)" class="status-ok">Kaydedildi</span>
-                    </div>
+                    <VProgressCircular
+                      v-if="rowSaving[item.id]"
+                      indeterminate
+                      size="18"
+                      width="2"
+                      color="primary"
+                    />
+                    <VChip
+                      v-else-if="rowError[item.id]"
+                      color="error"
+                      size="x-small"
+                      variant="flat"
+                    >
+                      Hata
+                    </VChip>
+                    <VChip
+                      v-else-if="catalog.mappingForVariant(item.id)"
+                      color="success"
+                      size="x-small"
+                      variant="flat"
+                    >
+                      ✓ Eşlendi
+                    </VChip>
+                    <VChip
+                      v-else
+                      color="grey"
+                      size="x-small"
+                      variant="outlined"
+                    >
+                      Boş
+                    </VChip>
                   </div>
                 </template>
               </VDataTable>

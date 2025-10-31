@@ -195,7 +195,8 @@ const navSections: NavSection[] = [
   {
     title: "Commerce",
     items: [
-      { icon: Package, label: "Catalog & Surfaces", name: "shopify-embedded-catalog" },
+      { icon: Package, label: "Products", name: "shopify-embedded-products" },
+      { icon: Grid3x3, label: "Catalog & Surfaces", name: "shopify-embedded-catalog" },
       { icon: Receipt, label: "Orders", name: "shopify-embedded-orders" },
       { icon: Palette, label: "Designs", name: "shopify-embedded-designs" },
       { icon: Layers, label: "Templates", name: "shopify-embedded-templates" },
