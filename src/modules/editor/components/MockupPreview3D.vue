@@ -2,16 +2,11 @@
   <details class="accordion" open>
     <summary>
       <span class="accordion-title">
-        <svg class="accordion-icon" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-          <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-        </svg>
-        <span>🎭 3D Mockup Preview</span>
+        <Box :size="18" :stroke-width="2" style="color: #8b5cf6;" />
+        <span>3D Mockup Preview</span>
       </span>
       <span class="accordion-toggle">
-        <svg viewBox="0 0 12 12">
-          <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
+        <ChevronDown :size="16" />
       </span>
     </summary>
 
@@ -68,27 +63,21 @@
         <!-- 3D Controls -->
         <div class="mockup-controls">
           <button @click="rotate(-45)" title="Rotate Left">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M1 4v6h6M3 19a9 9 0 1 0 2.5-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <RotateCcw :size="18" :stroke-width="2" />
           </button>
           <span class="rotation-display">{{ currentRotation }}°</span>
           <button @click="rotate(45)" title="Rotate Right">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M23 4v6h-6M21 19a9 9 0 1 1-2.5-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <RotateCw :size="18" :stroke-width="2" />
           </button>
           <button @click="resetView" title="Reset View">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2" />
-              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
-            </svg>
+            <Maximize2 :size="18" :stroke-width="2" />
           </button>
         </div>
 
         <!-- Export Mockup -->
         <button class="export-mockup-btn" @click="exportMockup">
-          📸 Export Mockup Image
+          <Camera :size="16" :stroke-width="2" />
+          Export Mockup Image
         </button>
       </div>
 
@@ -113,6 +102,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { Box, ChevronDown, RotateCcw, RotateCw, Maximize2, Camera } from 'lucide-vue-next';
 
 const selectedProduct = ref('tshirt');
 const currentRotation = ref(0);
@@ -304,6 +294,10 @@ function exportMockup() {
 
 .export-mockup-btn {
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 11px 16px;
   background: #006fbb;
   color: white;
