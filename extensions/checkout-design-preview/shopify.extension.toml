@@ -1,31 +1,28 @@
 api_version = "2024-10"
-name = "Design Preview"
-handle = "design-preview"
-
-[[extensions]]
 type = "ui_extension"
 name = "Design Preview"
+handle = "checkout-design-preview"
 
-[[extensions.targets]]
+[[targeting]]
 target = "purchase.checkout.block.render"
 
-[extensions.settings]
-[extensions.settings.title]
+[settings]
+[[settings.fields]]
+key = "title"
 type = "single_line_text_field"
 name = "Section Title"
-value = "Your Custom Design"
 
-[extensions.settings.show_dimensions]
+[[settings.fields]]
+key = "show_dimensions"
 type = "boolean"
 name = "Show Dimensions"
-value = true
 
-[extensions.settings.show_edit_button]
+[[settings.fields]]
+key = "show_edit_button"
 type = "boolean"
 name = "Show Edit Button"
-value = true
 
-[extensions.settings.show_download_button]
+[[settings.fields]]
+key = "show_download_button"
 type = "boolean"
 name = "Show Download Button"
-value = true
