@@ -31,6 +31,7 @@ import BatchOperationsPanel from "./BatchOperationsPanel.vue";
 import KeyboardShortcuts from "./KeyboardShortcuts.vue";
 import AdvancedCostCalculator from "./AdvancedCostCalculator.vue";
 import MockupPreview3D from "./MockupPreview3D.vue";
+import { Star, Lightbulb, ChevronDown, AlertCircle, Check, DollarSign } from "lucide-vue-next";
 
 const route = useRoute();
 const modeStore = useEditorModeStore();
@@ -920,21 +921,79 @@ function changeMode(mode: "dtf" | "gang") {
       <!-- 3D Mockup Preview (replaces old MockupPreview) -->
       <MockupPreview3D />
 
-      <!-- OPTION C: Quality Analysis Panel - HIDDEN until properly integrated -->
-      <!-- Temporarily disabled to fix layout issues -->
-      <!--
+      <!-- OPTION C: Quality Analysis Panel -->
       <details v-if="qualityAnalysis && qualityAnalysis.score" class="accordion" open>
-        ...Quality Analysis content...
+        <summary>
+          <span class="accordion-title">
+            <Star :size="18" :stroke-width="2" style="color: #f59e0b;" />
+            <span>Quality Analysis</span>
+          </span>
+          <span class="accordion-toggle">
+            <ChevronDown :size="16" />
+          </span>
+        </summary>
+        <div class="section-body">
+          <div class="quality-content">
+            <div v-if="qualityAnalysis.score" class="quality-score">
+              <div class="score-header">
+                <span>Overall Quality</span>
+                <span class="score-value">{{ qualityAnalysis.score.toFixed(0) }}%</span>
+              </div>
+              <div class="score-bar">
+                <div 
+                  class="score-progress"
+                  :style="{
+                    width: qualityAnalysis.score + '%',
+                    background: qualityAnalysis.score >= 80 ? '#10b981' : qualityAnalysis.score >= 60 ? '#f59e0b' : '#ef4444'
+                  }"
+                ></div>
+              </div>
+            </div>
+            <div v-for="issue in qualityAnalysis.issues" :key="issue.type" class="quality-issue">
+              <AlertCircle :size="16" :stroke-width="2" style="color: #f59e0b; flex-shrink: 0;" />
+              <div>
+                <strong>{{ issue.type }}:</strong> {{ issue.message }}
+              </div>
+            </div>
+          </div>
+        </div>
       </details>
-      -->
 
-      <!-- OPTION C: Smart Suggestions Panel - HIDDEN until properly integrated -->
-      <!-- Temporarily disabled to fix layout issues -->
-      <!--
+      <!-- OPTION C: Smart Suggestions Panel -->
       <details v-if="suggestions && suggestions.length > 0" class="accordion" open>
-        ...Smart Suggestions content...
+        <summary>
+          <span class="accordion-title">
+            <Lightbulb :size="18" :stroke-width="2" style="color: #10b981;" />
+            <span>Smart Suggestions</span>
+          </span>
+          <span class="accordion-toggle">
+            <ChevronDown :size="16" />
+          </span>
+        </summary>
+        <div class="section-body">
+          <div class="suggestions-content">
+            <div v-for="(sug, idx) in suggestions" :key="idx" class="suggestion-item">
+              <div class="suggestion-header">
+                <div class="suggestion-title">{{ sug.title }}</div>
+                <button class="apply-btn" @click="applySuggestion(sug)">
+                  <Check :size="14" :stroke-width="2.5" />
+                  Apply
+                </button>
+              </div>
+              <div class="suggestion-desc">{{ sug.description }}</div>
+              <div class="suggestion-meta">
+                <span v-if="sug.savings" class="savings">
+                  <DollarSign :size="12" :stroke-width="2.5" />
+                  Save {{ sug.savings.toFixed(2) }}%
+                </span>
+                <span v-if="sug.impact" class="impact">
+                  Impact: {{ sug.impact }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </details>
-      -->
 
       <!-- Advanced Cost Calculator (replaces old CostPanel) -->
       <AdvancedCostCalculator />
