@@ -27,6 +27,7 @@ import { getAIOptimizer } from "../services/aiPacking";
 import { getQualityAnalyzer } from "../services/qualityAnalysis";
 import { getSuggestionsEngine } from "../services/smartSuggestions";
 import CollaborationCursors from "./CollaborationCursors.vue";
+import CollaborationChat from "./CollaborationChat.vue";
 
 const route = useRoute();
 const modeStore = useEditorModeStore();
@@ -1057,6 +1058,13 @@ function changeMode(mode: "dtf" | "gang") {
       Autosave failed: {{ autosaveError }}
     </div>
   </div>
+  
+  <!-- Option C: Collaboration Chat (floating) -->
+  <CollaborationChat
+    v-if="collaboration.isEnabled.value"
+    :user-count="collaboration.userCount.value"
+    :has-collaborators="collaboration.hasCollaborators.value"
+  />
 </template>
 
 <style scoped>
