@@ -5,14 +5,15 @@ import { PATTERN_LIBRARY } from "../assets/patternLibrary";
 import { TABLER_ICONS } from "../assets/tablerIcons";
 import { TOOL_ASSETS } from "../assets/toolingAssets";
 import { useEditorStore } from "../store/editorStore";
+import { Image, Layout, Box, Wrench } from "lucide-vue-next";
 
 const store = useEditorStore();
 
 const tabs = [
-  { key: "icons", label: "Icons" },
-  { key: "patterns", label: "Patterns" },
-  { key: "models", label: "Mockups" },
-  { key: "tools", label: "Workflow" },
+  { key: "icons", label: "Icons", icon: Layout },
+  { key: "patterns", label: "Patterns", icon: Image },
+  { key: "models", label: "Mockups", icon: Box },
+  { key: "tools", label: "Workflow", icon: Wrench },
 ] as const;
 
 const activeTab = ref<(typeof tabs)[number]["key"]>(tabs[0].key);
@@ -41,20 +42,6 @@ function openLink(link: string) {
 
 <template>
   <div class="asset-panel">
-    <!-- External Asset Sources -->
-    <div class="asset-sources">
-      <button 
-        v-for="source in sources" 
-        :key="source.id"
-        :class="['source-btn', { active: activeSource === source.id }]"
-        @click="activeSource = source.id"
-      >
-        <component :is="source.icon" :size="16" :stroke-width="2" />
-        {{ source.name }}
-      </button>
-    </div>
-    
-    <div
     <label class="selector" for="asset-library-select">
       <span class="selector-label">
         <svg class="selector-icon" viewBox="0 0 24 24" aria-hidden="true">
