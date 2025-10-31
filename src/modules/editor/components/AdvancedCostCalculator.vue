@@ -343,8 +343,45 @@ function exportQuote() {
 </script>
 
 <style scoped>
+/* Shopify Polaris-inspired styling */
+.accordion {
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.accordion summary {
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  background: #fafbfb;
+  border-bottom: 1px solid #e1e3e5;
+}
+
+.accordion-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #202223;
+}
+
+.accordion-icon {
+  width: 18px;
+  height: 18px;
+  color: #5c5f62;
+}
+
+.section-body {
+  background: white;
+  padding: 16px;
+}
+
 .cost-summary {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  background: #f6f6f7;
+  border: 1px solid #e1e3e5;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
@@ -386,106 +423,124 @@ function exportQuote() {
 
 .profit-badge {
   padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 700;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .profit-badge.excellent {
-  background: #d1fae5;
-  color: #065f46;
+  background: #aee9d1;
+  color: #004c3f;
 }
 
 .profit-badge.good {
-  background: #fef3c7;
-  color: #92400e;
+  background: #ffe58c;
+  color: #594200;
 }
 
 .profit-badge.fair {
-  background: #fed7aa;
-  color: #9a3412;
+  background: #ffc58b;
+  color: #73330a;
 }
 
 .profit-badge.low {
-  background: #fecaca;
-  color: #991b1b;
+  background: #fead9a;
+  color: #6d2a0e;
 }
 
 .cost-breakdown h4 {
-  font-size: 12px;
-  font-weight: 700;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #202223;
   margin: 0 0 12px;
 }
 
 .cost-item {
-  margin-bottom: 8px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
   overflow: hidden;
+  background: white;
 }
 
 .item-header {
   display: flex;
   justify-content: space-between;
-  padding: 10px 12px;
-  background: #f9fafb;
+  align-items: center;
+  padding: 12px 14px;
+  background: #fafbfb;
   cursor: pointer;
-  transition: background 0.2s;
-  font-size: 13px;
-  font-weight: 600;
+  transition: background 0.15s ease;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .item-header:hover {
-  background: #f3f4f6;
+  background: #f1f2f3;
 }
 
 .item-header .value {
-  color: #3b82f6;
-  font-weight: 700;
+  color: #006fbb;
+  font-weight: 600;
+  font-size: 15px;
 }
 
 .item-details {
-  padding: 12px;
+  padding: 14px;
   background: white;
+  border-top: 1px solid #e1e3e5;
 }
 
 .detail-row {
   display: grid;
-  grid-template-columns: 90px 1fr 40px;
-  gap: 8px;
+  grid-template-columns: 100px 1fr 50px;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .detail-row label {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 13px;
+  color: #202223;
+  font-weight: 500;
 }
 
 .detail-row input {
-  padding: 6px 8px;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 8px 10px;
+  border: 1px solid #c9cccf;
+  border-radius: 6px;
+  font-size: 14px;
   text-align: right;
+  font-weight: 500;
+  transition: border-color 0.15s ease;
+}
+
+.detail-row input:hover {
+  border-color: #006fbb;
+}
+
+.detail-row input:focus {
+  outline: none;
+  border-color: #006fbb;
+  box-shadow: 0 0 0 1px #006fbb;
 }
 
 .detail-row span {
-  font-size: 11px;
-  color: #9ca3af;
+  font-size: 12px;
+  color: #6d7175;
+  font-weight: 500;
 }
 
 .calculated {
-  font-size: 11px;
-  color: #6b7280;
-  padding: 8px;
-  background: #f9fafb;
-  border-radius: 4px;
-  margin-top: 4px;
+  font-size: 12px;
+  color: #6d7175;
+  padding: 10px 12px;
+  background: #f6f6f7;
+  border-radius: 6px;
+  margin-top: 8px;
   text-align: center;
+  border: 1px solid #e1e3e5;
 }
 
 .pricing-strategy {
