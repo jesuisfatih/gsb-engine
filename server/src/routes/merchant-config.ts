@@ -137,6 +137,66 @@ merchantConfigRouter.put("/catalog/mappings", async (req, res, next) => {
         });
       }
 
+      // Fetch Shopify variant image if we have product/variant IDs
+      let variantImageUrl: string | null = null;
+      if (input.shopifyProductId && input.shopifyVariantId) {
+        try {
+          const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+            select: { settings: true },
+          });
+          
+          const shopifyDomain = (tenant?.settings as any)?.shopify?.domain;
+          const shopifyAccessToken = (tenant?.settings as any)?.shopify?.accessToken;
+          
+          if (shopifyDomain && shopifyAccessToken) {
+            const productNumericId = input.shopifyProductId.includes('/') 
+              ? input.shopifyProductId.split('/').pop() 
+              : input.shopifyProductId;
+            const variantNumericId = input.shopifyVariantId.includes('/') 
+              ? input.shopifyVariantId.split('/').pop() 
+              : input.shopifyVariantId;
+            
+            const shopifyUrl = `https://${shopifyDomain}/admin/api/2024-04/products/${productNumericId}.json`;
+            const shopifyResponse = await fetch(shopifyUrl, {
+              headers: { "X-Shopify-Access-Token": shopifyAccessToken },
+            });
+            
+            if (shopifyResponse.ok) {
+              const data = await shopifyResponse.json();
+              const variant = data.product?.variants?.find((v: any) => v.id.toString() === variantNumericId);
+              if (variant?.image_id) {
+                const image = data.product?.images?.find((img: any) => img.id === variant.image_id);
+                if (image?.src) {
+                  variantImageUrl = image.src;
+                  console.log("[merchant-config] Found variant image:", variantImageUrl);
+                }
+              } else if (data.product?.image?.src) {
+                variantImageUrl = data.product.image.src;
+                console.log("[merchant-config] Using product default image:", variantImageUrl);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("[merchant-config] Failed to fetch Shopify variant image:", err);
+        }
+      }
+      
+      // Update surface with preview image if found
+      if (variantImageUrl) {
+        const currentMetadata = (surface.metadata as Record<string, any>) || {};
+        await prisma.surface.update({
+          where: { id: input.surfaceId },
+          data: {
+            metadata: {
+              ...currentMetadata,
+              previewImage: variantImageUrl,
+            },
+          },
+        });
+        console.log("[merchant-config] Updated surface with preview image");
+      }
+
       // Upsert the mapping
       const mapping = await prisma.variantSurfaceMapping.upsert({
         where: {
