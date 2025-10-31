@@ -48,7 +48,7 @@ catalogRouter.post("/seed", async (req, res, next) => {
 
     const product = await prisma.product.create({
       data: {
-        tenantId,
+        tenant: { connect: { id: tenantId } },
         slug: "canvas-poster",
         title: "Canvas Poster",
         category: "textile",
