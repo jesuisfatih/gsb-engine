@@ -6,6 +6,7 @@ import { useRoute } from "vue-router";
 import "../styles/fonts.css";
 import CostPanel from "./CostPanel.vue";
 import EditorToolbar from "./EditorToolbar.vue";
+import EditorTopbar from "./EditorTopbar.vue";
 import LayersPanel from "./LayersPanel.vue";
 import MockupPreview from "./MockupPreview.vue";
 import ProductPanel from "./ProductPanel.vue";
@@ -446,6 +447,9 @@ function changeMode(mode: "dtf" | "gang") {
 
 <template>
   <div class="editor-root" :class="layoutClasses" :style="paneStyle">
+    <!-- Modern Topbar -->
+    <EditorTopbar />
+    
     <header class="area-toolbar">
       <div class="mode-switch" :style="{ '--active-index': modeIndicatorIndex }">
         <span class="mode-switch__indicator" />
@@ -833,38 +837,37 @@ function changeMode(mode: "dtf" | "gang") {
 
 <style scoped>
 .editor-root {
-  --panel-bg: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
-  --divider: rgba(148, 163, 184, 0.28);
-  --surface-card: rgba(255, 255, 255, 0.96);
-  --surface-solid: rgba(255, 255, 255, 0.88);
-  --surface-soft: rgba(79, 70, 229, 0.12);
-  --text-primary: #1e293b;
-  --text-muted: #64748b;
-  --editor-accent: #4c1d95;
-  --panel-glow: 0 24px 48px rgba(15, 23, 42, 0.08);
+  --panel-bg: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%);
+  --divider: rgba(209, 213, 219, 0.6);
+  --surface-card: rgba(255, 255, 255, 1);
+  --surface-solid: rgba(255, 255, 255, 0.95);
+  --surface-soft: rgba(99, 102, 241, 0.08);
+  --text-primary: #111827;
+  --text-muted: #6b7280;
+  --editor-accent: #6366f1;
+  --panel-glow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   display: grid;
   grid-template-columns: var(--left-width, 360px) var(--left-handle-width, 12px) minmax(0, 1fr) var(--right-handle-width, 12px) var(--right-width, 360px);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 0;
-  min-height: calc(100vh - 120px);
+  min-height: 100vh;
   background: var(--panel-bg);
   color: var(--text-primary);
-  padding: 24px;
+  padding: 0;
   box-sizing: border-box;
-  border-radius: 28px;
-  box-shadow: var(--panel-glow);
+  border-radius: 0;
 }
 
 .v-theme--dark .editor-root {
-  --panel-bg: linear-gradient(180deg, #111827 0%, #0f172a 100%);
-  --divider: rgba(148, 163, 184, 0.32);
-  --surface-card: rgba(17, 24, 39, 0.94);
-  --surface-solid: rgba(30, 41, 59, 0.88);
-  --surface-soft: rgba(94, 129, 244, 0.24);
-  --text-primary: #e2e8f0;
-  --text-muted: rgba(148, 163, 184, 0.78);
+  --panel-bg: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+  --divider: rgba(55, 65, 81, 0.8);
+  --surface-card: rgba(31, 41, 55, 1);
+  --surface-solid: rgba(31, 41, 55, 0.95);
+  --surface-soft: rgba(139, 92, 246, 0.15);
+  --text-primary: #f9fafb;
+  --text-muted: #9ca3af;
   --editor-accent: #8b5cf6;
-  --panel-glow: 0 30px 60px rgba(8, 11, 27, 0.6);
+  --panel-glow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .editor-root.is-left-collapsed {

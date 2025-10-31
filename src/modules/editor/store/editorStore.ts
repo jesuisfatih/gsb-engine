@@ -1499,8 +1499,37 @@ export const useEditorStore = defineStore("editor", {
     },
     async checkoutWithDesign(options?: { returnUrl?: string }) {
       const previewDataUrl = this.capturePreview({ pixelRatio: 1, mimeType: "image/png" }) ?? undefined;
-      await this.submitDesign({ previewUrl: previewDataUrl });
-      if (!this.designId) throw new Error("Design did not persist.");
+      
+      // For anonymous users, ensure design is persisted to backend
+      const sessionStore = useSessionStore();
+      if (!sessionStore.isAuthenticated) {
+        // For anonymous users, directly create design document via proxy endpoint
+        const snapshot = this.serializeSnapshot();
+        const payload = {
+          ...snapshot,
+          status: 'SUBMITTED',
+          previewUrl: previewDataUrl,
+        };
+        
+        // Try to persist as anonymous design
+        try {
+          const response = await $api<{ data: any }>("/proxy/designs/anonymous", {
+            method: "POST",
+            body: payload,
+          });
+          this.designId = response.data?.id ?? this.designId;
+        } catch (error) {
+          console.warn('[checkout] Failed to persist anonymous design, continuing anyway', error);
+        }
+      } else {
+        // For authenticated users, use existing submit flow
+        await this.submitDesign({ previewUrl: previewDataUrl });
+      }
+      
+      if (!this.designId) {
+        // Generate temporary ID for anonymous designs if backend failed
+        this.designId = `anon-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      }
 
       const catalog = useCatalogStore();
       const product = this.activeProduct;

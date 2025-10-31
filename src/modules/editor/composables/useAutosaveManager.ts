@@ -2,6 +2,7 @@ import { computed, onBeforeUnmount, watch } from "vue";
 import { useEditorStore } from "../store/editorStore";
 import { useEditorModeStore } from "../store/editorModeStore";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
+import { useAnonymousDesignStorage } from "./useAnonymousDesignStorage";
 
 function isAutosaveMode(mode?: string | null) {
   return mode === "dtf" || mode === "gang";
@@ -9,14 +10,55 @@ function isAutosaveMode(mode?: string | null) {
 
 export function useAutosaveManager() {
   const sessionStore = useSessionStore();
-  
-  // Skip autosave for public/customer access
-  if (!sessionStore?.isAuthenticated) {
-    console.log('[autosave] Disabled for public access');
-    return;
-  }
   const editorStore = useEditorStore();
   const modeStore = useEditorModeStore();
+
+  // For anonymous users, use localStorage-based autosave
+  if (!sessionStore?.isAuthenticated) {
+    console.log('[autosave] Using anonymous localStorage mode');
+    
+    const { scheduleSave } = useAnonymousDesignStorage({
+      getSnapshot: () => editorStore.serializeSnapshot(),
+      enabled: () => isAutosaveMode(modeStore.activeMode),
+      debounceMs: 2000,
+    });
+
+    const snapshotSignature = computed(() => {
+      try {
+        return JSON.stringify(editorStore.serializeSnapshot());
+      } catch (error) {
+        return Math.random().toString(36);
+      }
+    });
+
+    const stopWatch = watch(
+      snapshotSignature,
+      (next, prev) => {
+        if (next === prev) return;
+        scheduleSave();
+      },
+      { flush: "post" },
+    );
+
+    const stopModeWatch = watch(
+      () => modeStore.activeMode,
+      mode => {
+        if (isAutosaveMode(mode)) {
+          scheduleSave();
+        }
+      },
+      { immediate: true },
+    );
+
+    onBeforeUnmount(() => {
+      stopWatch();
+      stopModeWatch();
+    });
+
+    return;
+  }
+
+  // For authenticated users, use backend autosave
 
   let timer: number | null = null;
   let saving = false;

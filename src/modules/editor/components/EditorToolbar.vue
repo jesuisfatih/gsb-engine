@@ -138,35 +138,40 @@ function addTextWithFont() {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 14px;
-  padding: 16px 10px;
+  gap: 12px;
+  padding: 16px 12px;
   background: #ffffff;
-  border-right: 1px solid #e6e6ef;
+  border-right: 1px solid #e5e7eb;
   max-height: 100%;
   overflow-y: auto;
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.05);
 }
 
 .tool-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   border: none;
-  background: #fff;
+  background: transparent;
   cursor: pointer;
-  padding: 8px 6px;
-  border-radius: 8px;
+  padding: 10px 8px;
+  border-radius: 10px;
   font-size: 11px;
-  transition: background 0.2s ease, transform 0.1s ease;
-  color: #1f2937;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #374151;
+  position: relative;
 }
 
 .tool-btn:hover {
   background: #f3f4f6;
+  color: #111827;
+  transform: translateY(-1px);
 }
 
 .tool-btn:active {
-  transform: translateY(1px);
+  transform: translateY(0);
+  background: #e5e7eb;
 }
 
 .icon {
@@ -181,18 +186,22 @@ function addTextWithFont() {
   height: 26px;
 }
 .tool-btn.primary {
-  background: linear-gradient(180deg, #111827, #1f2937);
+  background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
   color: #fff;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
 }
 .tool-btn.primary:hover {
-  background: #0f172a;
+  background: linear-gradient(180deg, #4f46e5 0%, #4338ca 100%);
   color: #fff;
+  box-shadow: 0 4px 6px rgba(99, 102, 241, 0.3);
+  transform: translateY(-2px);
 }
 .tool-btn.primary .icon {
   color: #fff;
 }
 .tool-btn.primary .label {
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
 }
 
 .label {
