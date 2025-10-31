@@ -19,6 +19,7 @@ import { useEditorStore } from "../store/editorStore";
 import { useGangSheetStore } from "../store/gangSheetStore";
 import { useConfigStore } from "@core/stores/config";
 import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
+import { useSessionStore } from "@/modules/auth/stores/sessionStore";
 import { useAutosaveManager } from "../composables/useAutosaveManager";
 
 const route = useRoute();
