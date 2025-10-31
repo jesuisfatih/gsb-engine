@@ -30,6 +30,8 @@ import CollaborationCursors from "./CollaborationCursors.vue";
 import CollaborationChat from "./CollaborationChat.vue";
 import AIDesignAssistant from "./AIDesignAssistant.vue";
 import BatchOperationsPanel from "./BatchOperationsPanel.vue";
+import KeyboardShortcuts from "./KeyboardShortcuts.vue";
+import AdvancedCostCalculator from "./AdvancedCostCalculator.vue";
 import "../styles/responsive.css";
 
 const route = useRoute();
@@ -1018,24 +1020,8 @@ function changeMode(mode: "dtf" | "gang") {
         </div>
       </details>
 
-      <details class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 12h16m-8-8v16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
-            <span>Cost & Pricing</span>
-          </span>
-          <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-        </summary>
-        <div class="section-body">
-          <CostPanel />
-        </div>
-      </details>
+      <!-- Advanced Cost Calculator (replaces old CostPanel) -->
+      <AdvancedCostCalculator />
 
       <details v-if="isGangMode" class="accordion" open>
         <summary>
@@ -1074,6 +1060,9 @@ function changeMode(mode: "dtf" | "gang") {
   
   <!-- Batch Operations Panel (floating) -->
   <BatchOperationsPanel />
+  
+  <!-- Keyboard Shortcuts Overlay -->
+  <KeyboardShortcuts />
 </template>
 
 <style scoped>
