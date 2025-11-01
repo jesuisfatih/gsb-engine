@@ -2,12 +2,8 @@
   <details class="accordion" open>
     <summary>
       <span class="accordion-title">
-        <svg class="accordion-icon" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
-          <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <text x="16" y="8" font-size="8" fill="currentColor">$</text>
-        </svg>
-        <span>💰 Cost Calculator</span>
+        <DollarSign class="accordion-icon" :size="16" />
+        <span>Cost Calculator</span>
       </span>
       <span class="profit-badge" :class="profitClass">
         {{ profitMargin.toFixed(0) }}% Profit
@@ -185,6 +181,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { DollarSign } from 'lucide-vue-next';
 import { useEditorStore } from '../store/editorStore';
 
 const editorStore = useEditorStore();

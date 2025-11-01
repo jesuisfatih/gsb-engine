@@ -3,6 +3,10 @@ import { computed, ref, watch, onBeforeUnmount, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useTheme } from "vuetify";
 import { useRoute } from "vue-router";
+import { 
+  Layers, FileText, PanelLeft, PanelRight, Menu, Moon, Sun, 
+  ChevronDown, Package, FolderOpen, Grid3x3, ClipboardList 
+} from 'lucide-vue-next';
 import "../styles/fonts.css";
 import EditorToolbar from "./EditorToolbar.vue";
 import EditorTopbar from "./EditorTopbar.vue";
@@ -601,15 +605,11 @@ function changeMode(mode: "dtf" | "gang") {
       <div class="mode-switch" :style="{ '--active-index': modeIndicatorIndex }">
         <span class="mode-switch__indicator" />
         <button type="button" :class="{ active: isGangMode }" @click="changeMode('gang')">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 12h14M12 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+          <Layers class="icon" :size="18" />
           <span>Gang Sheet</span>
         </button>
         <button type="button" :class="{ active: isDtfMode }" @click="changeMode('dtf')">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 12h14M12 19l-7-7 7-7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+          <FileText class="icon" :size="18" />
           <span>DTF Transfer</span>
         </button>
       </div>
@@ -649,9 +649,7 @@ function changeMode(mode: "dtf" | "gang") {
             @click="togglePane('left')"
             title="Toggle left panel"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 4v16M10 4h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
+            <PanelLeft :size="18" />
             <span>Left</span>
           </button>
           <button
@@ -661,9 +659,7 @@ function changeMode(mode: "dtf" | "gang") {
             @click="togglePane('tool')"
             title="Toggle toolbar"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 7h14M5 12h14M5 17h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
+            <Menu :size="18" />
             <span>Toolbar</span>
           </button>
           <button
@@ -673,9 +669,7 @@ function changeMode(mode: "dtf" | "gang") {
             @click="togglePane('right')"
             title="Toggle right panel"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M18 4v16M14 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
+            <PanelRight :size="18" />
             <span>Right</span>
           </button>
           <button
@@ -684,9 +678,8 @@ function changeMode(mode: "dtf" | "gang") {
             @click="toggleDarkMode"
             title="Toggle theme"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <Moon v-if="!isDarkTheme" :size="18" />
+            <Sun v-else :size="18" />
             <span>{{ isDarkTheme ? "Light" : "Dark" }}</span>
           </button>
         </div>
@@ -699,15 +692,11 @@ function changeMode(mode: "dtf" | "gang") {
       <details class="accordion" open>
         <summary>
           <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M4 12h10M4 17h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
+            <Package class="accordion-icon" :size="16" />
             <span>Product & Surfaces</span>
           </span>
           <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <ChevronDown :size="16" />
           </span>
         </summary>
         <div class="section-body">
@@ -718,16 +707,11 @@ function changeMode(mode: "dtf" | "gang") {
       <details class="accordion" open>
         <summary>
           <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 5h16v14H4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-              <path d="M4 11h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-            </svg>
+            <FolderOpen class="accordion-icon" :size="16" />
             <span>Asset Library</span>
           </span>
           <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <ChevronDown :size="16" />
           </span>
         </summary>
         <div class="section-body">
@@ -738,16 +722,11 @@ function changeMode(mode: "dtf" | "gang") {
       <details class="accordion" open>
         <summary>
           <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 7h12M6 12h12M6 17h12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M6 7v10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
+            <Layers class="accordion-icon" :size="16" />
             <span>Layers</span>
           </span>
           <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <ChevronDown :size="16" />
           </span>
         </summary>
         <div class="section-body">
@@ -758,16 +737,11 @@ function changeMode(mode: "dtf" | "gang") {
       <details v-if="isGangMode" class="accordion" open>
         <summary>
           <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 9h16M4 15h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M9 4v16M15 4v16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
+            <Grid3x3 class="accordion-icon" :size="16" />
             <span>Gang Sheet Queue</span>
           </span>
           <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <ChevronDown :size="16" />
           </span>
         </summary>
         <div class="section-body">
@@ -834,10 +808,7 @@ function changeMode(mode: "dtf" | "gang") {
       <details class="accordion" :open="hasTemplate">
         <summary>
           <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 3h14l-1.2 14.5a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-              <path d="M9 7h6M9 11h6M9 15h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
+            <ClipboardList class="accordion-icon" :size="16" />
             <span>Template Checklist</span>
           </span>
           <span class="template-status-chip" :data-status="templateStatus">
