@@ -2,20 +2,20 @@ import "dotenv/config";
 import { createServer } from 'http';
 import { env } from "./env";
 import { createApp } from "./app";
-import { initializeCollaborationServer } from './services/collaboration';
+// import { initializeCollaborationServer } from './services/collaboration'; // TEMP DISABLED
 
 async function bootstrap() {
   const app = createApp();
   
-  // Create HTTP server for Socket.io
+  // Create HTTP server
   const httpServer = createServer(app);
 
   // Initialize real-time collaboration
-  const io = initializeCollaborationServer(httpServer);
+  // const io = initializeCollaborationServer(httpServer); // TEMP DISABLED
 
   httpServer.listen(env.PORT, () => {
     console.log(`[api] listening on http://localhost:${env.PORT}`);
-    console.log(`[api] Real-time collaboration enabled`);
+    console.log(`[api] Server started (collaboration disabled temporarily)`);
   });
 }
 
