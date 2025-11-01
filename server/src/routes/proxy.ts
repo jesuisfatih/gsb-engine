@@ -260,6 +260,87 @@ proxyRouter.get("/apps/gsb/*", async (req, res) => {
 });
 
 /**
+ * POST /api/proxy/cart/prepare
+ * NEW: Simple endpoint - save design, return ID + preview URL
+ */
+proxyRouter.post("/cart/prepare", async (req, res, next) => {
+  try {
+    console.log('[cart/prepare] Request received');
+    
+    const { prisma, tenantId, user } = req.context;
+    const { snapshot, previewDataUrl, shopifyProductGid, shopifyVariantId, quantity } = req.body;
+    
+    // 1. Save design to database
+    const design = await prisma.designDocument.create({
+      data: {
+        tenantId: tenantId || undefined,
+        userId: user?.id || undefined,
+        status: 'DRAFT',
+        name: `${snapshot.productSlug} - ${snapshot.surfaceId}`,
+        snapshot: snapshot.items || snapshot,
+        productSlug: snapshot.productSlug,
+        surfaceId: snapshot.surfaceId,
+        printTech: snapshot.printTech,
+        color: snapshot.color,
+        sheetWidthPx: snapshot.sheetWidthPx,
+        sheetHeightPx: snapshot.sheetHeightPx,
+        metadata: {
+          source: user?.id ? 'authenticated' : 'guest',
+          shopifyProductGid,
+          shopifyVariantId,
+          createdAt: new Date().toISOString(),
+        },
+      },
+    });
+    
+    console.log('[cart/prepare] Design saved:', design.id);
+    
+    // 2. Process preview (if base64, save as file)
+    let previewUrl = previewDataUrl;
+    
+    if (previewDataUrl?.startsWith('data:image')) {
+      try {
+        const base64Data = previewDataUrl.split(',')[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        // Save to uploads directory
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'previews');
+        await fs.mkdir(uploadsDir, { recursive: true });
+        
+        const filename = `${design.id}.png`;
+        const filepath = path.join(uploadsDir, filename);
+        await fs.writeFile(filepath, buffer);
+        
+        // Generate URL
+        const baseUrl = process.env.PUBLIC_URL || 'https://app.gsb-engine.dev';
+        previewUrl = `${baseUrl}/uploads/previews/${filename}`;
+        
+        // Update design
+        await prisma.designDocument.update({
+          where: { id: design.id },
+          data: { previewUrl },
+        });
+        
+        console.log('[cart/prepare] Preview saved:', previewUrl);
+      } catch (imageError) {
+        console.warn('[cart/prepare] Image save failed:', imageError);
+      }
+    }
+    
+    res.json({
+      designId: design.id,
+      previewUrl: previewUrl && previewUrl.length < 200 ? previewUrl : '',
+    });
+    
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * POST /api/proxy/cart
  * Add design to cart (existing implementation)
  */

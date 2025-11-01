@@ -7,6 +7,7 @@ import {
   Layers, FileText, PanelLeft, PanelRight, Menu, Moon, Sun, 
   Package, FolderOpen, Grid3x3, ClipboardList, Settings, Star, Lightbulb, Boxes 
 } from 'lucide-vue-next';
+import { useSimpleSessionPersistence } from '@/composables/useSimpleSessionPersistence';
 import "../styles/fonts.css";
 import EditorToolbar from "./EditorToolbar.vue";
 import EditorTopbar from "./EditorTopbar.vue";
@@ -42,6 +43,7 @@ const editorStore = useEditorStore();
 const gangStore = useGangSheetStore();
 const catalogStore = useCatalogStore();
 const sessionStore = useSessionStore();
+const { restoreFromLocalStorage, setupAutoSave } = useSimpleSessionPersistence();
 useAutosaveManager();
 
 // Option C: Real-time Collaboration
@@ -194,6 +196,12 @@ onMounted(async () => {
   const hasAuth = sessionStore?.isAuthenticated;
   
   console.log("[editor] Initializing - Auth:", hasAuth, "Tenant ID:", tenantId);
+
+  // Try to restore from localStorage first (for returning users)
+  const restored = restoreFromLocalStorage();
+  if (restored) {
+    console.log("[editor] ✅ Design restored from localStorage (returning user)");
+  }
   
   if (hasAuth) {
     await catalogStore.ensureLoaded().catch(err => console.warn("[catalog] load failed", err));
@@ -236,7 +244,8 @@ onMounted(async () => {
 
   console.log("[editor] URL params:", { productSlug, surfaceId, color, material, technique, shopifyProduct, shopifyVariant });
 
-  if (productSlug) {
+  // Only load from URL if NOT restored from localStorage
+  if (productSlug && !restored) {
     // Try to find product in catalog
     const product = catalogStore.sortedProducts.find(p => p.slug === productSlug);
     
@@ -302,6 +311,10 @@ onMounted(async () => {
       }
     }
   }
+
+  // Setup auto-save to localStorage (for anonymous users)
+  setupAutoSave();
+  console.log("[editor] ✅ Auto-save to localStorage enabled");
 });
 
 const isGangMode = computed(() => activeMode.value === "gang");

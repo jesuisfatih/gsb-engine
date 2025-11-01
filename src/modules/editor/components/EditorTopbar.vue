@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useEditorStore } from '../store/editorStore';
 import { useEditorModeStore } from '../store/editorModeStore';
 import { useSessionStore } from '@/modules/auth/stores/sessionStore';
+import { simpleCartService } from '@/services/simpleCartService';
 import { 
   Undo2, 
   Redo2, 
@@ -82,12 +83,34 @@ fileInput.addEventListener('change', (e) => {
   fileInput.value = '';
 });
 
+const isAddingToCart = ref(false);
+
 async function handleCheckout() {
+  if (isAddingToCart.value) return;
+  
   try {
-    await editorStore.checkoutWithDesign();
+    isAddingToCart.value = true;
+    console.log('[topbar] Adding to cart...');
+    
+    // Use simple cart service
+    const result = await simpleCartService.addDesignToCart();
+    
+    if (result.success) {
+      console.log('[topbar] ✅ Added to cart successfully!');
+      
+      // Redirect to cart
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+      }
+    } else {
+      throw new Error(result.error || 'Failed to add to cart');
+    }
+    
   } catch (error) {
     console.error('[topbar] Checkout failed', error);
-    alert('Failed to proceed to checkout. Please try again.');
+    alert('Failed to add to cart. Please try again.');
+  } finally {
+    isAddingToCart.value = false;
   }
 }
 
