@@ -43,3 +43,8 @@ public/mockServiceWorker.js
 !.env.example
 
 /src/generated/prisma
+node_modules
+dist
+.env
+.env.*
+package-lock.json

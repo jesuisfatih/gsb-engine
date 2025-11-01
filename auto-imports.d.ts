@@ -69,6 +69,7 @@ declare global {
   const isDefined: typeof import('@vueuse/core')['isDefined']
   const isEmpty: typeof import('./src/@core/utils/helpers')['isEmpty']
   const isEmptyArray: typeof import('./src/@core/utils/helpers')['isEmptyArray']
+  const isInIframe: typeof import('./src/utils/iframeMessaging')['isInIframe']
   const isNullOrUndefined: typeof import('./src/@core/utils/helpers')['isNullOrUndefined']
   const isObject: typeof import('./src/@core/utils/helpers')['isObject']
   const isProxy: typeof import('vue')['isProxy']
@@ -78,6 +79,7 @@ declare global {
   const isToday: typeof import('./src/@core/utils/helpers')['isToday']
   const kFormatter: typeof import('./src/@core/utils/formatters')['kFormatter']
   const lengthValidator: typeof import('./src/@core/utils/validators')['lengthValidator']
+  const listenToParent: typeof import('./src/utils/iframeMessaging')['listenToParent']
   const logicAnd: typeof import('@vueuse/math')['logicAnd']
   const logicNot: typeof import('@vueuse/math')['logicNot']
   const logicOr: typeof import('@vueuse/math')['logicOr']
@@ -89,6 +91,9 @@ declare global {
   const mapWritableState: typeof import('pinia')['mapWritableState']
   const markRaw: typeof import('vue')['markRaw']
   const nextTick: typeof import('vue')['nextTick']
+  const notifyDesignComplete: typeof import('./src/utils/iframeMessaging')['notifyDesignComplete']
+  const notifyDesignSaved: typeof import('./src/utils/iframeMessaging')['notifyDesignSaved']
+  const notifyEditorReady: typeof import('./src/utils/iframeMessaging')['notifyEditorReady']
   const onActivated: typeof import('vue')['onActivated']
   const onBeforeMount: typeof import('vue')['onBeforeMount']
   const onBeforeRouteLeave: typeof import('vue-router/auto')['onBeforeRouteLeave']
@@ -131,12 +136,14 @@ declare global {
   const regexValidator: typeof import('./src/@core/utils/validators')['regexValidator']
   const registerPlugins: typeof import('./src/@core/utils/plugins')['registerPlugins']
   const registerPlugins_: typeof import('./src/@core/utils/plugins')['registerPlugins_']
+  const requestModalClose: typeof import('./src/utils/iframeMessaging')['requestModalClose']
   const requiredValidator: typeof import('./src/@core/utils/validators')['requiredValidator']
   const resolveComponent: typeof import('vue')['resolveComponent']
   const resolveRef: typeof import('@vueuse/core')['resolveRef']
   const resolveUnref: typeof import('@vueuse/core')['resolveUnref']
   const resolveVuetifyTheme: typeof import('./src/@core/utils/vuetify')['resolveVuetifyTheme']
   const rgbaToHex: typeof import('./src/@core/utils/colorConverter')['rgbaToHex']
+  const sendToParent: typeof import('./src/utils/iframeMessaging')['sendToParent']
   const setActivePinia: typeof import('pinia')['setActivePinia']
   const setMapStoreSuffix: typeof import('pinia')['setMapStoreSuffix']
   const shallowReactive: typeof import('vue')['shallowReactive']
@@ -273,9 +280,11 @@ declare global {
   const useObjectUrl: typeof import('@vueuse/core')['useObjectUrl']
   const useOffsetPagination: typeof import('@vueuse/core')['useOffsetPagination']
   const useOnline: typeof import('@vueuse/core')['useOnline']
+  const usePWA: typeof import('./src/composables/usePWA')['usePWA']
   const usePageLeave: typeof import('@vueuse/core')['usePageLeave']
   const useParallax: typeof import('@vueuse/core')['useParallax']
   const useParentElement: typeof import('@vueuse/core')['useParentElement']
+  const useParentStorage: typeof import('./src/composables/useParentStorage')['useParentStorage']
   const usePerformanceObserver: typeof import('@vueuse/core')['usePerformanceObserver']
   const usePermission: typeof import('@vueuse/core')['usePermission']
   const usePointer: typeof import('@vueuse/core')['usePointer']
@@ -439,6 +448,7 @@ declare module 'vue' {
     readonly isDefined: UnwrapRef<typeof import('@vueuse/core')['isDefined']>
     readonly isEmpty: UnwrapRef<typeof import('./src/@core/utils/helpers')['isEmpty']>
     readonly isEmptyArray: UnwrapRef<typeof import('./src/@core/utils/helpers')['isEmptyArray']>
+    readonly isInIframe: UnwrapRef<typeof import('./src/utils/iframeMessaging')['isInIframe']>
     readonly isNullOrUndefined: UnwrapRef<typeof import('./src/@core/utils/helpers')['isNullOrUndefined']>
     readonly isObject: UnwrapRef<typeof import('./src/@core/utils/helpers')['isObject']>
     readonly isProxy: UnwrapRef<typeof import('vue')['isProxy']>
@@ -448,6 +458,7 @@ declare module 'vue' {
     readonly isToday: UnwrapRef<typeof import('./src/@core/utils/helpers')['isToday']>
     readonly kFormatter: UnwrapRef<typeof import('./src/@core/utils/formatters')['kFormatter']>
     readonly lengthValidator: UnwrapRef<typeof import('./src/@core/utils/validators')['lengthValidator']>
+    readonly listenToParent: UnwrapRef<typeof import('./src/utils/iframeMessaging')['listenToParent']>
     readonly logicAnd: UnwrapRef<typeof import('@vueuse/math')['logicAnd']>
     readonly logicNot: UnwrapRef<typeof import('@vueuse/math')['logicNot']>
     readonly logicOr: UnwrapRef<typeof import('@vueuse/math')['logicOr']>
@@ -459,6 +470,9 @@ declare module 'vue' {
     readonly mapWritableState: UnwrapRef<typeof import('pinia')['mapWritableState']>
     readonly markRaw: UnwrapRef<typeof import('vue')['markRaw']>
     readonly nextTick: UnwrapRef<typeof import('vue')['nextTick']>
+    readonly notifyDesignComplete: UnwrapRef<typeof import('./src/utils/iframeMessaging')['notifyDesignComplete']>
+    readonly notifyDesignSaved: UnwrapRef<typeof import('./src/utils/iframeMessaging')['notifyDesignSaved']>
+    readonly notifyEditorReady: UnwrapRef<typeof import('./src/utils/iframeMessaging')['notifyEditorReady']>
     readonly onActivated: UnwrapRef<typeof import('vue')['onActivated']>
     readonly onBeforeMount: UnwrapRef<typeof import('vue')['onBeforeMount']>
     readonly onBeforeRouteLeave: UnwrapRef<typeof import('vue-router/auto')['onBeforeRouteLeave']>
@@ -500,12 +514,14 @@ declare module 'vue' {
     readonly refWithControl: UnwrapRef<typeof import('@vueuse/core')['refWithControl']>
     readonly regexValidator: UnwrapRef<typeof import('./src/@core/utils/validators')['regexValidator']>
     readonly registerPlugins: UnwrapRef<typeof import('./src/@core/utils/plugins')['registerPlugins']>
+    readonly requestModalClose: UnwrapRef<typeof import('./src/utils/iframeMessaging')['requestModalClose']>
     readonly requiredValidator: UnwrapRef<typeof import('./src/@core/utils/validators')['requiredValidator']>
     readonly resolveComponent: UnwrapRef<typeof import('vue')['resolveComponent']>
     readonly resolveRef: UnwrapRef<typeof import('@vueuse/core')['resolveRef']>
     readonly resolveUnref: UnwrapRef<typeof import('@vueuse/core')['resolveUnref']>
     readonly resolveVuetifyTheme: UnwrapRef<typeof import('./src/@core/utils/vuetify')['resolveVuetifyTheme']>
     readonly rgbaToHex: UnwrapRef<typeof import('./src/@core/utils/colorConverter')['rgbaToHex']>
+    readonly sendToParent: UnwrapRef<typeof import('./src/utils/iframeMessaging')['sendToParent']>
     readonly setActivePinia: UnwrapRef<typeof import('pinia')['setActivePinia']>
     readonly setMapStoreSuffix: UnwrapRef<typeof import('pinia')['setMapStoreSuffix']>
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>
@@ -640,9 +656,11 @@ declare module 'vue' {
     readonly useObjectUrl: UnwrapRef<typeof import('@vueuse/core')['useObjectUrl']>
     readonly useOffsetPagination: UnwrapRef<typeof import('@vueuse/core')['useOffsetPagination']>
     readonly useOnline: UnwrapRef<typeof import('@vueuse/core')['useOnline']>
+    readonly usePWA: UnwrapRef<typeof import('./src/composables/usePWA')['usePWA']>
     readonly usePageLeave: UnwrapRef<typeof import('@vueuse/core')['usePageLeave']>
     readonly useParallax: UnwrapRef<typeof import('@vueuse/core')['useParallax']>
     readonly useParentElement: UnwrapRef<typeof import('@vueuse/core')['useParentElement']>
+    readonly useParentStorage: UnwrapRef<typeof import('./src/composables/useParentStorage')['useParentStorage']>
     readonly usePerformanceObserver: UnwrapRef<typeof import('@vueuse/core')['usePerformanceObserver']>
     readonly usePermission: UnwrapRef<typeof import('@vueuse/core')['usePermission']>
     readonly usePointer: UnwrapRef<typeof import('@vueuse/core')['usePointer']>
