@@ -5,7 +5,7 @@ import { useTheme } from "vuetify";
 import { useRoute } from "vue-router";
 import { 
   Layers, FileText, PanelLeft, PanelRight, Menu, Moon, Sun, 
-  ChevronDown, Package, FolderOpen, Grid3x3, ClipboardList 
+  Package, FolderOpen, Grid3x3, ClipboardList, Settings, Star, Lightbulb, Boxes 
 } from 'lucide-vue-next';
 import "../styles/fonts.css";
 import EditorToolbar from "./EditorToolbar.vue";
@@ -689,65 +689,55 @@ function changeMode(mode: "dtf" | "gang") {
     </header>
 
     <aside class="left-pane">
-      <details class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <Package class="accordion-icon" :size="16" />
-            <span>Product & Surfaces</span>
-          </span>
-          <span class="accordion-toggle">
-            <ChevronDown :size="16" />
-          </span>
-        </summary>
-        <div class="section-body">
-          <ProductPanel />
-        </div>
-      </details>
+      <VExpansionPanels multiple :model-value="[0, 1, 2, 3]">
+        <VExpansionPanel>
+          <VExpansionPanelTitle>
+            <div class="d-flex align-center gap-2">
+              <Package :size="18" />
+              <span>Product & Surfaces</span>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText>
+            <ProductPanel />
+          </VExpansionPanelText>
+        </VExpansionPanel>
 
-      <details class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <FolderOpen class="accordion-icon" :size="16" />
-            <span>Asset Library</span>
-          </span>
-          <span class="accordion-toggle">
-            <ChevronDown :size="16" />
-          </span>
-        </summary>
-        <div class="section-body">
-          <AssetPanel />
-        </div>
-      </details>
+        <VExpansionPanel>
+          <VExpansionPanelTitle>
+            <div class="d-flex align-center gap-2">
+              <FolderOpen :size="18" />
+              <span>Asset Library</span>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText>
+            <AssetPanel />
+          </VExpansionPanelText>
+        </VExpansionPanel>
 
-      <details class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <Layers class="accordion-icon" :size="16" />
-            <span>Layers</span>
-          </span>
-          <span class="accordion-toggle">
-            <ChevronDown :size="16" />
-          </span>
-        </summary>
-        <div class="section-body">
-          <LayersPanel />
-        </div>
-      </details>
+        <VExpansionPanel>
+          <VExpansionPanelTitle>
+            <div class="d-flex align-center gap-2">
+              <Layers :size="18" />
+              <span>Layers</span>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText>
+            <LayersPanel />
+          </VExpansionPanelText>
+        </VExpansionPanel>
 
-      <details v-if="isGangMode" class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <Grid3x3 class="accordion-icon" :size="16" />
-            <span>Gang Sheet Queue</span>
-          </span>
-          <span class="accordion-toggle">
-            <ChevronDown :size="16" />
-          </span>
-        </summary>
-        <div class="section-body">
-          <GangSheetSidebar />
-        </div>
-      </details>
+        <VExpansionPanel v-if="isGangMode">
+          <VExpansionPanelTitle>
+            <div class="d-flex align-center gap-2">
+              <Grid3x3 :size="18" />
+              <span>Gang Sheet Queue</span>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText>
+            <GangSheetSidebar />
+          </VExpansionPanelText>
+        </VExpansionPanel>
+      </VExpansionPanels>
     </aside>
 
     <div
@@ -805,17 +795,25 @@ function changeMode(mode: "dtf" | "gang") {
     </div>
 
     <aside class="right-pane">
-      <details class="accordion" :open="hasTemplate">
-        <summary>
-          <span class="accordion-title">
-            <ClipboardList class="accordion-icon" :size="16" />
-            <span>Template Checklist</span>
-          </span>
-          <span class="template-status-chip" :data-status="templateStatus">
-            {{ templateStatusLabel }}
-          </span>
-        </summary>
-        <div class="section-body template-section">
+      <VExpansionPanels multiple :model-value="hasTemplate ? [0, 1, 2] : [1, 2]">
+        <VExpansionPanel v-if="hasTemplate">
+          <VExpansionPanelTitle>
+            <div class="d-flex align-center justify-space-between w-100">
+              <div class="d-flex align-center gap-2">
+                <ClipboardList :size="18" />
+                <span>Template Checklist</span>
+              </div>
+              <VChip 
+                :color="templateStatus === 'ready' ? 'success' : templateStatus === 'missing' ? 'error' : 'warning'" 
+                size="small" 
+                variant="tonal"
+              >
+                {{ templateStatusLabel }}
+              </VChip>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText>
+          <div class="template-section">
           <div v-if="!hasTemplate" class="template-empty">
             <p>No template applied. Load a preset from the library to unlock guided placeholders.</p>
           </div>
@@ -866,47 +864,34 @@ function changeMode(mode: "dtf" | "gang") {
               </div>
             </div>
           </div>
-        </div>
-      </details>
+          </div>
+          </VExpansionPanelText>
+        </VExpansionPanel>
 
-      <details class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 4h12l-1 16H7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-            </svg>
-            <span>Properties</span>
-          </span>
-          <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-        </summary>
-        <div class="section-body">
-          <PropertiesPanel />
-        </div>
-      </details>
+        <VExpansionPanel>
+          <VExpansionPanelTitle>
+            <div class="d-flex align-center gap-2">
+              <Settings :size="18" />
+              <span>Properties</span>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText>
+            <PropertiesPanel />
+          </VExpansionPanelText>
+        </VExpansionPanel>
 
       <!-- 3D Mockup Preview (replaces old MockupPreview) -->
       <MockupPreview3D />
 
-      <!-- OPTION C: Quality Analysis Panel -->
-      <details v-if="qualityAnalysis" class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2l3.5 7 7.5 1-5.5 5.5 1.5 7.5-7-4-7 4 1.5-7.5L1 10l7.5-1L12 2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-            </svg>
-            <span>Quality Analysis</span>
-          </span>
-          <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-        </summary>
-        <div class="section-body">
+        <!-- OPTION C: Quality Analysis Panel -->
+        <VExpansionPanel v-if="qualityAnalysis">
+          <VExpansionPanelTitle>
+            <div class="d-flex align-center gap-2">
+              <Star :size="18" />
+              <span>Quality Analysis</span>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText>
           <div style="padding: 12px; font-size: 13px;">
             <div v-if="qualityAnalysis.score" style="margin-bottom: 12px;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
@@ -926,73 +911,60 @@ function changeMode(mode: "dtf" | "gang") {
               <strong>{{ issue.type }}:</strong> {{ issue.message }}
             </div>
           </div>
-        </div>
-      </details>
+          </VExpansionPanelText>
+        </VExpansionPanel>
 
-      <!-- OPTION C: Smart Suggestions Panel -->
-      <details v-if="suggestions.length > 0" class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="3" fill="currentColor" />
-              <path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
-            <span>Smart Suggestions</span>
-          </span>
-          <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-        </summary>
-        <div class="section-body">
-          <div style="padding: 0 12px 12px;">
+        <!-- OPTION C: Smart Suggestions Panel -->
+        <VExpansionPanel v-if="suggestions.length > 0">
+          <VExpansionPanelTitle>
+            <div class="d-flex align-center gap-2">
+              <Lightbulb :size="18" />
+              <span>Smart Suggestions</span>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText>
+            <div style="padding: 0 12px 12px;">
               <div v-for="(sug, idx) in suggestions" :key="idx" style="margin-bottom: 8px; padding: 10px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; transition: all 0.2s; border: 1px solid transparent;" :style="{'&:hover': {background: '#dcfce7', borderColor: '#10b981'}}">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
-                <div style="font-size: 13px; font-weight: 500; color: #065f46;">{{ sug.title }}</div>
-                <button
-                  @click="applySuggestion(sug)"
-                  style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
-                  :style="{'&:hover': {background: '#059669'}}"
-                >
-                  Apply
-                </button>
-              </div>
-              <div style="font-size: 12px; color: #6b7280; margin-bottom: 6px;">{{ sug.description }}</div>
-              <div style="display: flex; gap: 12px; font-size: 11px;">
-                <span v-if="sug.savings" style="color: #10b981; font-weight: 600;">
-                  💰 Save {{ sug.savings.toFixed(2) }}%
-                </span>
-                <span v-if="sug.impact" style="color: #6b7280;">
-                  Impact: {{ sug.impact }}
-                </span>
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
+                  <div style="font-size: 13px; font-weight: 500; color: #065f46;">{{ sug.title }}</div>
+                  <button
+                    @click="applySuggestion(sug)"
+                    style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
+                    :style="{'&:hover': {background: '#059669'}}"
+                  >
+                    Apply
+                  </button>
+                </div>
+                <div style="font-size: 12px; color: #6b7280; margin-bottom: 6px;">{{ sug.description }}</div>
+                <div style="display: flex; gap: 12px; font-size: 11px;">
+                  <span v-if="sug.savings" style="color: #10b981; font-weight: 600;">
+                    💰 Save {{ sug.savings.toFixed(2) }}%
+                  </span>
+                  <span v-if="sug.impact" style="color: #6b7280;">
+                    Impact: {{ sug.impact }}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </details>
+          </VExpansionPanelText>
+        </VExpansionPanel>
 
-      <!-- Advanced Cost Calculator (replaces old CostPanel) -->
-      <AdvancedCostCalculator />
+        <!-- Auto Build Panel -->
+        <VExpansionPanel v-if="isGangMode">
+          <VExpansionPanelTitle>
+            <div class="d-flex align-center gap-2">
+              <Boxes :size="18" />
+              <span>Auto Build</span>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText>
+            <AutoBuildPanel />
+          </VExpansionPanelText>
+        </VExpansionPanel>
+      </VExpansionPanels>
 
-      <details v-if="isGangMode" class="accordion" open>
-        <summary>
-          <span class="accordion-title">
-            <svg class="accordion-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 18h16M4 6h16M8 6v12M16 6v12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
-            <span>Auto Build</span>
-          </span>
-          <span class="accordion-toggle">
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-        </summary>
-        <div class="section-body">
-          <AutoBuildPanel />
-        </div>
-      </details>
+      <!-- Batch Operations Panel -->
+      <BatchOperationsPanel />
     </aside>
 
     <div v-if="autosaveError" class="autosave-error">

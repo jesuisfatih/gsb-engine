@@ -2,16 +2,13 @@
   <div v-if="show" class="batch-panel">
     <div class="panel-header">
       <h3>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
-          <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
-          <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
-          <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
-        </svg>
+        <Grid3x3 :size="20" />
         Batch Operations
       </h3>
       <span class="selected-count">{{ selectedItems.length }} selected</span>
-      <button @click="show = false">×</button>
+      <button @click="show = false">
+        <X :size="20" />
+      </button>
     </div>
 
     <div class="panel-body">
@@ -102,17 +99,13 @@
 
   <!-- Floating Toggle -->
   <button v-if="!show" class="batch-toggle" @click="show = true">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
-      <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
-      <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
-      <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" />
-    </svg>
+    <Grid3x3 :size="24" />
   </button>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { Grid3x3, X } from 'lucide-vue-next';
 import { useEditorStore } from '../store/editorStore';
 
 const show = ref(false);

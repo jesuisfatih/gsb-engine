@@ -1,16 +1,15 @@
 <template>
-  <details class="accordion" open>
-    <summary>
-      <span class="accordion-title">
-        <Layers class="accordion-icon" :size="16" />
-        <span>3D Mockup Preview</span>
-      </span>
-      <span class="accordion-toggle">
-        <ChevronDown :size="16" />
-      </span>
-    </summary>
-
-    <div class="section-body">
+  <VExpansionPanels>
+    <VExpansionPanel>
+      <VExpansionPanelTitle>
+        <template #default>
+          <div class="d-flex align-center gap-2">
+            <Layers :size="18" />
+            <span>3D Mockup Preview</span>
+          </div>
+        </template>
+      </VExpansionPanelTitle>
+      <VExpansionPanelText>
       <!-- Product Selector -->
       <div class="product-selector">
         <button 
@@ -96,13 +95,14 @@
           <input v-model="reflectionEnabled" type="checkbox" />
         </div>
       </div>
-    </div>
-  </details>
+      </VExpansionPanelText>
+    </VExpansionPanel>
+  </VExpansionPanels>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Layers, ChevronDown, RotateCcw, RotateCw, Eye, Camera } from 'lucide-vue-next';
+import { Layers, RotateCcw, RotateCw, Eye, Camera } from 'lucide-vue-next';
 
 const selectedProduct = ref('tshirt');
 const currentRotation = ref(0);

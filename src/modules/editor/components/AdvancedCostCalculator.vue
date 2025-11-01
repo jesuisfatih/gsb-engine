@@ -1,16 +1,20 @@
 <template>
-  <details class="accordion" open>
-    <summary>
-      <span class="accordion-title">
-        <DollarSign class="accordion-icon" :size="16" />
-        <span>Cost Calculator</span>
-      </span>
-      <span class="profit-badge" :class="profitClass">
-        {{ profitMargin.toFixed(0) }}% Profit
-      </span>
-    </summary>
-    
-    <div class="section-body">
+  <VExpansionPanels>
+    <VExpansionPanel>
+      <VExpansionPanelTitle>
+        <template #default>
+          <div class="d-flex align-center justify-space-between w-100">
+            <div class="d-flex align-center gap-2">
+              <DollarSign :size="18" />
+              <span>Cost Calculator</span>
+            </div>
+            <VChip :color="profitClass === 'high' ? 'success' : profitClass === 'low' ? 'error' : 'warning'" size="small" variant="tonal">
+              {{ profitMargin.toFixed(0) }}% Profit
+            </VChip>
+          </div>
+        </template>
+      </VExpansionPanelTitle>
+      <VExpansionPanelText>
       <!-- Quick Summary -->
       <div class="cost-summary">
         <div class="summary-row total">
@@ -175,8 +179,9 @@
       <button class="export-quote" @click="exportQuote">
         📄 Export Quote PDF
       </button>
-    </div>
-  </details>
+      </VExpansionPanelText>
+    </VExpansionPanel>
+  </VExpansionPanels>
 </template>
 
 <script setup lang="ts">
