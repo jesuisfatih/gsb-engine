@@ -180,13 +180,13 @@ proxyRouter.get("/apps/gsb/editor", async (req, res) => {
 });
 
 /**
- * GET /apps/gsb/assets/* - Serve static assets
+ * GET /apps/gsb/assets/:filename - Serve static assets
  */
-proxyRouter.get("/apps/gsb/assets/*", async (req, res) => {
-  const assetPath = req.path.replace('/apps/gsb', '');
-  const distPath = path.join(process.cwd(), "dist", assetPath);
+proxyRouter.get("/apps/gsb/assets/:filename(*)", async (req, res) => {
+  const filename = req.params.filename;
+  const distPath = path.join(process.cwd(), "dist", "assets", filename);
   
-  console.log('[proxy] Asset requested:', assetPath);
+  console.log('[proxy] Asset requested:', filename);
   
   if (fs.existsSync(distPath)) {
     // Set proper content type
