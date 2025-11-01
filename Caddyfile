@@ -5,16 +5,16 @@ app.gsb-engine.dev {
 	# CSP header for Shopify iframe
 	header Content-Security-Policy "frame-ancestors https://admin.shopify.com https://*.myshopify.com;"
 
-	# API routes (do NOT strip prefix) - MUST come before file_server
-	@api path /api/*
-	handle @api {
-		reverse_proxy 127.0.0.1:4000
+	# Use route block to control directive execution order
+	route {
+		# API routes - proxy to backend (FIRST)
+		reverse_proxy /api/* 127.0.0.1:4000
+		
+		# Static files and SPA fallback (SECOND)
+		root * /srv/gsb/api/dist
+		try_files {path} /index.html
+		file_server
 	}
-
-	# Static files and SPA fallback
-	root * /srv/gsb/api/dist
-	try_files {path} /index.html
-	file_server
 }
 
 # ---------- API: api.gsb-engine.dev ----------
