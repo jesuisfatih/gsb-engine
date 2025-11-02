@@ -42,6 +42,30 @@ const surface = (init: SurfaceInit): ProductSurface => {
 };
 
 export const PRODUCTS: ProductDefinition[] = [
+  // Generic canvas/poster for unmapped Shopify products
+  {
+    slug: "canvas-poster",
+    title: "Canvas / Poster",
+    materials: ["canvas", "poster-paper"],
+    colors: undefined,
+    surfaces: [
+      surface({
+        id: "canvas-front",
+        name: "Canvas Front",
+        widthMm: 400,
+        heightMm: 600,
+        safeMarginMm: 10,
+        bleedMarginMm: 3,
+        note: "Generic canvas surface for unmapped products",
+      }),
+    ],
+    pricing: {
+      base: 25,
+      perSqIn: 0.15,
+      techMultipliers: { dtf: 1.0 },
+      quantityBreaks: [],
+    },
+  },
   {
     slug: "gangsheet",
     title: "DTF Gang Sheet",

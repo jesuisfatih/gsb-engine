@@ -368,22 +368,27 @@ onMounted(async () => {
         editorStore.setPrintTech(technique as any);
       }
     } else {
-      // Product not in catalog - public customer access
-      console.log("[editor] Product not in catalog, using URL params directly");
-      console.log("[editor] Setting product:", productSlug);
-      console.log("[editor] Setting surface:", surfaceId);
+      // Product not in catalog - use fallback generic product
+      console.log("[editor] ⚠️ Product not in catalog, using fallback");
+      console.log("[editor] Requested product:", productSlug);
+      console.log("[editor] Falling back to: canvas-poster");
       
-      // Try to set product anyway - it might be in fallback/hardcoded products
-      if (productSlug) {
-        editorStore.setProduct(productSlug);
-      }
+      // Use generic canvas-poster product as fallback
+      editorStore.setProduct("canvas-poster");
       
+      // Set surface if provided
       if (surfaceId) {
         editorStore.setSurface(surfaceId);
       }
       
+      // Set technique if provided
       if (technique) {
         editorStore.setPrintTech(technique as any);
+      }
+      
+      // Store original product slug for checkout
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('gsb-original-product-slug', productSlug);
       }
     }
     
@@ -440,7 +445,7 @@ onMounted(async () => {
   if (!hasAuth) {
     hybridStorage.cleanup();
   }
-  
+
   // Setup auto-save to localStorage (for anonymous users)
   setupAutoSave();
   console.log("[editor] ✅ Auto-save to localStorage enabled");

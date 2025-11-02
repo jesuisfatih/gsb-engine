@@ -14,49 +14,11 @@ export function useAutosaveManager() {
   const editorStore = useEditorStore();
   const modeStore = useEditorModeStore();
 
-  // For anonymous users, use parent storage if in iframe, else localStorage
+  // For anonymous users, ALWAYS use hybrid localStorage (even in iframe)
+  // Parent storage disabled - not reliable without parent listener
   if (!sessionStore?.isAuthenticated) {
-    const parentStorage = useParentStorage();
-    
-    // Check if in iframe (Shopify modal)
-    if (parentStorage.isInIframe.value) {
-      console.log('[autosave] Using parent window storage (iframe mode)');
-      
-      // Save to parent window
-      const snapshotSignature = computed(() => {
-        try {
-          return JSON.stringify(editorStore.serializeSnapshot());
-        } catch (error) {
-          return Math.random().toString(36);
-        }
-      });
-
-      watch(snapshotSignature, () => {
-        const snapshot = editorStore.serializeSnapshot();
-        parentStorage.saveToParent({
-          ...snapshot,
-          timestamp: new Date().toISOString(),
-        });
-        
-        // Update UI
-        editorStore.lastAutosaveAt = new Date().toISOString();
-        editorStore.lastSavedAt = new Date().toISOString();
-        editorStore.recordAutosaveHistory({
-          kind: 'autosave',
-          message: 'Autosaved (parent storage)',
-          timestamp: new Date().toISOString(),
-          status: editorStore.designStatus,
-        });
-      }, { flush: 'post' });
-
-      // Restore from parent
-      parentStorage.onRestoreFromParent((snapshot) => {
-        editorStore.applySnapshot(snapshot);
-        console.log('[autosave] Design restored from parent window');
-      });
-
-      return;
-    }
+    // Skip parent storage check - use hybrid storage instead
+    console.log('[autosave] Anonymous user - using hybrid localStorage (iframe or not)');
     
     // Fallback: localStorage (non-iframe) - HYBRID STORAGE MODE
     console.log('[autosave] Using hybrid storage mode (multi-design + Safari fallback)');

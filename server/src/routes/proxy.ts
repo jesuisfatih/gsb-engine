@@ -371,6 +371,15 @@ proxyRouter.post("/cart", async (req, res, next) => {
     
     if (!design) {
       const snapshot = payload.designSnapshot || {};
+      
+      // Ensure we have minimum required data
+      if (!snapshot.items || snapshot.items.length === 0) {
+        console.error('[proxy/cart] No design items in snapshot!');
+        return res.status(400).json({ 
+          error: 'No design items provided. Please create a design before checkout.' 
+        });
+      }
+      
       design = await prisma.designDocument.create({
         data: {
           tenantId: tenantId || undefined,
@@ -380,18 +389,19 @@ proxyRouter.post("/cart", async (req, res, next) => {
           title: `Anonymous Design - ${new Date().toLocaleString()}`,
           snapshot: snapshot.items || [],
           productSlug: snapshot.productSlug || 'canvas-poster',
-          surfaceId: snapshot.surfaceId || payload.surfaceId,
-          color: snapshot.color,
+          surfaceId: snapshot.surfaceId || payload.surfaceId || 'canvas-front',
+          color: snapshot.color || null,
           printTech: snapshot.printTech || payload.technique || 'dtf',
-          sheetWidthPx: snapshot.sheetWidthPx,
-          sheetHeightPx: snapshot.sheetHeightPx,
+          sheetWidthPx: snapshot.sheetWidthPx || 2400,
+          sheetHeightPx: snapshot.sheetHeightPx || 3000,
           metadata: {
             source: 'anonymous-checkout',
+            originalProductSlug: payload.productGid || productSlug,
             createdAt: new Date().toISOString(),
           },
         },
       });
-      console.log('[proxy] Created anonymous design:', design.id);
+      console.log('[proxy/cart] ✅ Created anonymous design:', design.id);
     }
 
     if (design.tenantId) {
@@ -520,6 +530,12 @@ proxyRouter.post("/cart", async (req, res, next) => {
       properties,
     };
 
+    console.log('[proxy/cart] ✅ Checkout prepared:', {
+      designId: design.id,
+      variantId: payload.variantId,
+      checkoutUrl: remoteCheckout?.checkoutUrl ?? checkoutPath,
+    });
+    
     res.json({
       data: {
         designId: design.id,
