@@ -16,24 +16,25 @@ export interface DesignSnapshot {
 }
 
 export function useParentStorage() {
-  const isInIframe = ref(false);
-  const hasParentStorage = ref(false);
+  // Detect iframe immediately (synchronous)
+  let inIframe = false;
+  try {
+    inIframe = typeof window !== 'undefined' && window.self !== window.top;
+  } catch {
+    inIframe = true;
+  }
+
+  const isInIframe = ref(inIframe);
+  const hasParentStorage = ref(inIframe);
 
   onMounted(() => {
-    // Detect iframe
-    try {
-      isInIframe.value = window.self !== window.top;
-    } catch {
-      isInIframe.value = true;
-    }
-
     // Request saved design from parent
     if (isInIframe.value) {
       window.parent.postMessage({
         type: 'GSB_REQUEST_SAVED_DESIGN'
       }, '*');
       
-      hasParentStorage.value = true;
+      console.log('[parent-storage] Iframe detected, using parent window storage');
     }
   });
 

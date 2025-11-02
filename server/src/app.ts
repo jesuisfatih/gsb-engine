@@ -42,11 +42,18 @@ export function createApp() {
   // Serve uploaded files (static)
   app.use("/uploads", express.static("uploads"));
 
-  // CRITICAL: App Proxy routes FIRST (before static files)
-  app.use("/apps/gsb", proxyRouter);
+  // CRITICAL: API routes MUST come BEFORE static files
+  app.use("/api/auth", authRouter);
+  app.use("/api/health", healthRouter);
+  app.use("/api/embed", embedRouter);
   app.use("/api/proxy", proxyRouter);
+  app.use("/api", requireAuthMiddleware, createApiRouter());
+
+  // App Proxy routes (for Shopify storefront)
+  app.use("/apps/gsb", proxyRouter);
 
   // Serve static files from dist folder (SPA frontend)
+  // This comes AFTER API routes to avoid catching /api/* paths
   const distPath = path.join(__dirname, "../../../dist");
   
   // Serve static assets (JS, CSS, images, etc.)
@@ -56,17 +63,16 @@ export function createApp() {
     lastModified: true,
   }));
 
-  // Handle API routes
-  app.use("/api/auth", authRouter);
-  app.use("/api/health", healthRouter);
-  app.use("/api/embed", embedRouter);
-  app.use("/api", requireAuthMiddleware, createApiRouter());
-
   // SPA fallback: Serve index.html for all non-API routes
   // This handles /shopify/embedded and other SPA routes
   app.use((req, res, next) => {
-    // Skip API routes
-    if (req.path.startsWith("/api/")) {
+    // Skip API routes and Shopify App Proxy routes
+    if (req.path.startsWith("/api/") || req.path.startsWith("/apps/gsb")) {
+      return next();
+    }
+    
+    // Skip static assets
+    if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json|xml|txt)$/i)) {
       return next();
     }
     

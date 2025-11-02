@@ -4,7 +4,7 @@ import type Konva from "konva";
 import type { LayerItem, TextItem } from "../types";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { snapPoint, snapToObjects } from "../engine/snapping";
-import { useEditorStore } from "../store/editorStore";
+import { useEditorStore, approximateBounds } from "../store/editorStore";
 import { loadHTMLImageFromURL } from "../utils/imageLoader";
 import { useEditorModeStore } from "../store/editorModeStore";
 import { useGangSheetStore } from "../store/gangSheetStore";

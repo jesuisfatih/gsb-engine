@@ -312,6 +312,7 @@ declare global {
   const useScrollLock: typeof import('@vueuse/core')['useScrollLock']
   const useSessionStorage: typeof import('@vueuse/core')['useSessionStorage']
   const useShare: typeof import('@vueuse/core')['useShare']
+  const useSimpleSessionPersistence: typeof import('./src/composables/useSimpleSessionPersistence')['useSimpleSessionPersistence']
   const useSkins: typeof import('./src/@core/composable/useSkins')['useSkins']
   const useSlots: typeof import('vue')['useSlots']
   const useSorted: typeof import('@vueuse/core')['useSorted']
@@ -688,6 +689,7 @@ declare module 'vue' {
     readonly useScrollLock: UnwrapRef<typeof import('@vueuse/core')['useScrollLock']>
     readonly useSessionStorage: UnwrapRef<typeof import('@vueuse/core')['useSessionStorage']>
     readonly useShare: UnwrapRef<typeof import('@vueuse/core')['useShare']>
+    readonly useSimpleSessionPersistence: UnwrapRef<typeof import('./src/composables/useSimpleSessionPersistence')['useSimpleSessionPersistence']>
     readonly useSkins: UnwrapRef<typeof import('./src/@core/composable/useSkins')['useSkins']>
     readonly useSlots: UnwrapRef<typeof import('vue')['useSlots']>
     readonly useSorted: UnwrapRef<typeof import('@vueuse/core')['useSorted']>

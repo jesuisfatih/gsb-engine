@@ -20,6 +20,7 @@ services:
     image: node:20
     working_dir: /app
     environment:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
       NODE_ENV: development
       npm_config_production: false
     volumes:
@@ -29,7 +30,11 @@ services:
     command:
       - bash
       - -lc
-      - npm ci && npm run api:dev
+      - |
+          corepack enable && corepack prepare pnpm@9 --activate && \
+          pnpm install --no-frozen-lockfile && \
+          pnpm prisma generate && \
+          pnpm run api:dev
     ports:
       - 127.0.0.1:4000:4000
     depends_on:

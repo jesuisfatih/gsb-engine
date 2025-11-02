@@ -1,0 +1,66 @@
+{%- comment -%}
+  GSB Customizer V52 - Product Button Block
+  Standalone block with hardcoded /apps/gsb/ URLs
+{%- endcomment -%}
+
+{%- assign gsb_variant = product.selected_or_first_available_variant -%}
+
+<div class="gsb-v52-button-wrapper" style="margin: 1.5rem 0;">
+  <div
+    data-gsb-shortcode=""
+    data-gsb-product-gid="{{ product.admin_graphql_api_id }}"
+    data-gsb-variant-id="{{ gsb_variant.admin_graphql_api_id }}"
+    data-gsb-mapping-url="/apps/gsb/api/embed/catalog/mappings"
+    data-button-label="{{ block.settings.button_label | default: 'Customize & Add to cart' }}"
+    data-button-bg="{{ block.settings.button_color | default: '#4c1d95' }}"
+    data-button-color="{{ block.settings.button_text_color | default: '#ffffff' }}"
+    data-button-variant="pill"
+    data-button-size="md"
+    data-open-mode="navigate"
+    data-editor-url="/apps/gsb/editor"
+    data-api-url="/apps/gsb/api/embed/shortcodes"
+    data-mobile-full-width="true"
+  ></div>
+</div>
+
+<script>
+  if (!window.GSB_V52_SCRIPT_LOADED) {
+    window.GSB_V52_SCRIPT_LOADED = true;
+    const script = document.createElement('script');
+    script.src = '/apps/gsb/gsb-shortcode.js';
+    script.defer = true;
+    script.dataset.apiUrl = '/apps/gsb/api/embed/shortcodes';
+    script.dataset.editorUrl = '/apps/gsb/editor';
+    script.dataset.mappingUrl = '/apps/gsb/api/embed/catalog/mappings';
+    document.head.appendChild(script);
+  }
+</script>
+
+{% schema %}
+{
+  "name": "GSB Product Button",
+  "target": "section",
+  "templates": ["product"],
+  "settings": [
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button Label",
+      "default": "Customize & Add to cart"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button Background Color",
+      "default": "#4c1d95"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button Text Color",
+      "default": "#ffffff"
+    }
+  ]
+}
+{% endschema %}
+

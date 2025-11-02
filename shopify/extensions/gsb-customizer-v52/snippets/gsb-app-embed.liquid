@@ -1,0 +1,28 @@
+{%- comment -%}
+  GSB Customizer V52 - Global App Embed
+  Loads the GSB script globally on all pages
+{%- endcomment -%}
+
+{% if request.page_type == 'product' %}
+<script>
+  if (!window.GSB_V52_SCRIPT_LOADED) {
+    window.GSB_V52_SCRIPT_LOADED = true;
+    const script = document.createElement('script');
+    script.src = '/apps/gsb/gsb-shortcode.js';
+    script.defer = true;
+    script.dataset.apiUrl = '/apps/gsb/api/embed/shortcodes';
+    script.dataset.editorUrl = '/apps/gsb/editor';
+    script.dataset.mappingUrl = '/apps/gsb/api/embed/catalog/mappings';
+    document.head.appendChild(script);
+  }
+</script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "GSB Customizer V52",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}
+

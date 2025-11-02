@@ -14,15 +14,23 @@
   // Configuration from window.GSB_SCRIPT_CONFIG or script tag data attributes or defaults
   const script = document.currentScript || document.querySelector('script[src*="gsb-shortcode"]');
   const blockConfig = window.GSB_SCRIPT_CONFIG || {};
+  
+  // HARDCODED: ALWAYS use /apps/gsb/ prefix in Shopify context
+  // If script loaded from .myshopify.com, we're in Shopify
+  const isShopifyStorefront = window.location.hostname.includes('.myshopify.com') || 
+                               window.Shopify !== undefined;
+  
+  console.log('[GSB] Shopify detected:', isShopifyStorefront, 'hostname:', window.location.hostname);
+  
   const config = {
-    editorUrl: blockConfig.editorUrl || script?.dataset?.editorUrl || '/editor',
-    apiUrl: blockConfig.apiUrl || script?.dataset?.apiUrl || '/api/embed/shortcodes',
-    mappingUrl: blockConfig.mappingUrl || script?.dataset?.mappingUrl || '/api/embed/catalog/mappings',
+    editorUrl: blockConfig.editorUrl || script?.dataset?.editorUrl || (isShopifyStorefront ? '/apps/gsb/editor' : '/editor'),
+    apiUrl: blockConfig.apiUrl || script?.dataset?.apiUrl || (isShopifyStorefront ? '/apps/gsb/api/embed/shortcodes' : '/api/embed/shortcodes'),
+    mappingUrl: blockConfig.mappingUrl || script?.dataset?.mappingUrl || (isShopifyStorefront ? '/apps/gsb/api/embed/catalog/mappings' : '/api/embed/catalog/mappings'),
     buttonLabel: blockConfig.buttonLabel || script?.dataset?.buttonLabel || 'Customize & Add to cart',
     buttonClass: script?.dataset?.buttonClass || '',
     buttonBg: blockConfig.buttonBg || script?.dataset?.buttonBg || '#4c1d95',
     buttonColor: blockConfig.buttonColor || script?.dataset?.buttonColor || '#ffffff',
-    openMode: script?.dataset?.openMode || 'navigate', // 'navigate' | 'popup'
+    openMode: script?.dataset?.openMode || 'navigate',
   };
 
   console.log('[GSB] Configuration:', config);

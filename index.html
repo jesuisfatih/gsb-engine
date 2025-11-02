@@ -51,24 +51,36 @@
   
   <!-- Service Worker Registration -->
   <script>
-    // Register service worker for PWA
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(reg => console.log('[PWA] Service worker registered:', reg.scope))
-          .catch(err => console.error('[PWA] Service worker registration failed:', err));
-      });
-    }
+    // Skip SW and localStorage in iframe context (Shopify, etc.)
+    const isIframe = window.self !== window.top;
     
-    // Loader colors
-    const loaderColor = localStorage.getItem('vuexy-initial-loader-bg') || '#FFFFFF'
-    const primaryColor = localStorage.getItem('vuexy-initial-loader-color') || '#7367F0'
+    if (!isIframe) {
+      // Register service worker for PWA (only in non-iframe)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('[PWA] Service worker registered:', reg.scope))
+            .catch(err => console.error('[PWA] Service worker registration failed:', err));
+        });
+      }
+      
+      // Loader colors (only in non-iframe)
+      try {
+        const loaderColor = localStorage.getItem('vuexy-initial-loader-bg') || '#FFFFFF'
+        const primaryColor = localStorage.getItem('vuexy-initial-loader-color') || '#7367F0'
 
-    if (loaderColor)
-      document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
+        if (loaderColor)
+          document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
 
-    if (primaryColor)
-      document.documentElement.style.setProperty('--initial-loader-color', primaryColor)
+        if (primaryColor)
+          document.documentElement.style.setProperty('--initial-loader-color', primaryColor)
+      } catch (err) {
+        // localStorage not available (sandboxed iframe)
+        console.log('[Loader] Using default colors (localStorage unavailable)');
+      }
+    } else {
+      console.log('[Loader] iframe detected, skipping SW and localStorage');
+    }
   </script>
 </body>
 

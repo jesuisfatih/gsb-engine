@@ -7,8 +7,18 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
   // 👉 router.beforeEach
   // Docs: https://router.vuejs.org/guide/advanced/navigation-guards.html#global-before-guards
   router.beforeEach(to => {
-    // Allow editor for public customer access
-    if (to.path === '/editor' || to.path.startsWith('/editor?') || to.path.startsWith('/editor/')) {
+    // Allow editor for public customer access (both standalone and Shopify proxy paths)
+    if (to.path === '/editor' || 
+        to.path.startsWith('/editor?') || 
+        to.path.startsWith('/editor/') ||
+        to.path === '/apps/gsb/editor' ||
+        to.path.startsWith('/apps/gsb/editor?') ||
+        to.path.startsWith('/apps/gsb/editor/')) {
+      return;
+    }
+    
+    // Allow Shopify embedded routes (authenticated via session token)
+    if (to.path.startsWith('/shopify/embedded')) {
       return;
     }
     

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { z } from "zod";
 import type { $Enums } from "../../src/generated/prisma/client";
 import { env } from "../env";
@@ -134,10 +134,10 @@ async function createShopifyCart(options: {
 export const proxyRouter = Router();
 
 /**
- * GET /apps/gsb/editor
+ * GET /editor (mounted at /apps/gsb so full path is /apps/gsb/editor)
  * Serve editor page via App Proxy (stays on Shopify domain)
  */
-proxyRouter.get("/apps/gsb/editor", async (req, res) => {
+proxyRouter.get("/editor", async (req, res) => {
   try {
     console.log('[proxy] Editor requested via App Proxy');
     
@@ -154,14 +154,33 @@ proxyRouter.get("/apps/gsb/editor", async (req, res) => {
       html = html.replace(/href="\/favicon\.ico"/g, 'href="/apps/gsb/favicon.ico"');
       html = html.replace(/href="\/manifest\.json"/g, 'href="/apps/gsb/manifest.json"');
       html = html.replace(/href="\/icon-192\.png"/g, 'href="/apps/gsb/icon-192.png"');
-      html = html.replace(/register\('\/sw\.js'\)/g, "register('/apps/gsb/sw.js')");
+      // Fix service worker - both quoted and single-quoted versions
+      html = html.replace(/register\(['"]\/sw\.js['"]\)/g, "register('/apps/gsb/sw.js')");
       
-      // Inject embed mode flag and base URL
+      // Inject Vite import.meta.env override for dynamic imports
       html = html.replace(
         '</head>',
         `<script>
+          // Override Vite's base path for dynamic imports
+          window.__vite_plugin_config__ = { base: '/apps/gsb/' };
           window.__GSB_EMBED_MODE__ = true;
           window.__GSB_BASE_PATH__ = '/apps/gsb';
+          
+          // Monkey-patch import() to fix dynamic import paths
+          const originalImport = window.__vite_ssr_import__ || window.import;
+          if (!window.__vite_patched__) {
+            window.__vite_patched__ = true;
+            const proxyImport = new Proxy(import, {
+              apply(target, thisArg, argumentsList) {
+                let [specifier] = argumentsList;
+                if (typeof specifier === 'string' && specifier.startsWith('/assets/')) {
+                  specifier = '/apps/gsb' + specifier;
+                }
+                return Reflect.apply(target, thisArg, [specifier]);
+              }
+            });
+            // Note: Can't actually override import(), but we inject base path into Vite
+          }
         </script></head>`
       );
       
@@ -180,82 +199,96 @@ proxyRouter.get("/apps/gsb/editor", async (req, res) => {
 });
 
 /**
- * GET /apps/gsb/assets/* - Serve static assets
+ * Serve all static files with express.static
+ * Note: proxyRouter is already mounted at /apps/gsb in app.ts
+ * So this serves: /apps/gsb/assets/*, /apps/gsb/*.js, etc.
  */
-proxyRouter.get("/apps/gsb/assets/*", async (req, res) => {
-  const assetPath = req.path.replace('/apps/gsb', '');
-  const distPath = path.join(process.cwd(), "dist", assetPath);
-  
-  console.log('[proxy] Asset requested:', assetPath);
-  
-  if (fs.existsSync(distPath)) {
-    // Set proper content type
-    const ext = path.extname(distPath);
-    const contentTypes: Record<string, string> = {
-      '.js': 'application/javascript',
-      '.css': 'text/css',
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.svg': 'image/svg+xml',
-      '.woff2': 'font/woff2',
-      '.woff': 'font/woff',
-    };
-    
-    if (contentTypes[ext]) {
-      res.setHeader('Content-Type', contentTypes[ext]);
-    }
-    
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-    res.sendFile(distPath);
-  } else {
-    console.warn('[proxy] Asset not found:', distPath);
-    res.status(404).send('Not found');
+proxyRouter.use(express.static(path.join(process.cwd(), "dist"), {
+  maxAge: '1y',
+  setHeaders: (res, filePath) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    console.log('[proxy] Serving static file:', filePath);
   }
-});
+}));
 
 /**
- * GET /apps/gsb/* (Other files - sw.js, manifest.json, loader.css, etc.)
+ * POST /api/proxy/cart/prepare
+ * NEW: Simple endpoint - save design, return ID + preview URL
  */
-proxyRouter.get("/apps/gsb/*", async (req, res) => {
-  let requestedPath = req.path.replace('/apps/gsb', '');
-  
-  // Remove leading slash
-  if (requestedPath.startsWith('/')) {
-    requestedPath = requestedPath.substring(1);
-  }
-  
-  console.log('[proxy] Resource requested:', requestedPath);
-  
-  const distPath = path.join(process.cwd(), "dist", requestedPath);
-  
-  if (fs.existsSync(distPath)) {
-    // Set proper content type
-    const ext = path.extname(distPath);
-    const contentTypes: Record<string, string> = {
-      '.js': 'application/javascript',
-      '.css': 'text/css',
-      '.json': 'application/json',
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.svg': 'image/svg+xml',
-      '.ico': 'image/x-icon',
-      '.woff2': 'font/woff2',
-      '.woff': 'font/woff',
-      '.ttf': 'font/ttf',
-      '.eot': 'application/vnd.ms-fontobject',
-    };
+proxyRouter.post("/cart/prepare", async (req, res, next) => {
+  try {
+    console.log('[cart/prepare] Request received');
     
-    if (contentTypes[ext]) {
-      res.setHeader('Content-Type', contentTypes[ext]);
+    const { prisma, tenantId, user } = req.context;
+    const { snapshot, previewDataUrl, shopifyProductGid, shopifyVariantId, quantity } = req.body;
+    
+    // 1. Save design to database
+    const design = await prisma.designDocument.create({
+      data: {
+        tenantId: tenantId || undefined,
+        userId: user?.id || undefined,
+        status: 'DRAFT',
+        name: `${snapshot.productSlug} - ${snapshot.surfaceId}`,
+        snapshot: snapshot.items || snapshot,
+        productSlug: snapshot.productSlug,
+        surfaceId: snapshot.surfaceId,
+        printTech: snapshot.printTech,
+        color: snapshot.color,
+        sheetWidthPx: snapshot.sheetWidthPx,
+        sheetHeightPx: snapshot.sheetHeightPx,
+        metadata: {
+          source: user?.id ? 'authenticated' : 'guest',
+          shopifyProductGid,
+          shopifyVariantId,
+          createdAt: new Date().toISOString(),
+        },
+      },
+    });
+    
+    console.log('[cart/prepare] Design saved:', design.id);
+    
+    // 2. Process preview (if base64, save as file)
+    let previewUrl = previewDataUrl;
+    
+    if (previewDataUrl?.startsWith('data:image')) {
+      try {
+        const base64Data = previewDataUrl.split(',')[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        // Save to uploads directory
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'previews');
+        await fs.mkdir(uploadsDir, { recursive: true });
+        
+        const filename = `${design.id}.png`;
+        const filepath = path.join(uploadsDir, filename);
+        await fs.writeFile(filepath, buffer);
+        
+        // Generate URL
+        const baseUrl = process.env.PUBLIC_URL || 'https://app.gsb-engine.dev';
+        previewUrl = `${baseUrl}/uploads/previews/${filename}`;
+        
+        // Update design
+        await prisma.designDocument.update({
+          where: { id: design.id },
+          data: { previewUrl },
+        });
+        
+        console.log('[cart/prepare] Preview saved:', previewUrl);
+      } catch (imageError) {
+        console.warn('[cart/prepare] Image save failed:', imageError);
+      }
     }
     
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.sendFile(distPath);
-  } else {
-    console.warn('[proxy] Resource not found:', distPath);
-    res.status(404).send('Not found');
+    res.json({
+      designId: design.id,
+      previewUrl: previewUrl && previewUrl.length < 200 ? previewUrl : '',
+    });
+    
+  } catch (error) {
+    next(error);
   }
 });
 

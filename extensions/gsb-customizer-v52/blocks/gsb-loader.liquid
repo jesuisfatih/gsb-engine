@@ -1,13 +1,13 @@
 {% comment %}
-  Gang Sheet Builder App Embed
-  This loads globally across all pages
+  GSB Customizer V52 - Global Script Loader
+  This loads globally across all pages via App Embed
 {% endcomment %}
 
 <script
-  src="https://app.gsb-engine.dev/gsb-shortcode.js"
-  data-api-url="https://app.gsb-engine.dev/api/embed/shortcodes"
-  data-editor-url="https://app.gsb-engine.dev/editor"
-  data-mapping-url="https://app.gsb-engine.dev/api/embed/catalog/mappings"
+  src="/apps/gsb/gsb-shortcode.js"
+  data-api-url="/apps/gsb/api/embed/shortcodes"
+  data-editor-url="/apps/gsb/editor"
+  data-mapping-url="/apps/gsb/api/embed/catalog/mappings"
   data-button-label="{{ block.settings.button_label }}"
   data-button-bg="{{ block.settings.button_color }}"
   data-button-color="{{ block.settings.button_text_color }}"
@@ -21,15 +21,14 @@
 
 {% schema %}
 {
-  "name": "GSB Loader",
+  "name": "GSB Customizer V52",
   "target": "body",
-  "type": "app_embed",
   "settings": [
     {
       "type": "text",
       "id": "button_label",
       "label": "Button Text",
-      "default": "Customize"
+      "default": "Customize & Add to cart"
     },
     {
       "type": "color",

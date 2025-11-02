@@ -1,20 +1,20 @@
 <template>
-  <details class="accordion" open>
-    <summary>
-      <span class="accordion-title">
-        <svg class="accordion-icon" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
-          <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <text x="16" y="8" font-size="8" fill="currentColor">$</text>
-        </svg>
-        <span>💰 Cost Calculator</span>
-      </span>
-      <span class="profit-badge" :class="profitClass">
-        {{ profitMargin.toFixed(0) }}% Profit
-      </span>
-    </summary>
-    
-    <div class="section-body">
+  <VExpansionPanels>
+    <VExpansionPanel>
+      <VExpansionPanelTitle>
+        <template #default>
+          <div class="d-flex align-center justify-space-between w-100">
+            <div class="d-flex align-center gap-2">
+              <DollarSign :size="18" />
+              <span>Cost Calculator</span>
+            </div>
+            <VChip :color="profitClass === 'high' ? 'success' : profitClass === 'low' ? 'error' : 'warning'" size="small" variant="tonal">
+              {{ profitMargin.toFixed(0) }}% Profit
+            </VChip>
+          </div>
+        </template>
+      </VExpansionPanelTitle>
+      <VExpansionPanelText>
       <!-- Quick Summary -->
       <div class="cost-summary">
         <div class="summary-row total">
@@ -179,12 +179,14 @@
       <button class="export-quote" @click="exportQuote">
         📄 Export Quote PDF
       </button>
-    </div>
-  </details>
+      </VExpansionPanelText>
+    </VExpansionPanel>
+  </VExpansionPanels>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { DollarSign } from 'lucide-vue-next';
 import { useEditorStore } from '../store/editorStore';
 
 const editorStore = useEditorStore();

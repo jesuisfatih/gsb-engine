@@ -1,0 +1,121 @@
+{%- comment -%}
+  GSB Customizer V52 - Product Button Block
+  Replaces default buy buttons with custom button
+{%- endcomment -%}
+
+{%- assign gsb_variant = product.selected_or_first_available_variant -%}
+{%- assign hide_default_buttons = block.settings.hide_default_buttons | default: true -%}
+
+<div class="gsb-v52-button-wrapper" style="margin: 1.5rem 0;" data-gsb-active="true">
+  <button 
+    id="gsb-customize-btn-v52"
+    onclick="window.open('/apps/gsb/editor?product={{ product.handle }}&variantId={{ gsb_variant.id }}', '_self')"
+    style="
+      background: {{ block.settings.button_color | default: '#4c1d95' }};
+      color: {{ block.settings.button_text_color | default: '#ffffff' }};
+      border: none;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      font-family: inherit;
+    "
+    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.15)';"
+    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)';"
+  >
+    ✨ {{ block.settings.button_label | default: 'Customize & Add to cart' }}
+  </button>
+</div>
+
+<style>
+  #gsb-customize-btn-v52:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  }
+  
+  {% if hide_default_buttons %}
+  /* Hide default buy buttons when GSB is active */
+  div[data-gsb-active="true"] ~ .shopify-payment-button,
+  div[data-gsb-active="true"] ~ .product-form__buttons,
+  div[data-gsb-active="true"] ~ button[name="add"],
+  div[data-gsb-active="true"] ~ .product__info-wrapper .shopify-payment-button,
+  div[data-gsb-active="true"] ~ .product__info-wrapper .product-form__buttons,
+  [data-gsb-active="true"] + .shopify-payment-button,
+  [data-gsb-active="true"] + .product-form__buttons,
+  .product-form:has([data-gsb-active="true"]) .product-form__buttons:not(:has([data-gsb-active])),
+  .product-form:has([data-gsb-active="true"]) .shopify-payment-button:not(:has([data-gsb-active])),
+  .product-form:has([data-gsb-active="true"]) > button[name="add"]:not([data-gsb-active]) {
+    display: none !important;
+  }
+  {% endif %}
+</style>
+
+<script>
+  (function() {
+    // Hide buy buttons after page load (fallback)
+    if ({{ hide_default_buttons | json }}) {
+      document.addEventListener('DOMContentLoaded', function() {
+        const gsbWrapper = document.querySelector('[data-gsb-active="true"]');
+        if (gsbWrapper) {
+          const form = gsbWrapper.closest('form') || gsbWrapper.closest('.product-form') || gsbWrapper.closest('.product__info-wrapper');
+          if (form) {
+            const selectors = [
+              '.product-form__buttons',
+              '.shopify-payment-button',
+              'button[name="add"]',
+              '.btn--add-to-cart',
+              '.product-form__submit'
+            ];
+            selectors.forEach(sel => {
+              form.querySelectorAll(sel).forEach(el => {
+                if (!el.closest('[data-gsb-active]')) {
+                  el.style.display = 'none';
+                }
+              });
+            });
+          }
+        }
+      });
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "GSB Product Button",
+  "target": "section",
+  "templates": ["product"],
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "hide_default_buttons",
+      "label": "Hide Default Buy Buttons",
+      "info": "Automatically hide 'Add to cart' and 'Buy it now' buttons",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button Label",
+      "default": "Customize & Add to cart"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button Background Color",
+      "default": "#4c1d95"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button Text Color",
+      "default": "#ffffff"
+    }
+  ]
+}
+{% endschema %}
+

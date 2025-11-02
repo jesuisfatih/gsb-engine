@@ -1,21 +1,15 @@
 <template>
-  <details class="accordion" open>
-    <summary>
-      <span class="accordion-title">
-        <svg class="accordion-icon" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-          <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-        </svg>
-        <span>🎭 3D Mockup Preview</span>
-      </span>
-      <span class="accordion-toggle">
-        <svg viewBox="0 0 12 12">
-          <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </span>
-    </summary>
-
-    <div class="section-body">
+  <VExpansionPanels>
+    <VExpansionPanel>
+      <VExpansionPanelTitle>
+        <template #default>
+          <div class="d-flex align-center gap-2">
+            <Layers :size="18" />
+            <span>3D Mockup Preview</span>
+          </div>
+        </template>
+      </VExpansionPanelTitle>
+      <VExpansionPanelText>
       <!-- Product Selector -->
       <div class="product-selector">
         <button 
@@ -68,27 +62,21 @@
         <!-- 3D Controls -->
         <div class="mockup-controls">
           <button @click="rotate(-45)" title="Rotate Left">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M1 4v6h6M3 19a9 9 0 1 0 2.5-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <RotateCcw :size="16" />
           </button>
           <span class="rotation-display">{{ currentRotation }}°</span>
           <button @click="rotate(45)" title="Rotate Right">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M23 4v6h-6M21 19a9 9 0 1 1-2.5-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <RotateCw :size="16" />
           </button>
           <button @click="resetView" title="Reset View">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2" />
-              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
-            </svg>
+            <Eye :size="16" />
           </button>
         </div>
 
         <!-- Export Mockup -->
         <button class="export-mockup-btn" @click="exportMockup">
-          📸 Export Mockup Image
+          <Camera :size="16" style="display: inline-block; vertical-align: middle; margin-right: 4px;" />
+          Export Mockup Image
         </button>
       </div>
 
@@ -107,12 +95,14 @@
           <input v-model="reflectionEnabled" type="checkbox" />
         </div>
       </div>
-    </div>
-  </details>
+      </VExpansionPanelText>
+    </VExpansionPanel>
+  </VExpansionPanels>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { Layers, RotateCcw, RotateCw, Eye, Camera } from 'lucide-vue-next';
 
 const selectedProduct = ref('tshirt');
 const currentRotation = ref(0);

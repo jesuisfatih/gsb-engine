@@ -5,7 +5,7 @@ declare module 'vue-router' {
     subject?: string
     layoutWrapperClasses?: string
     navActiveLink?: RouteLocationRaw
-    layout?: 'blank' | 'default'
+    layout?: 'blank' | 'default' | 'shopify-embedded' | 'editor'
     unauthenticatedOnly?: boolean
     public?: boolean
   }

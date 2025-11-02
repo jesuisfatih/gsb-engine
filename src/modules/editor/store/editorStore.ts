@@ -71,7 +71,7 @@ function computeLineBounds(points: number[]) {
   };
 }
 
-function approximateBounds(item: LayerItem) {
+export function approximateBounds(item: LayerItem) {
   if (item.kind === "circle") {
     return { width: item.radius * 2, height: item.radius * 2, offsetX: item.radius, offsetY: item.radius };
   }
