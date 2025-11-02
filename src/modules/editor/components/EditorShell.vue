@@ -283,7 +283,12 @@ onMounted(async () => {
     console.log("[editor] 🔍 Attempting variant-based loading:", shopifyVariant);
     
     try {
-      const response = await fetch(`/api/embed/catalog/mappings/${encodeURIComponent(shopifyVariant)}`);
+      // Detect Shopify App Proxy context
+      const apiBase = (window as any).__GSB_EMBED_MODE__ && (window as any).__GSB_BASE_PATH__ 
+        ? `${(window as any).__GSB_BASE_PATH__}/api` 
+        : '/api';
+      
+      const response = await fetch(`${apiBase}/embed/catalog/mappings/${encodeURIComponent(shopifyVariant)}`);
       
       if (response.ok) {
         const data = await response.json();

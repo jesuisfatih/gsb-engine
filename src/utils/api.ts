@@ -63,33 +63,11 @@ function resolveTenantId(): string | undefined {
   return stored ?? undefined
 }
 
-// Detect Shopify App Proxy context (runtime)
-function resolveBaseUrl(): string {
-  if (typeof window !== 'undefined') {
-    // Check if running in Shopify App Proxy context
-    const gsbBasePath = (window as any).__GSB_BASE_PATH__;
-    const gsbEmbedMode = (window as any).__GSB_EMBED_MODE__;
-    
-    if (gsbEmbedMode && gsbBasePath) {
-      // Shopify App Proxy: /apps/gsb/api
-      const apiBase = `${gsbBasePath}/api`;
-      console.log('[api] Shopify App Proxy detected, using base:', apiBase);
-      return apiBase;
-    }
-  }
-  
-  // Default: /api (standalone mode)
-  const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
-  return rawBaseUrl.replace(/\/+$/, '');
-}
-
-const normalisedBaseUrl = resolveBaseUrl()
-
 export const $api = ofetch.create({
-  baseURL: normalisedBaseUrl,
+  baseURL: '/', // Will be resolved dynamically in onRequest
   credentials: 'include',
   fetch: (input, init) => resolveShopifyFetch()(input as any, init as any),
-  async onRequest({ options }) {
+  async onRequest({ options, request }) {
     const headers = new Headers(options.headers ?? {})
 
     const accessToken = resolveAccessToken()
@@ -101,6 +79,29 @@ export const $api = ofetch.create({
       headers.set('x-tenant-id', tenantId)
 
     options.headers = headers
+    
+    // DYNAMIC BASE URL RESOLUTION (lazy, per-request)
+    // Check if running in Shopify App Proxy context
+    if (typeof window !== 'undefined') {
+      const gsbBasePath = (window as any).__GSB_BASE_PATH__;
+      const gsbEmbedMode = (window as any).__GSB_EMBED_MODE__;
+      
+      if (gsbEmbedMode && gsbBasePath) {
+        // Shopify App Proxy: prepend /apps/gsb to request
+        const requestStr = String(request);
+        if (requestStr.startsWith('/') && !requestStr.startsWith('/apps/gsb')) {
+          // Prepend /apps/gsb to the request URL
+          const newUrl = `${gsbBasePath}${request}`;
+          options.baseURL = '';
+          Object.defineProperty(options, 'url', { value: newUrl, writable: true });
+          console.log('[api] Shopify App Proxy mode - Rewriting:', request, '→', newUrl);
+          return;
+        }
+      }
+    }
+    
+    // Default mode: use request as-is
+    options.baseURL = '';
   },
 })
 export {}

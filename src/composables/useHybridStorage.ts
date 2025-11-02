@@ -18,16 +18,23 @@ import { ref, computed } from 'vue';
 
 /**
  * Resolve API base URL (Shopify App Proxy context aware)
+ * RUNTIME detection - checks window variables that are injected by proxy.ts
  */
 function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const gsbBasePath = (window as any).__GSB_BASE_PATH__;
     const gsbEmbedMode = (window as any).__GSB_EMBED_MODE__;
     
+    console.log('[HybridStorage] Context check - embedMode:', gsbEmbedMode, 'basePath:', gsbBasePath);
+    
     if (gsbEmbedMode && gsbBasePath) {
-      return `${gsbBasePath}/api`;
+      const apiBase = `${gsbBasePath}/api`;
+      console.log('[HybridStorage] ✅ Using Shopify App Proxy API:', apiBase);
+      return apiBase;
     }
   }
+  
+  console.log('[HybridStorage] Using standalone API: /api');
   return '/api';
 }
 
