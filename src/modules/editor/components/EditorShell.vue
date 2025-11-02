@@ -202,6 +202,17 @@ const { global } = useTheme();
 const isDarkTheme = computed(() => Boolean(global.current.value.dark));
 
 onMounted(async () => {
+  // Check for desktop force mode (modal/iframe)
+  const forceDesktop = route.query.forceDesktop as string | undefined;
+  const modalMode = route.query.modalMode as string | undefined;
+  
+  if (forceDesktop === 'true' || modalMode === 'true') {
+    document.body.classList.add('gsb-force-desktop');
+    document.body.classList.add('gsb-modal-mode');
+    document.body.setAttribute('data-force-desktop', 'true');
+    console.log('[editor] ✅ Desktop mode forced - responsive CSS disabled');
+  }
+  
   // Load catalog with tenantId from URL if public customer
   const tenantId = route.query.t as string | undefined;
   const hasAuth = sessionStore?.isAuthenticated;
@@ -1623,33 +1634,34 @@ details[open] .accordion-toggle svg {
   font-weight: 600;
 }
 
+/* Only apply mobile layout if NOT in desktop force mode */
 @media (max-width: 1280px) {
-  .editor-root {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .editor-root {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto auto;
     padding: 16px;
     border-radius: 0;
   }
 
-  .area-toolbar {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .area-toolbar {
     grid-column: 1;
     grid-row: 1;
     grid-template-columns: 1fr;
     gap: 14px;
   }
 
-  .left-pane,
-  .center-pane,
-  .right-pane {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .left-pane,
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .center-pane,
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .right-pane {
     grid-column: 1;
     grid-row: auto;
   }
 
-  .resize-handle {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .resize-handle {
     display: none;
   }
 
-  .center-pane {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .center-pane {
     grid-template-columns: minmax(0, 1fr);
   }
 }

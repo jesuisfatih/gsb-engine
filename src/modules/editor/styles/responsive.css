@@ -4,10 +4,45 @@
  * NON-AGGRESSIVE: Only applies when needed, doesn't override existing styles
  */
 
+/* ==================== DESKTOP FORCE MODE ==================== */
+/* When editor is in modal/iframe, force desktop layout */
+body.gsb-force-desktop .editor-root,
+body.gsb-modal-mode .editor-root,
+body[data-force-desktop="true"] .editor-root {
+  grid-template-columns: 360px 1fr 320px !important;
+  min-width: 1440px !important;
+  width: 100% !important;
+}
+
+body.gsb-force-desktop .left-pane,
+body.gsb-modal-mode .left-pane {
+  width: 360px !important;
+  display: block !important;
+}
+
+body.gsb-force-desktop .right-pane,
+body.gsb-modal-mode .right-pane {
+  width: 320px !important;
+  display: block !important;
+}
+
+body.gsb-force-desktop .editor-stage,
+body.gsb-modal-mode .editor-stage {
+  width: calc(100% - 680px) !important;
+  min-width: 760px !important;
+}
+
+/* Disable ALL responsive breakpoints when desktop is forced */
+body.gsb-force-desktop .tool-btn .label,
+body.gsb-modal-mode .tool-btn .label {
+  display: inline-block !important;
+}
+
 /* ==================== MOBILE (< 768px) ==================== */
+/* Only apply mobile styles if NOT in force desktop mode */
 @media (max-width: 767px) {
   /* Stack layout vertically - SOFT override */
-  body .editor-root {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .editor-root {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 1fr;
     height: 100vh;
@@ -113,61 +148,61 @@
 
 /* ==================== TABLET (768px - 1023px) ==================== */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .editor-root {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .editor-root {
     grid-template-columns: auto 1fr auto !important;
   }
 
   /* Collapsible sidebars */
-  .left-pane,
-  .right-pane {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .left-pane,
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .right-pane {
     width: 280px !important;
     transition: width 0.3s ease, transform 0.3s ease;
   }
 
-  .is-left-collapsed .left-pane {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .is-left-collapsed .left-pane {
     width: 0 !important;
     transform: translateX(-100%);
   }
 
-  .is-right-collapsed .right-pane {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .is-right-collapsed .right-pane {
     width: 0 !important;
     transform: translateX(100%);
   }
 
   /* Tablet topbar */
-  .editor-topbar {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .editor-topbar {
     padding: 10px 16px !important;
   }
 
-  .tool-btn .label {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .tool-btn .label {
     font-size: 12px !important;
   }
 
   /* Tablet canvas */
-  .editor-stage {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .editor-stage {
     width: calc(100vw - 560px) !important;
   }
 
-  .is-left-collapsed .editor-stage {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .is-left-collapsed .editor-stage {
     width: calc(100vw - 280px) !important;
   }
 
-  .is-right-collapsed .editor-stage {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .is-right-collapsed .editor-stage {
     width: calc(100vw - 280px) !important;
   }
 
-  .is-left-collapsed.is-right-collapsed .editor-stage {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .is-left-collapsed.is-right-collapsed .editor-stage {
     width: 100vw !important;
   }
 
   /* Tablet floating panels */
-  .ai-assistant,
-  .batch-panel {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .ai-assistant,
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .batch-panel {
     width: 360px !important;
   }
 
   /* Tablet presence panel */
-  .presence-panel {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .presence-panel {
     top: 80px !important;
     right: 16px !important;
   }
@@ -175,24 +210,24 @@
 
 /* ==================== LAPTOP (1024px - 1439px) ==================== */
 @media (min-width: 1024px) and (max-width: 1439px) {
-  .editor-root {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .editor-root {
     grid-template-columns: 360px 1fr 320px !important;
   }
 
-  .left-pane {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .left-pane {
     width: 360px !important;
   }
 
-  .right-pane {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .right-pane {
     width: 320px !important;
   }
 
-  .editor-topbar {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .editor-topbar {
     padding: 12px 20px !important;
   }
 
   /* Laptop canvas optimal size */
-  .editor-stage {
+  body:not(.gsb-force-desktop):not(.gsb-modal-mode) .editor-stage {
     width: calc(100vw - 680px) !important;
   }
 }

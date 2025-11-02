@@ -7,7 +7,7 @@
 {%- assign hide_default_buttons = block.settings.hide_default_buttons | default: true -%}
 
 <div class="gsb-v52-button-wrapper" style="margin: 1.5rem 0;" data-gsb-active="true">
-  <button 
+  <button
     id="gsb-customize-btn-v52"
     onclick="openGSBEditor('{{ product.handle }}', '{{ gsb_variant.id }}')"
     style="
@@ -50,7 +50,7 @@
     transform: translateY(0) !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
   }
-  
+
   /* GSB Editor Modal Styles */
   #gsb-editor-modal {
     position: fixed;
@@ -60,7 +60,7 @@
     bottom: 0;
     z-index: 999999;
   }
-  
+
   .gsb-modal-overlay {
     position: absolute;
     inset: 0;
@@ -68,14 +68,14 @@
     backdrop-filter: blur(4px);
     animation: gsbFadeIn 0.3s ease;
   }
-  
+
   .gsb-modal-container {
     position: relative;
     width: 100%;
     height: 100%;
     animation: gsbSlideUp 0.3s ease;
   }
-  
+
   .gsb-modal-close {
     position: absolute;
     top: 20px;
@@ -94,39 +94,47 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     transition: all 0.2s ease;
   }
-  
+
   .gsb-modal-close:hover {
     background: #fff;
     transform: scale(1.1) rotate(90deg);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
   }
-  
+
   .gsb-modal-close:active {
     transform: scale(0.95) rotate(90deg);
   }
-  
+
   #gsb-editor-iframe {
     width: 100%;
     height: 100%;
     border: none;
+    min-width: 100vw;
+    min-height: 100vh;
   }
   
+  /* Force desktop layout in iframe */
+  #gsb-editor-iframe body,
+  #gsb-editor-iframe .editor-root {
+    min-width: 1440px !important;
+  }
+
   @keyframes gsbFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
-  
+
   @keyframes gsbSlideUp {
-    from { 
+    from {
       opacity: 0;
       transform: translateY(20px);
     }
-    to { 
+    to {
       opacity: 1;
       transform: translateY(0);
     }
   }
-  
+
   /* Mobile responsive */
   @media (max-width: 768px) {
     .gsb-modal-close {
@@ -136,7 +144,7 @@
       height: 40px;
     }
   }
-  
+
   {% if hide_default_buttons %}
   /* Hide default buy buttons when GSB is active */
   div[data-gsb-active="true"] ~ .shopify-payment-button,
@@ -161,9 +169,10 @@
     const iframe = document.getElementById('gsb-editor-iframe');
     
     if (modal && iframe) {
-      // Build editor URL
+      // Build editor URL with desktop force flag
       const editorUrl = '/apps/gsb/editor?product=' + encodeURIComponent(productHandle) + 
-                       '&variantId=' + encodeURIComponent(variantId);
+                       '&variantId=' + encodeURIComponent(variantId) +
+                       '&forceDesktop=true&modalMode=true';
       
       // Set iframe source
       iframe.src = editorUrl;
@@ -174,29 +183,50 @@
       // Prevent body scroll
       document.body.style.overflow = 'hidden';
       
+      // Inject desktop viewport into iframe (after load)
+      iframe.onload = function() {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+          const meta = iframeDoc.createElement('meta');
+          meta.name = 'viewport';
+          meta.content = 'width=1920, initial-scale=1.0';
+          iframeDoc.head.appendChild(meta);
+          
+          // Add desktop force class to body
+          if (iframeDoc.body) {
+            iframeDoc.body.classList.add('gsb-force-desktop');
+            iframeDoc.body.style.minWidth = '1440px';
+          }
+          
+          console.log('[GSB] ✅ Desktop mode injected to iframe');
+        } catch (e) {
+          console.warn('[GSB] Cannot inject to iframe (cross-origin):', e);
+        }
+      };
+      
       // Log for debugging
       console.log('[GSB] Opening editor:', editorUrl);
     }
   }
-  
+
   function closeGSBEditor() {
     const modal = document.getElementById('gsb-editor-modal');
     const iframe = document.getElementById('gsb-editor-iframe');
-    
+
     if (modal && iframe) {
       // Hide modal
       modal.style.display = 'none';
-      
+
       // Clear iframe
       iframe.src = '';
-      
+
       // Restore body scroll
       document.body.style.overflow = '';
-      
+
       console.log('[GSB] Editor closed');
     }
   }
-  
+
   // Close on Escape key
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
@@ -206,14 +236,14 @@
       }
     }
   });
-  
+
   // Close on overlay click
   document.addEventListener('click', function(e) {
     if (e.target.classList.contains('gsb-modal-overlay')) {
       closeGSBEditor();
     }
   });
-  
+
   // Hide default buy buttons (fallback)
   (function() {
     if ({{ hide_default_buttons | json }}) {
