@@ -263,10 +263,10 @@
       existing.remove();
     }
     
-    // Build editor URL with desktop force flag
-    const editorUrl = '/apps/gsb/editor?product=' + encodeURIComponent(productHandle) + 
-                     '&variantId=' + encodeURIComponent(variantId) +
-                     '&forceDesktop=true&modalMode=true';
+      // Build editor URL with desktop force flag
+      const editorUrl = '/apps/gsb/editor?product=' + encodeURIComponent(productHandle) + 
+                       '&shopifyVariant=' + encodeURIComponent(variantId) +
+                       '&forceDesktop=true&modalMode=true';
     
     // Create modal HTML
     const modalHTML = `

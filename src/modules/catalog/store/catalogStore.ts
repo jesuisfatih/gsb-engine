@@ -159,6 +159,24 @@ export const useCatalogStore = defineStore("catalog", {
         return true;
       }) ?? null;
     },
+    /**
+     * Get Shopify variant ID for a given product/surface/color combination
+     * Used during checkout to find the correct Shopify variant
+     */
+    variantIdFor: state => (payload: { productSlug: string; surfaceId: string; color?: string | null; material?: string | null }) => {
+      const mapping = state.variantMappings.find(entry => {
+        if (entry.productSlug !== payload.productSlug) return false;
+        if (entry.surfaceId !== payload.surfaceId) return false;
+        if (payload.color !== undefined && payload.color !== null) {
+          if ((entry.color ?? null) !== payload.color) return false;
+        }
+        if (payload.material !== undefined && payload.material !== null) {
+          if ((entry.material ?? null) !== payload.material) return false;
+        }
+        return true;
+      });
+      return mapping?.shopifyVariantId ?? null;
+    },
   },
 
   actions: {

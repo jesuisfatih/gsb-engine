@@ -1582,6 +1582,36 @@ export const useEditorStore = defineStore("editor", {
       if (response.data?.designId) {
         this.designId = response.data.designId;
         console.log('[checkout] Design ID from backend:', this.designId);
+        
+        // HYBRID STORAGE: Mark design as in cart + add to cart tracking
+        if (!sessionStore.isAuthenticated) {
+          try {
+            const { useHybridStorage } = await import('@/composables/useHybridStorage');
+            const hybridStorage = useHybridStorage();
+            
+            // Get design key
+            const designKey = hybridStorage.getDesignKey(
+              this.productSlug,
+              this.surfaceId,
+              this.color
+            );
+            
+            // Mark as in cart
+            hybridStorage.markDesignInCart(designKey, response.data.designId, variantId || '');
+            
+            // Add to cart tracking
+            hybridStorage.addToCart({
+              designId: response.data.designId,
+              variantId: variantId || '',
+              quantity: this.quantity,
+              properties: lineItemProperties,
+            });
+            
+            console.log('[checkout] ✅ Cart tracking updated (hybrid storage)');
+          } catch (error) {
+            console.warn('[checkout] Failed to update cart tracking:', error);
+          }
+        }
       }
 
       const checkoutUrl = response.data?.checkoutUrl;

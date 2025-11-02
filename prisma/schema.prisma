@@ -828,3 +828,17 @@ model SupplierRoutingRule {
 
   @@index([tenantId, technique, region])
 }
+
+/// Anonymous user sessions for localStorage fallback (Safari 7-day ITP)
+/// Stores design snapshots with browser fingerprint hash for privacy
+model AnonymousSession {
+  id               String   @id @default(cuid())
+  fingerprintHash  String   @unique  // SHA-256 hash of browser fingerprint
+  designs          Json                // { [key]: { snapshot, previewUrl, updatedAt } }
+  createdAt        DateTime @default(now())
+  lastActiveAt     DateTime @updatedAt
+  expiresAt        DateTime            // Auto-delete after 30 days
+  
+  @@index([fingerprintHash])
+  @@index([expiresAt])
+}
