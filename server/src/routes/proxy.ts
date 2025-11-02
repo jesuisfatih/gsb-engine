@@ -157,16 +157,18 @@ proxyRouter.get("/editor", async (req, res) => {
       // Fix service worker - both quoted and single-quoted versions
       html = html.replace(/register\(['"]\/sw\.js['"]\)/g, "register('/apps/gsb/sw.js')");
       
-      // Inject Vite base path configuration
+      // Inject Vite base path configuration BEFORE anything else
       html = html.replace(
-        '</head>',
-        `<script>
-          // Set Vite base path for dynamic imports and assets
-          window.__vite_plugin_config__ = { base: '/apps/gsb/' };
-          window.__GSB_EMBED_MODE__ = true;
-          window.__GSB_BASE_PATH__ = '/apps/gsb';
-          window.__GSB_DISABLE_SW__ = true; // Disable SW for Shopify
-        </script></head>`
+        /<head[^>]*>/i,
+        `$&
+<script>
+// CRITICAL: Set these FIRST, before any other scripts
+window.__vite_plugin_config__ = { base: '/apps/gsb/' };
+window.__GSB_EMBED_MODE__ = true;
+window.__GSB_BASE_PATH__ = '/apps/gsb';
+window.__GSB_DISABLE_SW__ = true;
+console.log('[GSB Inject] Variables set - embedMode:', window.__GSB_EMBED_MODE__, 'basePath:', window.__GSB_BASE_PATH__);
+</script>`
       );
       
       res.setHeader('Content-Type', 'text/html');
