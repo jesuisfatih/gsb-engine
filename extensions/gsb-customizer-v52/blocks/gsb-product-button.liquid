@@ -51,48 +51,68 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
   }
 
-  /* GSB Editor Modal Styles */
+  /* GSB Editor Modal Styles - Force Full Screen */
   #gsb-editor-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 999999;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 2147483647 !important; /* Maximum z-index */
+    overflow: hidden !important;
   }
-
+  
   .gsb-modal-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.8);
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.8) !important;
     backdrop-filter: blur(4px);
     animation: gsbFadeIn 0.3s ease;
+    z-index: 2147483646 !important;
   }
-
+  
   .gsb-modal-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
     animation: gsbSlideUp 0.3s ease;
+    z-index: 2147483647 !important;
   }
 
   .gsb-modal-close {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    z-index: 1000000;
-    width: 48px;
-    height: 48px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.95);
-    color: #333;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transition: all 0.2s ease;
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 2147483647 !important; /* Maximum z-index - always on top */
+    width: 48px !important;
+    height: 48px !important;
+    border: none !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    color: #333 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.2s ease !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .gsb-modal-close:hover {
@@ -106,17 +126,19 @@
   }
 
   #gsb-editor-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    min-width: 100vw;
-    min-height: 100vh;
-  }
-  
-  /* Force desktop layout in iframe */
-  #gsb-editor-iframe body,
-  #gsb-editor-iframe .editor-root {
-    min-width: 1440px !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 2147483646 !important;
   }
 
   @keyframes gsbFadeIn {
@@ -135,13 +157,47 @@
     }
   }
 
+  /* Override ALL Shopify/Theme CSS that might interfere */
+  #gsb-editor-modal,
+  #gsb-editor-modal *,
+  .gsb-modal-overlay,
+  .gsb-modal-container,
+  #gsb-editor-iframe {
+    box-sizing: border-box !important;
+  }
+  
+  /* Hide Shopify elements when modal is open */
+  body.gsb-modal-open {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  body.gsb-modal-open .shopify-section,
+  body.gsb-modal-open header,
+  body.gsb-modal-open footer,
+  body.gsb-modal-open nav {
+    pointer-events: none !important;
+  }
+  
   /* Mobile responsive */
   @media (max-width: 768px) {
     .gsb-modal-close {
-      top: 10px;
-      right: 10px;
-      width: 40px;
-      height: 40px;
+      top: 10px !important;
+      right: 10px !important;
+      width: 40px !important;
+      height: 40px !important;
+    }
+    
+    #gsb-editor-modal,
+    .gsb-modal-overlay,
+    .gsb-modal-container,
+    #gsb-editor-iframe {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
     }
   }
 
@@ -177,11 +233,23 @@
       // Set iframe source
       iframe.src = editorUrl;
       
-      // Show modal
+      // Show modal (force full screen)
       modal.style.display = 'block';
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.right = '0';
+      modal.style.bottom = '0';
+      modal.style.width = '100vw';
+      modal.style.height = '100vh';
+      modal.style.zIndex = '2147483647';
       
-      // Prevent body scroll
+      // Lock body (prevent scroll and interaction with page)
+      document.body.classList.add('gsb-modal-open');
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
       
       // Inject desktop viewport into iframe (after load)
       iframe.onload = function() {
@@ -212,17 +280,21 @@
   function closeGSBEditor() {
     const modal = document.getElementById('gsb-editor-modal');
     const iframe = document.getElementById('gsb-editor-iframe');
-
+    
     if (modal && iframe) {
       // Hide modal
       modal.style.display = 'none';
-
+      
       // Clear iframe
       iframe.src = '';
-
-      // Restore body scroll
+      
+      // Restore body (unlock)
+      document.body.classList.remove('gsb-modal-open');
       document.body.style.overflow = '';
-
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      
       console.log('[GSB] Editor closed');
     }
   }
