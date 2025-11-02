@@ -15,7 +15,21 @@
  */
 
 import { ref, computed } from 'vue';
-import { $api } from '@/utils/api';
+
+/**
+ * Resolve API base URL (Shopify App Proxy context aware)
+ */
+function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const gsbBasePath = (window as any).__GSB_BASE_PATH__;
+    const gsbEmbedMode = (window as any).__GSB_EMBED_MODE__;
+    
+    if (gsbEmbedMode && gsbBasePath) {
+      return `${gsbBasePath}/api`;
+    }
+  }
+  return '/api';
+}
 
 // Storage version for future migrations
 const STORAGE_VERSION = 2;
@@ -330,16 +344,23 @@ export function useHybridStorage() {
     
     syncInProgress.value = true;
     try {
-      await $api('/api/anonymous/sync', {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/anonymous/sync`, {
         method: 'POST',
-        body: {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           fingerprint: fingerprint.value,
           designKey: key,
           snapshot: design.snapshot,
           previewUrl: design.previewUrl,
           shopifyVariantId: design.shopifyVariantId,
-        },
+        }),
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       
       lastSync.value = new Date().toISOString();
       
@@ -363,11 +384,18 @@ export function useHybridStorage() {
    */
   async function restoreFromBackend(key: string): Promise<StoredDesign | null> {
     try {
-      const response = await $api(`/api/anonymous/designs/${fingerprint.value}/${key}`);
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/anonymous/designs/${fingerprint.value}/${key}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
       
-      if (response.data) {
-        console.log('[HybridStorage] ✅ Restored from backend (localStorage was empty)');
-        return response.data;
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data) {
+          console.log('[HybridStorage] ✅ Restored from backend (localStorage was empty)');
+          return data.data;
+        }
       }
     } catch (error) {
       console.warn('[HybridStorage] Backend restore failed:', error);

@@ -63,8 +63,27 @@ function resolveTenantId(): string | undefined {
   return stored ?? undefined
 }
 
-const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-const normalisedBaseUrl = rawBaseUrl.replace(/\/+$/, '')
+// Detect Shopify App Proxy context (runtime)
+function resolveBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    // Check if running in Shopify App Proxy context
+    const gsbBasePath = (window as any).__GSB_BASE_PATH__;
+    const gsbEmbedMode = (window as any).__GSB_EMBED_MODE__;
+    
+    if (gsbEmbedMode && gsbBasePath) {
+      // Shopify App Proxy: /apps/gsb/api
+      const apiBase = `${gsbBasePath}/api`;
+      console.log('[api] Shopify App Proxy detected, using base:', apiBase);
+      return apiBase;
+    }
+  }
+  
+  // Default: /api (standalone mode)
+  const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+  return rawBaseUrl.replace(/\/+$/, '');
+}
+
+const normalisedBaseUrl = resolveBaseUrl()
 
 export const $api = ofetch.create({
   baseURL: normalisedBaseUrl,

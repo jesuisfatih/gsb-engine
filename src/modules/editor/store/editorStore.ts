@@ -1556,7 +1556,14 @@ export const useEditorStore = defineStore("editor", {
       // For anonymous users, send design snapshot
       const designSnapshot = !sessionStore.isAuthenticated ? this.serializeSnapshot() : undefined;
 
-      const response = await $api<{ data: { checkoutUrl?: string; lineItem?: Record<string, unknown> } }>("/proxy/cart", {
+      // Detect Shopify App Proxy context for correct API URL
+      const isShopifyProxy = typeof window !== 'undefined' && (window as any).__GSB_EMBED_MODE__;
+      const apiBase = isShopifyProxy ? '/apps/gsb/api' : '/api';
+      const cartEndpoint = `${apiBase}/proxy/cart`;
+      
+      console.log('[checkout] Using API endpoint:', cartEndpoint);
+
+      const response = await $api<{ data: { checkoutUrl?: string; lineItem?: Record<string, unknown> } }>(cartEndpoint, {
         method: "POST",
         body: {
           designId: this.designId,
