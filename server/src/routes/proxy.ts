@@ -186,7 +186,7 @@ proxyRouter.get("/editor", async (req, res) => {
       
       res.setHeader('Content-Type', 'text/html');
       res.setHeader('X-Frame-Options', 'ALLOW-FROM https://*.myshopify.com');
-      res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://*.myshopify.com");
+      res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://admin.shopify.com https://*.myshopify.com");
       res.send(html);
     } else {
       console.error('[proxy] dist/index.html not found');

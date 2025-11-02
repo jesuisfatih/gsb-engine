@@ -2,8 +2,8 @@
 app.gsb-engine.dev {
 	encode zstd gzip
 
-	# CSP header for Shopify iframe embedding
-	header Content-Security-Policy "frame-ancestors https://admin.shopify.com https://*.myshopify.com;"
+	# CSP header for Shopify iframe embedding (both admin and store)
+	header Content-Security-Policy "frame-ancestors 'self' https://admin.shopify.com https://*.myshopify.com;"
 
 	# Use route block to control directive execution order
 	route {
