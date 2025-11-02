@@ -199,6 +199,63 @@ proxyRouter.get("/editor", async (req, res) => {
 });
 
 /**
+ * GET /manifest.json - Serve PWA manifest with corrected paths
+ */
+proxyRouter.get("/manifest.json", (req, res) => {
+  try {
+    const manifestPath = path.join(process.cwd(), "dist", "manifest.json");
+    
+    if (fs.existsSync(manifestPath)) {
+      let manifest = fs.readFileSync(manifestPath, "utf-8");
+      
+      // Fix all paths to include /apps/gsb prefix
+      manifest = manifest.replace(/"\/icon-/g, '"/apps/gsb/icon-');
+      manifest = manifest.replace(/"\/screenshots\//g, '"/apps/gsb/screenshots/');
+      manifest = manifest.replace(/"\/editor/g, '"/apps/gsb/editor');
+      manifest = manifest.replace(/"\/designs/g, '"/apps/gsb/designs');
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.send(manifest);
+    } else {
+      res.status(404).send('Manifest not found');
+    }
+  } catch (error) {
+    console.error('[proxy] Manifest serve error:', error);
+    res.status(500).send('Failed to load manifest');
+  }
+});
+
+/**
+ * GET /sw.js - Serve Service Worker with corrected paths
+ */
+proxyRouter.get("/sw.js", (req, res) => {
+  try {
+    const swPath = path.join(process.cwd(), "dist", "sw.js");
+    
+    if (fs.existsSync(swPath)) {
+      let sw = fs.readFileSync(swPath, "utf-8");
+      
+      // Fix all paths to include /apps/gsb prefix
+      sw = sw.replace(/'\/'/g, "'/apps/gsb/'");
+      sw = sw.replace(/'\/editor'/g, "'/apps/gsb/editor'");
+      sw = sw.replace(/'\/manifest\.json'/g, "'/apps/gsb/manifest.json'");
+      sw = sw.replace(/'\/icon-/g, "'/apps/gsb/icon-");
+      
+      res.setHeader('Content-Type', 'application/javascript');
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.send(sw);
+    } else {
+      res.status(404).send('Service Worker not found');
+    }
+  } catch (error) {
+    console.error('[proxy] Service Worker serve error:', error);
+    res.status(500).send('Failed to load service worker');
+  }
+});
+
+/**
  * Serve all static files with express.static
  * Note: proxyRouter is already mounted at /apps/gsb in app.ts
  * So this serves: /apps/gsb/assets/*, /apps/gsb/*.js, etc.

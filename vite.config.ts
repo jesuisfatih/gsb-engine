@@ -158,6 +158,8 @@ export default defineConfig(({ mode }) => {
       '@api-utils': fileURLToPath(new URL('./src/plugins/fake-api/utils/', import.meta.url)),
     },
   },
+  // Base path for Shopify App Proxy deployment
+  base: process.env.NODE_ENV === 'production' ? '/apps/gsb/' : '/',
   build: {
     chunkSizeWarningLimit: 5000,
   },
