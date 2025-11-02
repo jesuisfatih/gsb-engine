@@ -17,14 +17,14 @@ import { uploadRouter } from "./upload";
 import { shopifyRouter } from "./shopify";
 import { webhooksRouter } from "./webhooks";
 import { analyticsRouter } from "./analytics";
-import { anonymousRouter } from "./anonymous";
+// import { anonymousRouter } from "./anonymous"; // Moved to app.ts (public route)
 // import { graphqlRouter } from "./graphql"; // TEMP DISABLED - Apollo Server v5 import issue
 
 export function createApiRouter() {
   const router = Router();
 
   // router.use("/graphql", graphqlRouter); // TEMP DISABLED
-  router.use("/anonymous", anonymousRouter);
+  // anonymousRouter moved to app.ts - must be public (no auth)
   router.use("/catalog", catalogRouter);
   router.use("/designs", designsRouter);
   router.use("/gang-sheets", gangSheetRouter);
