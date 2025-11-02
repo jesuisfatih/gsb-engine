@@ -157,30 +157,15 @@ proxyRouter.get("/editor", async (req, res) => {
       // Fix service worker - both quoted and single-quoted versions
       html = html.replace(/register\(['"]\/sw\.js['"]\)/g, "register('/apps/gsb/sw.js')");
       
-      // Inject Vite import.meta.env override for dynamic imports
+      // Inject Vite base path configuration
       html = html.replace(
         '</head>',
         `<script>
-          // Override Vite's base path for dynamic imports
+          // Set Vite base path for dynamic imports and assets
           window.__vite_plugin_config__ = { base: '/apps/gsb/' };
           window.__GSB_EMBED_MODE__ = true;
           window.__GSB_BASE_PATH__ = '/apps/gsb';
-          
-          // Monkey-patch import() to fix dynamic import paths
-          const originalImport = window.__vite_ssr_import__ || window.import;
-          if (!window.__vite_patched__) {
-            window.__vite_patched__ = true;
-            const proxyImport = new Proxy(import, {
-              apply(target, thisArg, argumentsList) {
-                let [specifier] = argumentsList;
-                if (typeof specifier === 'string' && specifier.startsWith('/assets/')) {
-                  specifier = '/apps/gsb' + specifier;
-                }
-                return Reflect.apply(target, thisArg, [specifier]);
-              }
-            });
-            // Note: Can't actually override import(), but we inject base path into Vite
-          }
+          window.__GSB_DISABLE_SW__ = true; // Disable SW for Shopify
         </script></head>`
       );
       
