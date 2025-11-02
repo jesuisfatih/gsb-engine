@@ -1,0 +1,35 @@
+# ---------- Frontend: app.gsb-engine.dev ----------
+app.gsb-engine.dev {
+	encode zstd gzip
+
+	# CSP header for Shopify iframe embedding
+	header Content-Security-Policy "frame-ancestors https://admin.shopify.com https://*.myshopify.com;"
+
+	# Use route block to control directive execution order
+	route {
+		# Shopify App Proxy routes - MUST BE FIRST!
+		# Handles /apps/gsb/editor, /apps/gsb/loader.css, /apps/gsb/assets/*, etc.
+		reverse_proxy /apps/gsb/* 127.0.0.1:4000
+		
+		# API routes - proxy to backend (SECOND)
+		reverse_proxy /api/* 127.0.0.1:4000
+		
+		# Static files and SPA fallback (THIRD - LAST)
+		root * /srv/gsb/api/dist
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# ---------- API: api.gsb-engine.dev (Optional) ----------
+api.gsb-engine.dev {
+	encode zstd gzip
+	
+	# CORS headers
+	header Access-Control-Allow-Origin "https://app.gsb-engine.dev"
+	header Access-Control-Allow-Credentials "true"
+	
+	# Reverse proxy all requests
+	reverse_proxy 127.0.0.1:4000
+}
+
