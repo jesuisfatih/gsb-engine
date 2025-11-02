@@ -17,6 +17,22 @@ export const setupGuards = (router: _RouterTyped<RouteNamedMap & { [key: string]
       return;
     }
     
+    // CRITICAL FIX: Detect customer storefront access (preview_theme_id in URL)
+    // Customer login olduğunda admin'e yönlendirme!
+    if (typeof window !== 'undefined' && window.location.search) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasPreviewTheme = urlParams.has('preview_theme_id') || urlParams.has('key');
+      
+      if (hasPreviewTheme) {
+        console.log('[Router] Customer storefront detected - bypassing auth');
+        // Redirect to editor (customer context)
+        if (to.path !== '/editor' && to.path !== '/apps/gsb/editor') {
+          return '/editor' + window.location.search;
+        }
+        return;
+      }
+    }
+    
     // Allow Shopify embedded routes (authenticated via session token)
     if (to.path.startsWith('/shopify/embedded')) {
       return;

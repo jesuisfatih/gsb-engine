@@ -8,7 +8,24 @@ export default function (_app: App) {
   // Skip initialization for Shopify embedded routes - they handle session via Shopify App Bridge
   if (typeof window !== 'undefined') {
     const path = window.location.pathname
+    const search = window.location.search
     console.log('[SessionPlugin] Current path:', path)
+    console.log('[SessionPlugin] Query params:', search)
+    
+    // CRITICAL FIX: Detect customer storefront access (preview_theme_id in URL)
+    const urlParams = new URLSearchParams(search);
+    const hasPreviewTheme = urlParams.has('preview_theme_id') || urlParams.has('key');
+    
+    if (hasPreviewTheme) {
+      console.log('[SessionPlugin] ⏭️ Customer storefront detected - skipping session init')
+      try {
+        useSessionStore(store) // Register but don't initialize
+        console.log('[SessionPlugin] ✅ Store registered for customer context')
+      } catch (err) {
+        console.error('[SessionPlugin] ❌ Failed to register store:', err)
+      }
+      return
+    }
     
     if (path.includes('/shopify/embedded')) {
       console.log('[SessionPlugin] ⏭️ Skipping for Shopify embedded (but registering store)')
