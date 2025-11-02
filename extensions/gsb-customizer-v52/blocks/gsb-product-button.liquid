@@ -9,7 +9,7 @@
 <div class="gsb-v52-button-wrapper" style="margin: 1.5rem 0;" data-gsb-active="true">
   <button 
     id="gsb-customize-btn-v52"
-    onclick="window.open('https://app.gsb-engine.dev/editor?product={{ product.handle }}&variantId={{ gsb_variant.id }}', '_blank')"
+    onclick="window.location.href = '/apps/gsb/editor?product={{ product.handle }}&variantId={{ gsb_variant.id }}'"
     style="
       background: {{ block.settings.button_color | default: '#4c1d95' }};
       color: {{ block.settings.button_text_color | default: '#ffffff' }};
@@ -36,7 +36,7 @@
     transform: translateY(0) !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
   }
-  
+
   {% if hide_default_buttons %}
   /* Hide default buy buttons when GSB is active */
   div[data-gsb-active="true"] ~ .shopify-payment-button,
@@ -118,4 +118,3 @@
   ]
 }
 {% endschema %}
-
