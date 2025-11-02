@@ -11,6 +11,7 @@ import { authRouter } from "./routes/auth";
 import { healthRouter } from "./routes/health";
 import { embedRouter } from "./routes/embed";
 import { proxyRouter } from "./routes/proxy";
+import { anonymousRouter } from "./routes/anonymous";
 
 export function createApp() {
   const app = express();
@@ -47,11 +48,7 @@ export function createApp() {
   app.use("/api/health", healthRouter);
   app.use("/api/embed", embedRouter);
   app.use("/api/proxy", proxyRouter);
-  
-  // Import anonymous router separately (must be public, no auth required)
-  const { anonymousRouter } = require("./routes/anonymous");
-  app.use("/api/anonymous", anonymousRouter); // PUBLIC - no auth!
-  
+  app.use("/api/anonymous", anonymousRouter); // PUBLIC - no auth required!
   app.use("/api", requireAuthMiddleware, createApiRouter());
 
   // App Proxy routes (for Shopify storefront)
