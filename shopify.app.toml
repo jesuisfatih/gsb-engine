@@ -24,10 +24,10 @@ automatically_update_urls_on_dev = false
 
 # App Proxy - Customer storefront access
 # TEMPORARILY DISABLED FOR RE-DEPLOY FIX (Shopify CLI 3.84+ issue)
-# [app_proxy]
-# url = "https://app.gsb-engine.dev"
-# subpath = "gsb"
-# prefix = "apps"
+[app_proxy]
+url = "https://app.gsb-engine.dev"
+subpath = "gsb"
+prefix = "apps"
 
 # Extensions
 extension_directories = ["extensions/gsb-customizer-v52"]
