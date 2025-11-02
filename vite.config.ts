@@ -78,6 +78,7 @@ export default defineConfig(({ mode }) => {
         './src/composables/',
         './src/utils/',
         './src/plugins/*/composables/*',
+        './src/modules/*/stores/', // Auto-import all stores from modules
       ],
       vueTemplate: true,
 
