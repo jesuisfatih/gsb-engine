@@ -27,6 +27,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/_debug/",
   "/api/embed/",
   "/api/catalog", // Allow public catalog access for customer editor
+  "/apps/gsb/", // Shopify App Proxy routes - allow public access
 ];
 
 const PUBLIC_EXACT_PATHS = new Set([
