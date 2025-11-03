@@ -8,6 +8,7 @@ import { pxToMm, mmToPx } from "../utils/units";
 import { validateDesign } from "../engine/validate";
 import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
+import { useEditorModeStore } from "./editorModeStore";
 import { FONT_LIBRARY } from "../constants/fonts";
 import { $api } from "@/utils/api";
 import { fetchPricingConfigs, fetchPricingQuote, type PricingQuote } from "../services/pricingService";
