@@ -272,14 +272,14 @@ proxyRouter.post("/cart/prepare", async (req, res, next) => {
         tenantId: tenantId || undefined,
         userId: user?.id || undefined,
         status: 'DRAFT',
-        name: `${snapshot.productSlug} - ${snapshot.surfaceId}`,
+        name: `${snapshot.productSlug || 'Design'} - ${snapshot.surfaceId || 'Custom'}`,
         snapshot: snapshot.items || snapshot,
-        productSlug: snapshot.productSlug,
-        surfaceId: snapshot.surfaceId,
-        printTech: snapshot.printTech,
-        color: snapshot.color,
-        sheetWidthPx: snapshot.sheetWidthPx,
-        sheetHeightPx: snapshot.sheetHeightPx,
+        productSlug: snapshot.productSlug || 'custom',
+        surfaceSlug: snapshot.surfaceId || 'custom',
+        printTech: snapshot.printTech || 'dtf',
+        color: snapshot.color || null,
+        sheetWidthPx: snapshot.sheetWidthPx || 800,
+        sheetHeightPx: snapshot.sheetHeightPx || 600,
         metadata: {
           source: user?.id ? 'authenticated' : 'guest',
           shopifyProductGid,
@@ -291,7 +291,13 @@ proxyRouter.post("/cart/prepare", async (req, res, next) => {
     
     console.log('[cart/prepare] Design saved:', design.id);
     
-    // 2. Process preview (if base64, save as file)
+    // 2. Generate URLs (Rakip gibi sistem)
+    const baseUrl = process.env.PUBLIC_URL || 'https://app.gsb-engine.dev';
+    const thumbnailUrl = `${baseUrl}/api/designs/${design.id}/thumbnail`;
+    const editUrl = `${baseUrl}/editor?designId=${design.id}`;
+    const printReadyUrl = `${baseUrl}/api/designs/${design.id}/print-ready`;
+    
+    // 3. Process preview (if base64, save as file)
     let previewUrl = previewDataUrl;
     
     if (previewDataUrl?.startsWith('data:image')) {
@@ -303,32 +309,48 @@ proxyRouter.post("/cart/prepare", async (req, res, next) => {
         const fs = await import('fs/promises');
         const path = await import('path');
         
-        const uploadsDir = path.join(process.cwd(), 'uploads', 'previews');
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'designs', design.id);
         await fs.mkdir(uploadsDir, { recursive: true });
         
-        const filename = `${design.id}.png`;
-        const filepath = path.join(uploadsDir, filename);
-        await fs.writeFile(filepath, buffer);
+        // Save multiple versions
+        const previewFilename = 'preview.png';
+        const thumbnailFilename = 'thumbnail.png';
         
-        // Generate URL
-        const baseUrl = process.env.PUBLIC_URL || 'https://app.gsb-engine.dev';
-        previewUrl = `${baseUrl}/uploads/previews/${filename}`;
+        await fs.writeFile(path.join(uploadsDir, previewFilename), buffer);
         
-        // Update design
-        await prisma.designDocument.update({
-          where: { id: design.id },
-          data: { previewUrl },
-        });
+        // Create thumbnail (50% size)
+        const sharp = await import('sharp');
+        const thumbnailBuffer = await sharp.default(buffer)
+          .resize({ width: Math.floor(buffer.length / 2), fit: 'inside' })
+          .png()
+          .toBuffer();
+        await fs.writeFile(path.join(uploadsDir, thumbnailFilename), thumbnailBuffer);
         
-        console.log('[cart/prepare] Preview saved:', previewUrl);
+        previewUrl = `${baseUrl}/uploads/designs/${design.id}/${previewFilename}`;
+        
+        console.log('[cart/prepare] Images saved:', { previewUrl, thumbnailUrl });
       } catch (imageError) {
         console.warn('[cart/prepare] Image save failed:', imageError);
       }
     }
     
+    // 4. Update design with URLs
+    await prisma.designDocument.update({
+      where: { id: design.id },
+      data: {
+        previewUrl,
+        thumbnailUrl,
+        editUrl,
+        printReadyUrl,
+      },
+    });
+    
     res.json({
       designId: design.id,
-      previewUrl: previewUrl && previewUrl.length < 200 ? previewUrl : '',
+      previewUrl,
+      thumbnailUrl,
+      editUrl,
+      printReadyUrl,
     });
     
   } catch (error) {
@@ -382,6 +404,7 @@ proxyRouter.post("/cart", async (req, res, next) => {
         });
       }
       
+      // Create design first (to get ID)
       design = await prisma.designDocument.create({
         data: {
           tenantId: tenantId || undefined,
@@ -391,19 +414,34 @@ proxyRouter.post("/cart", async (req, res, next) => {
           title: `Anonymous Design - ${new Date().toLocaleString()}`,
           snapshot: snapshot.items || [],
           productSlug: snapshot.productSlug || 'canvas-poster',
-          surfaceId: snapshot.surfaceId || payload.surfaceId || 'canvas-front',
+          surfaceSlug: snapshot.surfaceId || payload.surfaceId || 'canvas-front',
           color: snapshot.color || null,
           printTech: snapshot.printTech || payload.technique || 'dtf',
           sheetWidthPx: snapshot.sheetWidthPx || 2400,
           sheetHeightPx: snapshot.sheetHeightPx || 3000,
           metadata: {
             source: 'anonymous-checkout',
-            originalProductSlug: payload.productGid || productSlug,
+            originalProductSlug: payload.productGid,
+            shopifyVariantId: payload.variantId,
             createdAt: new Date().toISOString(),
           },
         },
       });
+      
+      // Generate URLs (Rakip gibi sistem)
+      const baseUrl = process.env.PUBLIC_URL || 'https://app.gsb-engine.dev';
+      const thumbnailUrl = `${baseUrl}/api/designs/${design.id}/thumbnail`;
+      const editUrl = `${baseUrl}/editor?designId=${design.id}`;
+      const printReadyUrl = `${baseUrl}/api/designs/${design.id}/print-ready`;
+      
+      // Update with URLs
+      design = await prisma.designDocument.update({
+        where: { id: design.id },
+        data: { thumbnailUrl, editUrl, printReadyUrl },
+      });
+      
       console.log('[proxy/cart] ✅ Created anonymous design:', design.id);
+      console.log('[proxy/cart] ✅ URLs:', { thumbnailUrl, editUrl, printReadyUrl });
     }
 
     if (design.tenantId) {
@@ -472,6 +510,13 @@ proxyRouter.post("/cart", async (req, res, next) => {
       }
     };
 
+    // ✅ RAKİP GİBİ SİSTEM - Shopify Order'da görünecek linkler
+    setProp("_GSB_Design_ID", payload.designId || design.id);
+    setProp("_GSB_Preview", design.thumbnailUrl || design.previewUrl);
+    setProp("_GSB_Edit", design.editUrl);
+    setProp("_GSB_Print_Ready", design.printReadyUrl);
+    
+    // Standard properties
     setProp("Design ID", payload.designId || design.id);
     setProp("Product", payload.productTitle);
     setProp("Surface ID", payload.surfaceId);

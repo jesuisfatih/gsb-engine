@@ -71,6 +71,7 @@
     "pinia": "3.0.2",
     "prismjs": "1.30.0",
     "roboto-fontface": "0.10.0",
+    "sharp": "^0.33.5",
     "shepherd.js": "13.0.3",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
