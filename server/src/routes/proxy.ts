@@ -452,7 +452,7 @@ proxyRouter.post("/cart", async (req, res, next) => {
           status: SUBMITTED_STATUS,
           submittedAt: new Date(),
           previewUrl: payload.previewUrl,
-          title: `Anonymous Design - ${new Date().toLocaleString()}`,
+          name: `Anonymous Design - ${new Date().toLocaleString()}`,
           snapshot: snapshot.items || [],
           productSlug: snapshot.productSlug || 'canvas-poster',
           surfaceSlug: snapshot.surfaceId || payload.surfaceId || 'canvas-front',
