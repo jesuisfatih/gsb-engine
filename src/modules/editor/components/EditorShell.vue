@@ -1404,7 +1404,7 @@ button.primary:not(:disabled):hover {
 /* ✅ NEW: Canva-style icon toolbars (STRICT 60px containment) */
 .left-pane {
   position: fixed;
-  left: 0;
+  left: 0 !important; /* ✅ CRITICAL: Always at left edge */
   top: 60px; /* Below EditorTopbar */
   bottom: 0;
   width: 60px;
@@ -1412,15 +1412,16 @@ button.primary:not(:disabled):hover {
   max-width: 60px;
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  z-index: 100; /* Above canvas, below panels (z-index: 150) */
+  z-index: 150; /* ✅ CRITICAL: Above center-pane, BELOW side-panels (200) */
   overflow: hidden; /* ✅ CRITICAL: No overflow, strict containment */
   box-sizing: border-box;
   contain: strict; /* ✅ CSS Containment Level 3 - full isolation */
+  pointer-events: auto; /* ✅ Always clickable */
 }
 
 .right-pane {
   position: fixed;
-  right: 0;
+  right: 0 !important; /* ✅ CRITICAL: Always at right edge */
   top: 60px; /* Below EditorTopbar */
   bottom: 0;
   width: 60px;
@@ -1428,10 +1429,11 @@ button.primary:not(:disabled):hover {
   max-width: 60px;
   background: rgb(var(--v-theme-surface));
   border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  z-index: 100; /* Above canvas, below panels (z-index: 150) */
+  z-index: 150; /* ✅ CRITICAL: Above center-pane, BELOW side-panels (200) */
   overflow: hidden; /* ✅ CRITICAL: No overflow, strict containment */
   box-sizing: border-box;
   contain: strict; /* ✅ CSS Containment Level 3 - full isolation */
+  pointer-events: auto; /* ✅ Always clickable */
 }
 
 /* ✅ HIDE: Old toggle button labels (desktop only) */
@@ -2038,12 +2040,23 @@ iframe .stage-region {
   position: relative !important;
 }
 
-/* Prevent Shopify theme CSS from hiding panels */
+/* Prevent Shopify theme CSS from hiding toolbars */
 body.gsb-modal-mode .left-pane,
 body.gsb-modal-mode .right-pane {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+  z-index: 150 !important; /* ✅ Below panels (200), above content */
+  pointer-events: auto !important; /* ✅ Always clickable */
+  position: fixed !important;
+}
+
+body.gsb-modal-mode .left-pane {
+  left: 0 !important;
+}
+
+body.gsb-modal-mode .right-pane {
+  right: 0 !important;
 }
 </style>
 

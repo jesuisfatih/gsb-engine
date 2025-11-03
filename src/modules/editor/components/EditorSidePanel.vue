@@ -20,11 +20,24 @@ const emit = defineEmits<{
 
 const panelStyle = computed(() => {
   // Calculate position based on show state
-  const offset = props.show ? '60px' : `-${props.width}px`;
+  // ✅ CRITICAL: Panel toolbar'ın YANINDA açılmalı, üstünde değil
+  let offset: string;
+  
+  if (!props.show) {
+    // Hidden: off-screen
+    offset = `-${props.width}px`;
+  } else {
+    // Visible: next to toolbar (60px icon toolbar width)
+    if (props.side === 'left') {
+      offset = '60px'; // Left toolbar'ın sağında
+    } else {
+      offset = '60px'; // Right toolbar'ın solunda
+    }
+  }
   
   return {
     width: `${props.width}px`,
-    [props.side]: offset, // Show: next to toolbar (60px), Hide: off-screen
+    [props.side]: offset,
   };
 });
 
