@@ -81,10 +81,28 @@ function getApiBase(): string {
 }
 
 export const $api = ofetch.create({
-  baseURL: getApiBase,
+  baseURL: '/api', // Static base - will be modified in onRequest
   credentials: 'include',
   fetch: (input, init) => resolveShopifyFetch()(input as any, init as any),
-  async onRequest({ options }) {
+  async onRequest({ request, options }) {
+    // FIX: Dynamically resolve base URL for each request
+    const correctBase = getApiBase();
+    
+    // If request is a string and doesn't already have correct base, prepend it
+    if (typeof request === 'string' && !request.startsWith('http')) {
+      // Replace /api prefix with correct base
+      if (request.startsWith('/api/')) {
+        request = request.replace('/api/', `${correctBase}/`);
+      } else if (!request.startsWith(correctBase)) {
+        request = `${correctBase}${request.startsWith('/') ? '' : '/'}${request}`;
+      }
+      
+      // Update the request URL
+      options.baseURL = '';
+      // @ts-ignore - we need to modify the request
+      Object.assign(options, { url: request });
+    }
+    
     const headers = new Headers(options.headers ?? {})
 
     const accessToken = resolveAccessToken()
@@ -97,10 +115,7 @@ export const $api = ofetch.create({
 
     options.headers = headers
     
-    // Log API calls in Shopify mode for debugging
-    if (isShopifyAppProxy()) {
-      console.log('[api] Shopify App Proxy mode - Base:', getApiBase());
-    }
+    console.log('[api] Request:', request, '| Base:', correctBase);
   },
 })
 export {}
