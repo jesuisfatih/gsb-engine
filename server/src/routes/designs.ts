@@ -746,3 +746,176 @@ designsRouter.post("/:id/convert-to-template", async (req, res, next) => {
     next(error);
   }
 });
+
+/**
+ * GET /api/designs/:id/thumbnail
+ * Serve thumbnail image for Shopify merchant panel
+ */
+designsRouter.get("/:id/thumbnail", async (req, res, next) => {
+  try {
+    const { prisma } = req.context;
+    const designId = req.params.id;
+    
+    const design = await prisma.designDocument.findUnique({
+      where: { id: designId },
+      select: { id: true, thumbnailUrl: true, previewUrl: true },
+    });
+    
+    if (!design) {
+      return res.status(404).json({ error: "Design not found" });
+    }
+    
+    // Try to serve from file system
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const thumbnailPath = path.join(process.cwd(), 'uploads', 'designs', design.id, 'thumbnail.png');
+    
+    try {
+      const thumbnailBuffer = await fs.readFile(thumbnailPath);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h cache
+      return res.send(thumbnailBuffer);
+    } catch (fileError) {
+      // Fallback: Generate thumbnail on-the-fly from preview
+      const previewPath = path.join(process.cwd(), 'uploads', 'designs', design.id, 'preview.png');
+      
+      try {
+        const previewBuffer = await fs.readFile(previewPath);
+        const sharp = await import('sharp');
+        
+        const thumbnailBuffer = await sharp.default(previewBuffer)
+          .resize({ width: 300, height: 300, fit: 'inside' })
+          .png()
+          .toBuffer();
+        
+        // Save for next time
+        await fs.writeFile(thumbnailPath, thumbnailBuffer);
+        
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.send(thumbnailBuffer);
+      } catch (previewError) {
+        // Ultimate fallback: redirect to URL
+        if (design.thumbnailUrl || design.previewUrl) {
+          return res.redirect(design.thumbnailUrl || design.previewUrl || '');
+        }
+        return res.status(404).json({ error: "Thumbnail not found" });
+      }
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/designs/:id/preview
+ * Serve preview image (medium resolution)
+ */
+designsRouter.get("/:id/preview", async (req, res, next) => {
+  try {
+    const { prisma } = req.context;
+    const designId = req.params.id;
+    
+    const design = await prisma.designDocument.findUnique({
+      where: { id: designId },
+      select: { id: true, previewUrl: true },
+    });
+    
+    if (!design) {
+      return res.status(404).json({ error: "Design not found" });
+    }
+    
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const previewPath = path.join(process.cwd(), 'uploads', 'designs', design.id, 'preview.png');
+    
+    try {
+      const previewBuffer = await fs.readFile(previewPath);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(previewBuffer);
+    } catch (fileError) {
+      if (design.previewUrl) {
+        return res.redirect(design.previewUrl);
+      }
+      return res.status(404).json({ error: "Preview not found" });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/designs/:id/print-ready
+ * Generate high-res print-ready file (on-demand)
+ */
+designsRouter.get("/:id/print-ready", async (req, res, next) => {
+  try {
+    const { prisma } = req.context;
+    const designId = req.params.id;
+    
+    const design = await prisma.designDocument.findUnique({
+      where: { id: designId },
+      select: {
+        id: true,
+        snapshot: true,
+        sheetWidthPx: true,
+        sheetHeightPx: true,
+        productSlug: true,
+        surfaceSlug: true,
+      },
+    });
+    
+    if (!design) {
+      return res.status(404).json({ error: "Design not found" });
+    }
+    
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const printReadyPath = path.join(process.cwd(), 'uploads', 'designs', design.id, 'print-ready.png');
+    
+    // Check if already generated
+    try {
+      const printReadyBuffer = await fs.readFile(printReadyPath);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.setHeader('Content-Disposition', `attachment; filename="design-${design.id}-print-ready.png"`);
+      return res.send(printReadyBuffer);
+    } catch (fileError) {
+      // Generate print-ready file (high-res)
+      // TODO: Implement server-side canvas rendering with konva/fabric
+      // For now, return preview as fallback
+      const previewPath = path.join(process.cwd(), 'uploads', 'designs', design.id, 'preview.png');
+      
+      try {
+        const previewBuffer = await fs.readFile(previewPath);
+        
+        // Scale up to print resolution (300 DPI)
+        const sharp = await import('sharp');
+        const printBuffer = await sharp.default(previewBuffer)
+          .resize({
+            width: Math.floor((design.sheetWidthPx as number) || 2400),
+            height: Math.floor((design.sheetHeightPx as number) || 3000),
+            fit: 'contain',
+            background: { r: 255, g: 255, b: 255, alpha: 0 },
+          })
+          .png({ quality: 100 })
+          .toBuffer();
+        
+        // Save for future
+        await fs.mkdir(path.dirname(printReadyPath), { recursive: true });
+        await fs.writeFile(printReadyPath, printBuffer);
+        
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Content-Disposition', `attachment; filename="design-${design.id}-print-ready.png"`);
+        return res.send(printBuffer);
+      } catch (error) {
+        console.error('[print-ready] Generation failed:', error);
+        return res.status(500).json({ error: "Failed to generate print-ready file" });
+      }
+    }
+  } catch (error) {
+    next(error);
+  }
+});
