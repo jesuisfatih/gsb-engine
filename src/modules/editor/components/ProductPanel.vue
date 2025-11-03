@@ -239,7 +239,7 @@ const surfaceMetrics = computed(() => {
 .group {
   border: 1px solid var(--divider);
   border-radius: 14px;
-  overflow: hidden;
+  overflow: visible; /* ✅ FIX: Allow details to expand/collapse fully */
   background: var(--surface-solid);
   backdrop-filter: blur(6px);
 }
@@ -251,6 +251,12 @@ const surfaceMetrics = computed(() => {
   cursor: pointer;
   list-style: none;
   color: var(--text-primary);
+  border-radius: 13px; /* ✅ FIX: Fully rounded when collapsed */
+  transition: border-radius 0.2s ease;
+}
+
+.group[open] summary {
+  border-radius: 13px 13px 0 0; /* ✅ Only top rounded when open */
 }
 
 .group summary::-webkit-details-marker {
@@ -274,6 +280,8 @@ const surfaceMetrics = computed(() => {
   flex-direction: column;
   gap: 10px;
   padding: 12px 14px 16px;
+  border-radius: 0 0 13px 13px; /* ✅ FIX: Bottom corners rounded */
+  background: var(--surface-solid); /* ✅ Ensure background continuity */
 }
 
 .row {
