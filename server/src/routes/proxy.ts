@@ -645,22 +645,34 @@ proxyRouter.post("/cart", async (req, res, next) => {
       }
     }
 
+    // ✅ CRITICAL FIX: Convert GID to numeric variant ID
+    // Shopify /cart/add expects numeric ID, not GID format
+    const toNumericVariantId = (gid: string | undefined | null): string | null => {
+      if (!gid) return null;
+      if (gid.startsWith('gid://shopify/ProductVariant/')) {
+        return gid.split('/').pop() || null;
+      }
+      return gid; // Already numeric
+    };
+    
+    const numericVariantId = toNumericVariantId(payload.variantId);
+    
     const searchParams = new URLSearchParams();
-    if (payload.variantId) searchParams.set("id", payload.variantId);
+    if (numericVariantId) searchParams.set("id", numericVariantId);
     searchParams.set("quantity", String(payload.quantity));
     Object.entries(properties).forEach(([key, value]) => {
       if (value) searchParams.set(`properties[${key}]`, value);
     });
 
-    const checkoutPath = payload.variantId
+    const checkoutPath = numericVariantId
       ? `/cart/add?${searchParams.toString()}`
       : `/cart?${searchParams.toString()}`;
 
     let remoteCheckout: { checkoutUrl: string; cartId: string | null } | null = null;
-    if (payload.variantId) {
+    if (numericVariantId) {
       try {
         remoteCheckout = await createShopifyCart({
-          variantId: payload.variantId,
+          variantId: numericVariantId, // ✅ Use numeric ID, not GID
           quantity: payload.quantity,
           properties,
           note: payload.note,
