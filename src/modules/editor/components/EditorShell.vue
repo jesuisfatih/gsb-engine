@@ -8,7 +8,6 @@ import {
   Package, FolderOpen, Grid3x3, ClipboardList, Settings, Star, Lightbulb, Boxes 
 } from 'lucide-vue-next';
 import { useSimpleSessionPersistence } from '@/composables/useSimpleSessionPersistence';
-import { useHybridStorage } from '@/composables/useHybridStorage';
 import "../styles/fonts.css";
 import EditorToolbar from "./EditorToolbar.vue";
 import EditorTopbar from "./EditorTopbar.vue";
@@ -56,7 +55,6 @@ try {
 }
 
 const { restoreFromLocalStorage, setupAutoSave } = useSimpleSessionPersistence();
-const hybridStorage = useHybridStorage();
 useAutosaveManager();
 
 // Option C: Real-time Collaboration
@@ -213,14 +211,6 @@ onMounted(async () => {
     document.body.classList.add('gsb-modal-mode');
     document.body.setAttribute('data-force-desktop', 'true');
     console.log('[editor] ✅ Desktop mode forced - responsive CSS disabled');
-  }
-  
-  // Initialize hybrid storage (multi-design, cart tracking, Safari fallback)
-  await hybridStorage.init();
-  
-  if (hybridStorage.isPrivateMode.value) {
-    console.warn('[editor] ⚠️ Private mode detected - designs will be session-only');
-    // TODO: Show warning toast to user
   }
   
   // Load catalog with tenantId from URL if public customer
@@ -410,45 +400,6 @@ onMounted(async () => {
         window.localStorage.setItem('gsb-shopify-context', JSON.stringify(shopifyContext));
       }
     }
-  }
-
-  // HYBRID STORAGE: Smart restore for current product
-  // After product is loaded (from variant or manual), try to restore previous design
-  if (!hasAuth && editorStore.productSlug && editorStore.surfaceId) {
-    const designKey = hybridStorage.getDesignKey(
-      editorStore.productSlug,
-      editorStore.surfaceId,
-      editorStore.color
-    );
-    
-    console.log("[editor] 🔍 Looking for saved design:", designKey);
-    
-    const savedDesign = await hybridStorage.loadDesign(designKey);
-    
-    if (savedDesign && savedDesign.snapshot.items && savedDesign.snapshot.items.length > 0) {
-      console.log("[editor] 📦 Found saved design:", savedDesign.designId, `(${savedDesign.snapshot.items.length} items)`);
-      
-      // Ask user to restore
-      const restorePrompt = `Bu ürün için daha önce ${new Date(savedDesign.updatedAt).toLocaleDateString('tr-TR')} tarihinde bir tasarım yapmıştınız.\n\n${savedDesign.snapshot.items.length} öğe içeriyor.\n\nKaldığınız yerden devam etmek ister misiniz?`;
-      
-      const shouldRestore = confirm(restorePrompt);
-      
-      if (shouldRestore) {
-        // Restore snapshot
-        editorStore.applySnapshot(savedDesign.snapshot);
-        editorStore.designId = savedDesign.designId;
-        console.log("[editor] ✅ Design restored from hybrid storage:", designKey);
-      } else {
-        console.log("[editor] ℹ️ User declined restore, starting fresh");
-      }
-    } else {
-      console.log("[editor] ℹ️ No saved design found for:", designKey);
-    }
-  }
-  
-  // Cleanup old designs (7+ days)
-  if (!hasAuth) {
-    hybridStorage.cleanup();
   }
 
   // Setup auto-save to localStorage (for anonymous users)

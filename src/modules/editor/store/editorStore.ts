@@ -1556,23 +1556,9 @@ export const useEditorStore = defineStore("editor", {
       // For anonymous users, send design snapshot
       const designSnapshot = !sessionStore.isAuthenticated ? this.serializeSnapshot() : undefined;
 
-      // Detect Shopify App Proxy context and build correct URL
-      const isShopifyProxy = typeof window !== 'undefined' && (window as any).__GSB_EMBED_MODE__;
-      const apiBase = isShopifyProxy && (window as any).__GSB_BASE_PATH__ 
-        ? `${(window as any).__GSB_BASE_PATH__}/api` 
-        : '/api';
-      const cartUrl = `${apiBase}/proxy/cart`;
-      
-      console.log('[checkout] Shopify Proxy:', isShopifyProxy, '| API Base:', apiBase, '| Full URL:', cartUrl);
-
-      // Use native fetch for explicit URL control
-      const fetchResponse = await fetch(cartUrl, {
+      const response = await $api<{ data: { checkoutUrl?: string; lineItem?: Record<string, unknown>; designId?: string } }>("/proxy/cart", {
         method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+        body: {
           designId: this.designId,
           designSnapshot,
           productGid,
@@ -1589,52 +1575,16 @@ export const useEditorStore = defineStore("editor", {
           dpiFloor: stats.lowestImageDpi,
           lineItemProperties,
           returnUrl: options?.returnUrl ?? (typeof window !== "undefined" ? window.location.href : undefined),
-        }),
+        },
       });
-      
-      if (!fetchResponse.ok) {
-        throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
-      }
-      
-      const responseData = await fetchResponse.json() as { data: { checkoutUrl?: string; lineItem?: Record<string, unknown>; designId?: string } };
 
-      // Update designId from backend response (for anonymous users)
-      if (responseData.data?.designId) {
-        this.designId = responseData.data.designId;
-        console.log('[checkout] Design ID from backend:', this.designId);
-        
-        // HYBRID STORAGE: Mark design as in cart + add to cart tracking
-        if (!sessionStore.isAuthenticated) {
-          try {
-            const { useHybridStorage } = await import('@/composables/useHybridStorage');
-            const hybridStorage = useHybridStorage();
-            
-            // Get design key
-            const designKey = hybridStorage.getDesignKey(
-              this.productSlug,
-              this.surfaceId,
-              this.color
-            );
-            
-            // Mark as in cart
-            hybridStorage.markDesignInCart(designKey, responseData.data.designId, variantId || '');
-            
-            // Add to cart tracking
-            hybridStorage.addToCart({
-              designId: responseData.data.designId,
-              variantId: variantId || '',
-              quantity: this.quantity,
-              properties: lineItemProperties,
-            });
-            
-            console.log('[checkout] ✅ Cart tracking updated (hybrid storage)');
-          } catch (error) {
-            console.warn('[checkout] Failed to update cart tracking:', error);
-          }
-        }
+      // Update designId from backend response
+      if (response.data?.designId) {
+        this.designId = response.data.designId;
+        console.log('[checkout] ✅ Design ID from backend:', this.designId);
       }
 
-      const checkoutUrl = responseData.data?.checkoutUrl;
+      const checkoutUrl = response.data?.checkoutUrl;
       
       // If in iframe (Shopify modal), send message to parent instead of redirect
       if (isInIframe()) {

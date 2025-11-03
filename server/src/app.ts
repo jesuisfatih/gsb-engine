@@ -11,7 +11,6 @@ import { authRouter } from "./routes/auth";
 import { healthRouter } from "./routes/health";
 import { embedRouter } from "./routes/embed";
 import { proxyRouter } from "./routes/proxy";
-import { anonymousRouter } from "./routes/anonymous";
 
 export function createApp() {
   const app = express();
@@ -48,25 +47,16 @@ export function createApp() {
   app.use("/api/health", healthRouter);
   app.use("/api/embed", embedRouter);
   app.use("/api/proxy", proxyRouter);
-  app.use("/api/anonymous", anonymousRouter); // PUBLIC - no auth required!
   app.use("/api", requireAuthMiddleware, createApiRouter());
 
   // App Proxy routes (for Shopify storefront)
-  // Mount proxyRouter for /editor, /manifest, etc.
   app.use("/apps/gsb", proxyRouter);
   
-  // CRITICAL: Also mount API routers under /apps/gsb/api for Shopify iframe context
-  app.use("/apps/gsb/api/anonymous", anonymousRouter);
-  app.use("/apps/gsb/api/proxy", proxyRouter); // Proxy cart endpoints
-  app.use("/apps/gsb/api/embed", embedRouter); // Embed endpoints
-  
-  console.log('[app] ✅ Routes registered:');
-  console.log('  - /api/anonymous (standalone)');
-  console.log('  - /apps/gsb/api/anonymous (Shopify App Proxy)');
-  console.log('  - /api/proxy (standalone)');
-  console.log('  - /apps/gsb/api/proxy (Shopify App Proxy)');
-  console.log('  - /api/embed (standalone)');
-  console.log('  - /apps/gsb/api/embed (Shopify App Proxy)');
+  console.log('[app] ✅ Routes registered (simplified)');
+  console.log('  - /api/proxy/* → proxyRouter');
+  console.log('  - /apps/gsb/* → proxyRouter (App Proxy)');
+  console.log('  - /apps/gsb/editor → Editor HTML');
+  console.log('  - /apps/gsb/api/proxy/cart → Checkout endpoint');
 
   // Serve static files from dist folder (SPA frontend)
   // This comes AFTER API routes to avoid catching /api/* paths

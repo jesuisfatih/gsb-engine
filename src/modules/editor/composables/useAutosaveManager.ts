@@ -14,53 +14,20 @@ export function useAutosaveManager() {
   const editorStore = useEditorStore();
   const modeStore = useEditorModeStore();
 
-  // For anonymous users, ALWAYS use hybrid localStorage (even in iframe)
-  // Parent storage disabled - not reliable without parent listener
+  // For anonymous users, use simple localStorage
   if (!sessionStore?.isAuthenticated) {
-    // Skip parent storage check - use hybrid storage instead
-    console.log('[autosave] Anonymous user - using hybrid localStorage (iframe or not)');
-    
-    // Fallback: localStorage (non-iframe) - HYBRID STORAGE MODE
-    console.log('[autosave] Using hybrid storage mode (multi-design + Safari fallback)');
-    
-    // Import hybrid storage
-    let hybridStorage: ReturnType<typeof import('@/composables/useHybridStorage').useHybridStorage> | null = null;
-    
-    (async () => {
-      const { useHybridStorage } = await import('@/composables/useHybridStorage');
-      hybridStorage = useHybridStorage();
-      await hybridStorage.init();
-      console.log('[autosave] ✅ Hybrid storage initialized');
-    })();
+    console.log('[autosave] Anonymous user - using simple localStorage');
     
     const { scheduleSave } = useAnonymousDesignStorage({
       getSnapshot: () => editorStore.serializeSnapshot(),
       enabled: () => isAutosaveMode(modeStore.activeMode),
       debounceMs: 2000,
       onSave: (timestamp: string) => {
-        // HYBRID STORAGE: Save to multi-design storage
-        if (hybridStorage && editorStore.productSlug && editorStore.surfaceId) {
-          const designKey = hybridStorage.getDesignKey(
-            editorStore.productSlug,
-            editorStore.surfaceId,
-            editorStore.color
-          );
-          
-          hybridStorage.saveDesign(designKey, {
-            designId: editorStore.designId || `anon-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            snapshot: editorStore.serializeSnapshot(),
-            previewUrl: undefined, // Will be captured on checkout
-            inCart: false,
-            createdAt: new Date().toISOString(),
-          });
-        }
-        
-        // Update editorStore timestamps and history for UI display
         editorStore.lastAutosaveAt = timestamp;
         editorStore.lastSavedAt = timestamp;
         editorStore.recordAutosaveHistory({
           kind: 'autosave',
-          message: 'Autosaved to browser (hybrid storage)',
+          message: 'Autosaved to browser',
           timestamp,
           status: editorStore.designStatus,
         });

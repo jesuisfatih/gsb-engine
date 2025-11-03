@@ -63,11 +63,28 @@ function resolveTenantId(): string | undefined {
   return stored ?? undefined
 }
 
+// Detect if running in Shopify App Proxy iframe
+function isShopifyAppProxy(): boolean {
+  if (typeof window === 'undefined') return false;
+  const embedMode = (window as any).__GSB_EMBED_MODE__;
+  const basePath = (window as any).__GSB_BASE_PATH__;
+  return Boolean(embedMode && basePath);
+}
+
+// Get API base URL
+function getApiBase(): string {
+  if (isShopifyAppProxy()) {
+    const basePath = (window as any).__GSB_BASE_PATH__ || '/apps/gsb';
+    return `${basePath}/api`;
+  }
+  return '/api';
+}
+
 export const $api = ofetch.create({
-  baseURL: '/', // Will be resolved dynamically in onRequest
+  baseURL: getApiBase,
   credentials: 'include',
   fetch: (input, init) => resolveShopifyFetch()(input as any, init as any),
-  async onRequest({ options, request }) {
+  async onRequest({ options }) {
     const headers = new Headers(options.headers ?? {})
 
     const accessToken = resolveAccessToken()
@@ -80,28 +97,10 @@ export const $api = ofetch.create({
 
     options.headers = headers
     
-    // DYNAMIC BASE URL RESOLUTION (lazy, per-request)
-    // Check if running in Shopify App Proxy context
-    if (typeof window !== 'undefined') {
-      const gsbBasePath = (window as any).__GSB_BASE_PATH__;
-      const gsbEmbedMode = (window as any).__GSB_EMBED_MODE__;
-      
-      if (gsbEmbedMode && gsbBasePath) {
-        // Shopify App Proxy: prepend /apps/gsb to request
-        const requestStr = String(request);
-        if (requestStr.startsWith('/') && !requestStr.startsWith('/apps/gsb')) {
-          // Prepend /apps/gsb to the request URL
-          const newUrl = `${gsbBasePath}${request}`;
-          options.baseURL = '';
-          Object.defineProperty(options, 'url', { value: newUrl, writable: true });
-          console.log('[api] Shopify App Proxy mode - Rewriting:', request, '→', newUrl);
-          return;
-        }
-      }
+    // Log API calls in Shopify mode for debugging
+    if (isShopifyAppProxy()) {
+      console.log('[api] Shopify App Proxy mode - Base:', getApiBase());
     }
-    
-    // Default mode: use request as-is
-    options.baseURL = '';
   },
 })
 export {}
