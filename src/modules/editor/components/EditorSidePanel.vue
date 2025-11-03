@@ -145,5 +145,35 @@ watch(() => props.show, (show) => {
 .panel-content::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--v-theme-on-surface), 0.3);
 }
+
+/* ✅ RESPONSIVE: Panel sizing */
+@media (max-width: 768px) {
+  .side-panel {
+    /* On mobile: full width panel */
+    width: calc(100vw - 60px) !important;
+    max-width: 380px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1279px) {
+  .side-panel {
+    /* On tablet: slightly narrower */
+    max-width: 340px !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .side-panel {
+    /* On desktop: use provided width */
+    max-width: 420px;
+  }
+}
+
+/* ✅ Ensure panel is visible */
+.side-panel.show {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
 </style>
 

@@ -793,7 +793,7 @@ function changeMode(mode: "dtf" | "gang") {
             title="Toggle left panel"
           >
             <PanelLeft :size="18" />
-            <span>Left</span>
+            <span class="desktop-only-label">Left</span>
           </button>
           <button
             type="button"
@@ -803,7 +803,7 @@ function changeMode(mode: "dtf" | "gang") {
             title="Toggle toolbar"
           >
             <Menu :size="18" />
-            <span>Toolbar</span>
+            <span class="desktop-only-label">Toolbar</span>
           </button>
           <button
             type="button"
@@ -813,7 +813,7 @@ function changeMode(mode: "dtf" | "gang") {
             title="Toggle right panel"
           >
             <PanelRight :size="18" />
-            <span>Right</span>
+            <span class="desktop-only-label">Right</span>
           </button>
           <button
             type="button"
@@ -1396,17 +1396,20 @@ button.primary:not(:disabled):hover {
   overflow: hidden;
 }
 
-/* ✅ NEW: Canva-style icon toolbars (fixed position, 60px) */
+/* ✅ NEW: Canva-style icon toolbars (fixed position, 60px, RESPONSIVE) */
 .left-pane {
   position: fixed;
   left: 0;
   top: 60px; /* Below EditorTopbar */
   bottom: 0;
   width: 60px;
+  min-width: 60px;
+  max-width: 60px;
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   z-index: 100; /* Above canvas, below panels (z-index: 150) */
   overflow: visible; /* Allow slide-in panels to overflow */
+  box-sizing: border-box;
 }
 
 .right-pane {
@@ -1415,10 +1418,75 @@ button.primary:not(:disabled):hover {
   top: 60px; /* Below EditorTopbar */
   bottom: 0;
   width: 60px;
+  min-width: 60px;
+  max-width: 60px;
   background: rgb(var(--v-theme-surface));
   border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   z-index: 100; /* Above canvas, below panels (z-index: 150) */
   overflow: visible; /* Allow slide-in panels to overflow */
+  box-sizing: border-box;
+}
+
+/* ✅ HIDE: Old toggle button labels (desktop only) */
+.desktop-only-label {
+  display: inline;
+}
+
+/* ======================================
+   🎨 RESPONSIVE BREAKPOINTS
+   ====================================== */
+
+/* 📱 MOBILE (< 768px) */
+@media (max-width: 767px) {
+  .left-pane,
+  .right-pane {
+    top: 50px !important; /* Shorter topbar on mobile */
+    width: 56px !important;
+    min-width: 56px !important;
+    max-width: 56px !important;
+  }
+  
+  .center-pane {
+    margin-left: 56px !important;
+    margin-right: 56px !important;
+  }
+  
+  /* Keep old toggle buttons visible on mobile */
+  .ghost.icon {
+    opacity: 1;
+  }
+}
+
+/* 📱 TABLET (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .left-pane,
+  .right-pane {
+    top: 55px !important;
+  }
+}
+
+/* 💻 DESKTOP (≥ 1024px) */
+@media (min-width: 1024px) {
+  /* Fade out old toggle buttons on desktop (we have IconToolbar) */
+  .ghost.icon {
+    opacity: 0.5;
+  }
+  
+  .ghost.icon .desktop-only-label {
+    font-size: 0.7rem;
+  }
+  
+  .ghost.icon:hover {
+    opacity: 1;
+  }
+}
+
+/* 🖥️ LARGE DESKTOP (≥ 1440px) */
+@media (min-width: 1440px) {
+  .center-pane {
+    margin-left: 60px;
+    margin-right: 60px;
+  }
 }
 
 /* ✅ HIDDEN: Resize handles not needed with fixed toolbars */

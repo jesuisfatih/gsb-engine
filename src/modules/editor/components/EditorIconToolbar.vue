@@ -53,18 +53,22 @@ function handleItemClick(item: ToolbarItem) {
 </template>
 
 <style scoped>
+/* ✅ RESPONSIVE: Icon toolbar (60px fixed width) */
 .icon-toolbar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 12px 8px;
+  gap: 6px;
+  padding: 8px 6px;
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   width: 60px;
+  min-width: 60px; /* ✅ Prevent shrinking */
+  max-width: 60px; /* ✅ Prevent growing */
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .icon-toolbar[data-side="right"] {
@@ -77,8 +81,10 @@ function handleItemClick(item: ToolbarItem) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 48px; /* ✅ Fit within 60px container */
+  height: 48px;
+  min-width: 48px;
+  max-width: 48px;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -86,6 +92,7 @@ function handleItemClick(item: ToolbarItem) {
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .toolbar-item:hover:not(.disabled) {
