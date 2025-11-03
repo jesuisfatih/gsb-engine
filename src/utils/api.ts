@@ -88,19 +88,17 @@ export const $api = ofetch.create({
     // FIX: Dynamically resolve base URL for each request
     const correctBase = getApiBase();
     
-    // If request is a string and doesn't already have correct base, prepend it
+    // Modify baseURL for Shopify App Proxy context
     if (typeof request === 'string' && !request.startsWith('http')) {
-      // Replace /api prefix with correct base
       if (request.startsWith('/api/')) {
-        request = request.replace('/api/', `${correctBase}/`);
-      } else if (!request.startsWith(correctBase)) {
-        request = `${correctBase}${request.startsWith('/') ? '' : '/'}${request}`;
+        // Replace /api with correct base (either /api or /apps/gsb/api)
+        options.baseURL = correctBase;
+        // Remove leading /api from request path
+        const pathWithoutApi = request.replace(/^\/api/, '');
+        request = pathWithoutApi || '/';
+        
+        console.log('[api] ✅ URL rewritten:', `${correctBase}${pathWithoutApi}`);
       }
-      
-      // Update the request URL
-      options.baseURL = '';
-      // @ts-ignore - we need to modify the request
-      Object.assign(options, { url: request });
     }
     
     const headers = new Headers(options.headers ?? {})
@@ -114,8 +112,6 @@ export const $api = ofetch.create({
       headers.set('x-tenant-id', tenantId)
 
     options.headers = headers
-    
-    console.log('[api] Request:', request, '| Base:', correctBase);
   },
 })
 export {}
