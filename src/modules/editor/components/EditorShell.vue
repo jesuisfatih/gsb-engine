@@ -1541,6 +1541,7 @@ button.primary:not(:disabled):hover {
 /* ✅ NEW: Center pane with DYNAMIC margins (panel-aware) */
 .center-pane {
   position: relative;
+  z-index: 10; /* ✅ CRITICAL: Below panels (z-index: 200) */
   display: grid;
   grid-template-columns: 82px minmax(0, 1fr);
   gap: 12px;
@@ -2003,8 +2004,15 @@ iframe.gsb-editor-iframe {
 /* Force panels above everything in iframe context */
 body.gsb-modal-mode .side-panel,
 iframe .side-panel {
-  z-index: 2147483647 !important; /* Maximum z-index */
+  z-index: 2147483640 !important; /* High z-index, below topbar */
   position: fixed !important;
+}
+
+/* Ensure center-pane stays below panels */
+body.gsb-modal-mode .center-pane,
+iframe .center-pane {
+  z-index: 10 !important;
+  position: relative !important;
 }
 
 /* Prevent Shopify theme CSS from hiding panels */

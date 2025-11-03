@@ -65,7 +65,7 @@ watch(() => props.show, (show) => {
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  z-index: 150; /* Above toolbars (z-index: 50) and canvas */
+  z-index: 200; /* ✅ CRITICAL: Above center-pane (z-index: 10) and toolbars (z-index: 100) */
   display: flex;
   flex-direction: column;
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), right 0.3s cubic-bezier(0.4, 0, 0.2, 1);

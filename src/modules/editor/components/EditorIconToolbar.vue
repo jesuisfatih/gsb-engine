@@ -57,9 +57,10 @@ function handleItemClick(item: ToolbarItem) {
 .icon-toolbar {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: center; /* ✅ Horizontal center */
+  justify-content: flex-start; /* ✅ Top aligned */
   gap: 4px;
-  padding: 6px 4px; /* ✅ Daha dar padding */
+  padding: 8px 4px; /* ✅ Symmetric padding */
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   width: 60px;
@@ -80,12 +81,13 @@ function handleItemClick(item: ToolbarItem) {
 .toolbar-item {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: center; /* ✅ Vertical center */
+  justify-content: center; /* ✅ Horizontal center */
   width: 52px; /* ✅ 60px - 8px padding = 52px max */
   height: 52px;
   min-width: 52px;
   max-width: 52px;
+  margin: 0; /* ✅ No extra margin */
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -95,6 +97,11 @@ function handleItemClick(item: ToolbarItem) {
   flex-shrink: 0;
   box-sizing: border-box;
   overflow: hidden; /* ✅ Clip any overflow */
+}
+
+/* ✅ CRITICAL: Center icon perfectly */
+.toolbar-item > * {
+  flex-shrink: 0;
 }
 
 /* ✅ Icon size: Optimal size (28px → 24px, %15 küçültüldü) */
