@@ -78,16 +78,16 @@ model Plan {
 }
 
 model Tenant {
-  id               String                @id @default(uuid())
-  slug             String                @unique
+  id               String                  @id @default(uuid())
+  slug             String                  @unique
   displayName      String
-  status           TenantStatus          @default(ACTIVE)
+  status           TenantStatus            @default(ACTIVE)
   planId           String?
-  plan             Plan?                 @relation(fields: [planId], references: [id])
+  plan             Plan?                   @relation(fields: [planId], references: [id])
   branding         Json?
   settings         Json?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
   users            TenantUser[]
   apiTokens        ApiToken[]
   products         Product[]
@@ -176,14 +176,14 @@ model Product {
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
-  tenant         Tenant?          @relation(fields: [tenantId], references: [id])
-  surfaces       Surface[]
-  variants       Variant[]
-  defaultSurface Surface?         @relation("ProductDefaultSurface", fields: [defaultSurfaceId], references: [id])
-  designs        DesignDocument[]
-  templates      Template[]
-  shortcodes     Shortcode[]
-  builderConfigs ProductBuilderConfig[]
+  tenant          Tenant?                 @relation(fields: [tenantId], references: [id])
+  surfaces        Surface[]
+  variants        Variant[]
+  defaultSurface  Surface?                @relation("ProductDefaultSurface", fields: [defaultSurfaceId], references: [id])
+  designs         DesignDocument[]
+  templates       Template[]
+  shortcodes      Shortcode[]
+  builderConfigs  ProductBuilderConfig[]
   variantMappings VariantSurfaceMapping[]
 
   @@unique([tenantId, slug])
@@ -205,10 +205,10 @@ model Surface {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  product   Product          @relation(fields: [productId], references: [id])
-  products  Product[]        @relation("ProductDefaultSurface")
-  designs   DesignDocument[]
-  templates Template[]
+  product         Product                 @relation(fields: [productId], references: [id])
+  products        Product[]               @relation("ProductDefaultSurface")
+  designs         DesignDocument[]
+  templates       Template[]
   variantMappings VariantSurfaceMapping[]
 
   @@index([productId])
@@ -271,8 +271,8 @@ model ProductBuilderConfig {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  tenant  Tenant              @relation(fields: [tenantId], references: [id])
+  product Product             @relation(fields: [productId], references: [id])
   sizes   ProductSizePreset[]
 
   @@unique([tenantId, productId])
@@ -409,40 +409,40 @@ model GallerySettings {
 }
 
 model ImageToSheetSettings {
-  id                       String   @id @default(uuid())
-  tenantId                 String   @unique
-  printerWidth             Decimal? @db.Decimal(10, 2)
-  useVariantWidths         Boolean  @default(false)
-  maxHeight                Decimal? @db.Decimal(10, 2)
-  imageMargin              Decimal? @db.Decimal(10, 2)
-  artboardMargin           Decimal? @db.Decimal(10, 2)
-  unit                     String   @default("in")
-  enableAllLocations       Boolean  @default(true)
+  id                        String   @id @default(uuid())
+  tenantId                  String   @unique
+  printerWidth              Decimal? @db.Decimal(10, 2)
+  useVariantWidths          Boolean  @default(false)
+  maxHeight                 Decimal? @db.Decimal(10, 2)
+  imageMargin               Decimal? @db.Decimal(10, 2)
+  artboardMargin            Decimal? @db.Decimal(10, 2)
+  unit                      String   @default("in")
+  enableAllLocations        Boolean  @default(true)
   disableDownloadValidation Boolean  @default(false)
-  password                 String?
-  pricingMode              String   @default("area")
-  pricePerUnit             Decimal? @db.Decimal(10, 4)
-  pricingSide              String   @default("Width")
-  shippingWeightRate       Decimal? @db.Decimal(10, 4)
-  metadata                 Json?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  password                  String?
+  pricingMode               String   @default("area")
+  pricePerUnit              Decimal? @db.Decimal(10, 4)
+  pricingSide               String   @default("Width")
+  shippingWeightRate        Decimal? @db.Decimal(10, 4)
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant Tenant                   @relation(fields: [tenantId], references: [id])
   sizes  ImageToSheetSizePreset[]
 }
 
 model ImageToSheetSizePreset {
-  id        String   @id @default(uuid())
+  id         String   @id @default(uuid())
   settingsId String
-  label     String
-  widthIn   Decimal? @db.Decimal(10, 2)
-  heightIn  Decimal? @db.Decimal(10, 2)
-  price     Decimal? @db.Decimal(10, 2)
-  sortOrder Int      @default(0)
-  metadata  Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  label      String
+  widthIn    Decimal? @db.Decimal(10, 2)
+  heightIn   Decimal? @db.Decimal(10, 2)
+  price      Decimal? @db.Decimal(10, 2)
+  sortOrder  Int      @default(0)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   settings ImageToSheetSettings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
 
@@ -463,6 +463,16 @@ model DesignDocument {
   autosaveSnapshot      Json?
   autosaveAt            DateTime?
   previewUrl            String?
+  thumbnailUrl          String? // Merchant panel thumbnail
+  editUrl               String? // Re-edit link for customers
+  printReadyUrl         String? // High-res production file
+  productSlug           String? // Store original product
+  surfaceSlug           String? // Store original surface
+  printTech             String? // Store print technique
+  color                 String? // Store color variant
+  sheetWidthPx          Float? // Canvas width in pixels
+  sheetHeightPx         Float? // Canvas height in pixels
+  metadata              Json? // Extra metadata (Shopify IDs, etc)
   submittedAt           DateTime?
   sourceShortcodeHandle String?
   sheetWidthMm          Float?
@@ -832,13 +842,13 @@ model SupplierRoutingRule {
 /// Anonymous user sessions for localStorage fallback (Safari 7-day ITP)
 /// Stores design snapshots with browser fingerprint hash for privacy
 model AnonymousSession {
-  id               String   @id @default(cuid())
-  fingerprintHash  String   @unique  // SHA-256 hash of browser fingerprint
-  designs          Json                // { [key]: { snapshot, previewUrl, updatedAt } }
-  createdAt        DateTime @default(now())
-  lastActiveAt     DateTime @updatedAt
-  expiresAt        DateTime            // Auto-delete after 30 days
-  
+  id              String   @id @default(cuid())
+  fingerprintHash String   @unique // SHA-256 hash of browser fingerprint
+  designs         Json // { [key]: { snapshot, previewUrl, updatedAt } }
+  createdAt       DateTime @default(now())
+  lastActiveAt    DateTime @updatedAt
+  expiresAt       DateTime // Auto-delete after 30 days
+
   @@index([fingerprintHash])
   @@index([expiresAt])
 }
