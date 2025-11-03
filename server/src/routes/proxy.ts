@@ -627,9 +627,18 @@ proxyRouter.post("/cart", async (req, res, next) => {
     setProp("Product", payload.productTitle);
     setProp("Surface ID", payload.surfaceId);
     setProp("Technique", payload.technique);
-    // ✅ Use absolute URL if available (short), skip if too long (>255 chars)
+    
+    // ✅ CRITICAL FIX: Shopify cart shows only filename for "Preview URL"
+    // Solution: Send both image preview and clickable link
     const finalPreviewUrl = previewUrl || design.previewUrl;
-    setProp("Preview URL", finalPreviewUrl && finalPreviewUrl.length < 255 ? finalPreviewUrl : undefined);
+    if (finalPreviewUrl && finalPreviewUrl.length < 255) {
+      // Customer-visible: Clickable thumbnail with link
+      const imgHtml = `<a href="${finalPreviewUrl}" target="_blank"><img src="${finalPreviewUrl}" width="80" height="80" style="border-radius:4px;" alt="Design Preview" /></a>`;
+      setProp("Design Preview", imgHtml);
+      
+      // Also send as text link (backup)
+      setProp("Preview Link", finalPreviewUrl);
+    }
     if (payload.sheetWidthMm && payload.sheetHeightMm) {
       const width = Math.round(payload.sheetWidthMm);
       const height = Math.round(payload.sheetHeightMm);
