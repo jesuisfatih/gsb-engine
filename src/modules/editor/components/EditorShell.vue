@@ -1397,7 +1397,7 @@ button.primary:not(:disabled):hover {
   overflow: hidden;
 }
 
-/* ✅ NEW: Canva-style icon toolbars (STRICT 60px containment) */
+/* ✅ NEW: Canva-style icon toolbars (CONTAINER for EditorIconToolbar) */
 .left-pane {
   position: fixed;
   left: 0 !important; /* ✅ CRITICAL: Always at left edge */
@@ -1408,11 +1408,12 @@ button.primary:not(:disabled):hover {
   max-width: 60px;
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  z-index: 150; /* ✅ CRITICAL: Above center-pane, BELOW side-panels (200) */
-  overflow: hidden; /* ✅ CRITICAL: No overflow, strict containment */
+  z-index: 150; /* ✅ Above center-pane, BELOW side-panels (200) */
+  overflow: visible; /* ✅ CHANGED: Let child (EditorIconToolbar) handle overflow */
   box-sizing: border-box;
-  contain: strict; /* ✅ CSS Containment Level 3 - full isolation */
-  pointer-events: auto; /* ✅ Always clickable */
+  pointer-events: auto;
+  display: flex; /* ✅ Flex container */
+  flex-direction: column;
 }
 
 .right-pane {
@@ -1425,11 +1426,12 @@ button.primary:not(:disabled):hover {
   max-width: 60px;
   background: rgb(var(--v-theme-surface));
   border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  z-index: 150; /* ✅ CRITICAL: Above center-pane, BELOW side-panels (200) */
-  overflow: hidden; /* ✅ CRITICAL: No overflow, strict containment */
+  z-index: 150; /* ✅ Above center-pane, BELOW side-panels (200) */
+  overflow: visible; /* ✅ CHANGED: Let child (EditorIconToolbar) handle overflow */
   box-sizing: border-box;
-  contain: strict; /* ✅ CSS Containment Level 3 - full isolation */
-  pointer-events: auto; /* ✅ Always clickable */
+  pointer-events: auto;
+  display: flex; /* ✅ Flex container */
+  flex-direction: column;
 }
 
 /* ✅ HIDE: Old toggle button labels (desktop only) */

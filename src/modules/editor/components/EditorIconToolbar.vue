@@ -53,29 +53,27 @@ function handleItemClick(item: ToolbarItem) {
 </template>
 
 <style scoped>
-/* ✅ RESPONSIVE: Icon toolbar (60px STRICT containment) */
+/* ✅ RESPONSIVE: Icon toolbar (FILLS parent 100%) */
 .icon-toolbar {
   display: flex;
   flex-direction: column;
   align-items: center; /* ✅ Horizontal center */
   justify-content: flex-start; /* ✅ Top aligned */
   gap: 4px;
-  padding: 8px 4px; /* ✅ Symmetric padding */
-  background: rgb(var(--v-theme-surface));
-  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  width: 60px;
-  min-width: 60px;
-  max-width: 60px;
-  height: 100%;
+  padding: 8px 0; /* ✅ No horizontal padding - let parent handle it */
+  background: transparent; /* ✅ Parent (left-pane) has background */
+  border: none; /* ✅ Parent (left-pane) has borders */
+  width: 100%; /* ✅ CRITICAL: Fill parent completely */
+  height: 100%; /* ✅ CRITICAL: Fill parent completely */
   overflow-y: auto;
-  overflow-x: hidden; /* ✅ CRITICAL: No horizontal overflow */
+  overflow-x: hidden;
   box-sizing: border-box;
-  contain: layout style; /* ✅ CSS Containment - keeps content inside */
+  margin: 0;
+  position: relative;
 }
 
 .icon-toolbar[data-side="right"] {
-  border-right: none;
-  border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  /* No special styling - parent handles borders */
 }
 
 .toolbar-item {
@@ -83,13 +81,13 @@ function handleItemClick(item: ToolbarItem) {
   display: flex;
   align-items: center; /* ✅ Vertical center */
   justify-content: center; /* ✅ Horizontal center */
-  width: 52px; /* ✅ 60px - 8px padding = 52px max */
-  height: 52px;
-  min-width: 52px;
-  max-width: 52px;
-  margin: 0; /* ✅ No extra margin */
+  width: 56px; /* ✅ Parent 60px, slight margin for comfort */
+  height: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  margin: 0 auto; /* ✅ CRITICAL: Center in parent */
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
   color: rgba(var(--v-theme-on-surface), 0.7);
   cursor: pointer;
@@ -102,6 +100,9 @@ function handleItemClick(item: ToolbarItem) {
 /* ✅ CRITICAL: Center icon perfectly */
 .toolbar-item > * {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ✅ Icon size: Optimal size (28px → 24px, %15 küçültüldü) */
