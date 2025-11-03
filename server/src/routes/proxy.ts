@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { $Enums } from "../../src/generated/prisma/client";
 import { env } from "../env";
 import { saveDesignToShopifyMetaobject } from "../services/shopifyMetaobjects";
+import { createShopifyFilesService } from "../services/shopifyFilesService";
+import { createDesignImageService } from "../services/designImageService";
 import path from "path";
 import fs from "fs";
 
@@ -469,11 +471,61 @@ proxyRouter.post("/cart", async (req, res, next) => {
         },
       });
       
-      // Generate URLs (Rakip gibi sistem)
+      // Generate and upload images to Shopify CDN
+      let thumbnailUrl: string | null = null;
+      let printReadyUrl: string | null = null;
+      
+      if (payload.previewUrl && process.env.SHOPIFY_SHOP_DOMAIN && process.env.SHOPIFY_ADMIN_ACCESS_TOKEN) {
+        try {
+          console.log('[proxy/cart] 🖼️ Generating images...');
+          const imageService = createDesignImageService();
+          const shopifyService = createShopifyFilesService();
+          
+          // Generate thumbnail + print-ready images
+          const imageSet = await imageService.generateImageSet(payload.previewUrl, {
+            widthPx: snapshot.sheetWidthPx || 2400,
+            heightPx: snapshot.sheetHeightPx || 3000,
+            widthMm: payload.sheetWidthMm,
+            heightMm: payload.sheetHeightMm,
+          });
+          
+          const sizes = await imageService.getFileSizes(imageSet);
+          console.log('[proxy/cart] 📦 Image sizes:', sizes);
+          
+          // Upload thumbnail to Shopify CDN
+          thumbnailUrl = await shopifyService.uploadImage(
+            imageSet.thumbnail,
+            `design-${design.id}-thumbnail.jpg`,
+            `Design ${design.id} preview`
+          );
+          
+          // Upload print-ready to Shopify CDN
+          printReadyUrl = await shopifyService.uploadImage(
+            imageSet.printReady,
+            `design-${design.id}-print-ready.png`,
+            `Design ${design.id} print-ready`
+          );
+          
+          console.log('[proxy/cart] ✅ Images uploaded to Shopify CDN');
+          console.log('[proxy/cart] 📷 Thumbnail:', thumbnailUrl);
+          console.log('[proxy/cart] 🖨️ Print-ready:', printReadyUrl);
+        } catch (uploadError) {
+          console.error('[proxy/cart] ❌ Image upload failed:', uploadError);
+          // Fallback to local URLs if upload fails
+          const baseUrl = process.env.PUBLIC_URL || 'https://app.gsb-engine.dev';
+          thumbnailUrl = `${baseUrl}/api/designs/${design.id}/thumbnail`;
+          printReadyUrl = `${baseUrl}/api/designs/${design.id}/print-ready`;
+        }
+      } else {
+        // Fallback if no Shopify credentials
+        const baseUrl = process.env.PUBLIC_URL || 'https://app.gsb-engine.dev';
+        thumbnailUrl = `${baseUrl}/api/designs/${design.id}/thumbnail`;
+        printReadyUrl = `${baseUrl}/api/designs/${design.id}/print-ready`;
+      }
+      
+      // Generate edit URL
       const baseUrl = process.env.PUBLIC_URL || 'https://app.gsb-engine.dev';
-      const thumbnailUrl = `${baseUrl}/api/designs/${design.id}/thumbnail`;
-      const editUrl = `${baseUrl}/editor?designId=${design.id}`;
-      const printReadyUrl = `${baseUrl}/api/designs/${design.id}/print-ready`;
+      const editUrl = `${baseUrl}/apps/gsb/editor?designId=${design.id}`;
       
       // Update with URLs
       design = await prisma.designDocument.update({
@@ -553,9 +605,16 @@ proxyRouter.post("/cart", async (req, res, next) => {
 
     // ✅ RAKİP GİBİ SİSTEM - Shopify Order'da görünecek linkler
     setProp("_GSB_Design_ID", payload.designId || design.id);
-    setProp("_GSB_Preview", design.thumbnailUrl || design.previewUrl);
-    setProp("_GSB_Edit", design.editUrl);
-    setProp("_GSB_Print_Ready", design.printReadyUrl);
+    
+    // Merchant Preview - HTML img tag (underscore ile başladığı için müşteriden gizlenir)
+    if (design.thumbnailUrl) {
+      setProp("_Preview", `<img src="${design.thumbnailUrl}" width="100" height="100" alt="Design Preview" />`);
+    }
+    
+    // Raw URLs for other uses
+    setProp("_GSB_Preview_URL", design.thumbnailUrl || design.previewUrl);
+    setProp("_GSB_Edit_URL", design.editUrl);
+    setProp("_GSB_Print_Ready_URL", design.printReadyUrl);
     
     // Standard properties
     setProp("Design ID", payload.designId || design.id);
