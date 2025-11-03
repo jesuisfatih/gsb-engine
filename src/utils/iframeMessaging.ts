@@ -9,6 +9,7 @@ export interface EditorMessage {
   variantId?: string;
   properties?: Record<string, string>;
   previewUrl?: string;
+  checkoutUrl?: string; // ✅ ADDED: Shopify cart URL for parent
   mode?: 'gang' | 'dtf';
   metadata?: {
     sheetSize?: string;
@@ -59,6 +60,16 @@ export function notifyDesignComplete(data: {
   variantId: string;
   properties: Record<string, string>;
   previewUrl?: string;
+  checkoutUrl?: string; // ✅ ADDED
+  mode?: 'gang' | 'dtf';
+  metadata?: {
+    sheetSize?: string;
+    utilization?: number;
+    itemCount?: number;
+    technique?: string;
+    colorCount?: number;
+    minDpi?: number;
+  };
 }): void {
   sendToParent({
     type: 'GSB_DESIGN_COMPLETE',

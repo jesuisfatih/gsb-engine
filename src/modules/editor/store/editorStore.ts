@@ -1641,10 +1641,12 @@ export const useEditorStore = defineStore("editor", {
       }
 
       const checkoutUrl = response.data?.checkoutUrl;
+      console.log('[checkout] 🔍 checkoutUrl from backend:', checkoutUrl);
       
       // If in iframe (Shopify modal), send message to parent instead of redirect
       if (isInIframe()) {
         console.log('[checkout] Running in iframe, notifying parent window');
+        console.log('[checkout] 🔍 checkoutUrl from backend:', checkoutUrl);
         
         const modeStore = useEditorModeStore();
         const isGangMode = modeStore.activeMode === 'gang';
@@ -1659,24 +1661,123 @@ export const useEditorStore = defineStore("editor", {
           '_item_count': String(this.items.length),
         };
         
-        notifyDesignComplete({
-          designId: this.designId || '',
-          variantId: variantId || '',
-          properties: enhancedProperties,
-          previewUrl: previewDataUrl,
-          mode: isGangMode ? 'gang' : 'dtf',
-          metadata: {
-            sheetSize: `${Math.round(sheetWidthMm)} × ${Math.round(sheetHeightMm)} mm`,
-            utilization: stats.areaIn2 ? (stats.areaIn2 / (sheetWidthMm * sheetHeightMm / 645.16)) * 100 : 0,
-            itemCount: this.items.length,
-            technique: this.printTech,
-            colorCount: stats.colorCount,
-            minDpi: stats.lowestImageDpi,
-          },
-        });
+        // ✅ CRITICAL FIX: AJAX Cart API direkt iframe'den (parent'a bağımlı değil)
+        if (checkoutUrl) {
+          console.log('[checkout] ✅ checkoutUrl mevcut, redirect ediliyor...');
+          
+          // Close parent modal first
+          notifyDesignComplete({
+            designId: this.designId || '',
+            variantId: variantId || '',
+            properties: enhancedProperties,
+            previewUrl: previewDataUrl,
+            checkoutUrl: checkoutUrl,
+            mode: isGangMode ? 'gang' : 'dtf',
+            metadata: {
+              sheetSize: `${Math.round(sheetWidthMm)} × ${Math.round(sheetHeightMm)} mm`,
+              utilization: stats.areaIn2 ? (stats.areaIn2 / (sheetWidthMm * sheetHeightMm / 645.16)) * 100 : 0,
+              itemCount: this.items.length,
+              technique: this.printTech,
+              colorCount: stats.colorCount,
+              minDpi: stats.lowestImageDpi,
+            },
+          });
+          
+          // Wait for modal close then redirect
+          setTimeout(() => {
+            console.log('[checkout] 🛒 Redirecting to:', checkoutUrl);
+            window.top!.location.href = checkoutUrl;
+          }, 300);
+          
+          return checkoutUrl;
+        }
         
-        // Don't redirect, parent will handle cart add
-        return checkoutUrl;
+        // ✅ FALLBACK: Shopify AJAX Cart API (direkt iframe'den)
+        console.log('[checkout] ⚠️ No checkoutUrl, using AJAX Cart API from iframe');
+        
+        const numericVariantId = variantId?.includes('gid://shopify/ProductVariant/') 
+          ? variantId.split('/').pop() 
+          : variantId;
+        
+        if (!numericVariantId) {
+          throw new Error('Variant ID missing for cart add');
+        }
+        
+        console.log('[checkout] 🛒 Adding via AJAX - Variant:', numericVariantId);
+        
+        try {
+          // Shopify AJAX Cart API (Official)
+          const cartResponse = await window.top!.fetch('/cart/add.js', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              items: [{
+                id: parseInt(numericVariantId),
+                quantity: this.quantity || 1,
+                properties: enhancedProperties,
+              }]
+            }),
+          });
+          
+          if (!cartResponse.ok) {
+            const errorText = await cartResponse.text();
+            console.error('[checkout] ❌ Cart add failed:', errorText);
+            throw new Error(`Cart API error: ${cartResponse.status}`);
+          }
+          
+          const cartData = await cartResponse.json();
+          console.log('[checkout] ✅ Item added to cart:', cartData);
+          
+          // Close modal and redirect
+          notifyDesignComplete({
+            designId: this.designId || '',
+            variantId: variantId || '',
+            properties: enhancedProperties,
+            previewUrl: previewDataUrl,
+            checkoutUrl: '/cart',
+            mode: isGangMode ? 'gang' : 'dtf',
+            metadata: {
+              sheetSize: `${Math.round(sheetWidthMm)} × ${Math.round(sheetHeightMm)} mm`,
+              utilization: stats.areaIn2 ? (stats.areaIn2 / (sheetWidthMm * sheetHeightMm / 645.16)) * 100 : 0,
+              itemCount: this.items.length,
+              technique: this.printTech,
+              colorCount: stats.colorCount,
+              minDpi: stats.lowestImageDpi,
+            },
+          });
+          
+          setTimeout(() => {
+            console.log('[checkout] 🛒 Redirecting to cart page...');
+            window.top!.location.href = '/cart';
+          }, 300);
+          
+          return '/cart';
+        } catch (ajaxError) {
+          console.error('[checkout] ❌ AJAX fallback failed:', ajaxError);
+          
+          // Last resort: notify parent with variantId only
+          notifyDesignComplete({
+            designId: this.designId || '',
+            variantId: variantId || '',
+            properties: enhancedProperties,
+            previewUrl: previewDataUrl,
+            checkoutUrl: '',
+            mode: isGangMode ? 'gang' : 'dtf',
+            metadata: {
+              sheetSize: `${Math.round(sheetWidthMm)} × ${Math.round(sheetHeightMm)} mm`,
+              utilization: stats.areaIn2 ? (stats.areaIn2 / (sheetWidthMm * sheetHeightMm / 645.16)) * 100 : 0,
+              itemCount: this.items.length,
+              technique: this.printTech,
+              colorCount: stats.colorCount,
+              minDpi: stats.lowestImageDpi,
+            },
+          });
+          
+          throw ajaxError;
+        }
       }
       
       // Normal flow: redirect to checkout

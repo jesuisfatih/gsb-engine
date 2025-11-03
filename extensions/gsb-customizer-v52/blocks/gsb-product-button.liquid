@@ -350,6 +350,86 @@
     }
   });
 
+  // ✅ Shopify AJAX Cart API Integration (Resmi Yöntem)
+  window.addEventListener('message', function(event) {
+    console.log('[GSB] Parent received:', event.data);
+    
+    if (!event.data || event.data.type !== 'GSB_DESIGN_COMPLETE') {
+      // Handle close modal
+      if (event.data && event.data.type === 'GSB_CLOSE_MODAL') {
+        console.log('[GSB] Close modal requested');
+        closeGSBEditor();
+      }
+      return;
+    }
+    
+    var msg = event.data;
+    console.log('[GSB] ✅ Design complete! Processing...');
+    
+    // Close modal
+    closeGSBEditor();
+    
+    // Method 1: Use checkoutUrl (if available from backend)
+    if (msg.checkoutUrl) {
+      console.log('[GSB] ✅ Using backend checkoutUrl:', msg.checkoutUrl);
+      window.location.href = msg.checkoutUrl;
+      return;
+    }
+    
+    // Method 2: Shopify AJAX Cart API (Official fallback)
+    console.log('[GSB] Using Shopify AJAX Cart API');
+    
+    var variantId = msg.variantId;
+    
+    // Convert GID to numeric ID
+    if (variantId && variantId.includes('gid://shopify/ProductVariant/')) {
+      variantId = variantId.split('/').pop();
+      console.log('[GSB] Converted GID to numeric ID:', variantId);
+    }
+    
+    if (!variantId) {
+      console.error('[GSB] ❌ No variantId!');
+      alert('Variant ID missing. Cannot add to cart.');
+      return;
+    }
+    
+    // Build cart item (Shopify AJAX API format)
+    var cartItem = {
+      items: [{
+        id: parseInt(variantId),
+        quantity: 1,
+        properties: msg.properties || {}
+      }]
+    };
+    
+    console.log('[GSB] 🛒 Adding to cart:', cartItem);
+    
+    // POST /cart/add.js (Shopify Official Cart API)
+    fetch(window.Shopify?.routes?.root + 'cart/add.js' || '/cart/add.js', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(cartItem)
+    })
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error('Cart API returned ' + response.status);
+      }
+      return response.json();
+    })
+    .then(function(data) {
+      console.log('[GSB] ✅ Item added to cart:', data);
+      console.log('[GSB] ✅ Redirecting to cart page...');
+      window.location.href = '/cart';
+    })
+    .catch(function(error) {
+      console.error('[GSB] ❌ Cart add failed:', error);
+      alert('Failed to add to cart. Please try again or add manually.');
+    });
+  });
+
   // Hide default buy buttons (fallback)
   (function() {
     if ({{ hide_default_buttons | json }}) {

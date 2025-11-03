@@ -171,6 +171,15 @@ const shopDomain = computed<string | undefined>(() => {
     persistLocalValue("shopify:shop", searchShop);
     return searchShop;
   }
+  
+  // ✅ FALLBACK: Extract shop from window.location.hostname for App Proxy context
+  // Example: we-dream-studio.myshopify.com → we-dream-studio.myshopify.com
+  if (typeof window !== "undefined" && window.location.hostname.endsWith(".myshopify.com")) {
+    const shopFromHostname = window.location.hostname;
+    persistLocalValue("shopify:shop", shopFromHostname);
+    return shopFromHostname;
+  }
+  
   return readLocalValue("shopify:shop");
 });
 
@@ -574,7 +583,16 @@ async function bootstrapAppBridge() {
           ? resources.appBridgeModule.default
           : undefined);
       if (factory) {
-        appInstance = factory({ apiKey, host });
+        // ✅ Shopify App Bridge Next requires 'shop' parameter
+        const shop = shopDomain.value;
+        if (!shop) {
+          const message = "Missing Shopify shop parameter";
+          lastError.value = message;
+          notification.error(message);
+          return;
+        }
+        
+        appInstance = factory({ apiKey, host, shop });
       }
     }
 
