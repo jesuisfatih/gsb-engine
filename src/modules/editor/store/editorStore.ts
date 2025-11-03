@@ -1186,7 +1186,9 @@ export const useEditorStore = defineStore("editor", {
         clone.id = uid();
         if (typeof (clone as any).x === "number") (clone as any).x = ((clone as any).x ?? 0) + offset;
         if (typeof (clone as any).y === "number") (clone as any).y = ((clone as any).y ?? 0) + offset;
-        if (typeof clone.name === "string") clone.name = clone.name.endsWith("copy") ? clone.name : `${clone.name} copy`;
+        if (clone.name && typeof clone.name === "string" && clone.name.length > 0) {
+          clone.name = clone.name.endsWith("copy") ? clone.name : `${clone.name} copy`;
+        }
         clone.normalized = computeNormalizedFrame(clone, this.sheetWpx, this.sheetHpx);
         return clone;
       });
