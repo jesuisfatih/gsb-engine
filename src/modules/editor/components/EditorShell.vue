@@ -937,8 +937,7 @@ function changeMode(mode: "dtf" | "gang") {
         :width="380"
         @close="activePanelRight = null"
       >
-        <VExpansionPanelText>
-          <div class="template-section">
+        <div class="template-section">
           <div v-if="!hasTemplate" class="template-empty">
             <p>No template applied. Load a preset from the library to unlock guided placeholders.</p>
           </div>
@@ -989,9 +988,8 @@ function changeMode(mode: "dtf" | "gang") {
               </div>
             </div>
           </div>
-          </div>
-          </VExpansionPanelText>
-        </VExpansionPanel>
+        </div>
+      </EditorSidePanel>
 
       <EditorSidePanel
         title="Properties"
