@@ -157,19 +157,28 @@ proxyRouter.get("/editor", async (req, res) => {
       // Fix service worker - both quoted and single-quoted versions
       html = html.replace(/register\(['"]\/sw\.js['"]\)/g, "register('/apps/gsb/sw.js')");
       
-      // Inject Vite base path configuration BEFORE anything else
-      html = html.replace(
-        /<head[^>]*>/i,
-        `$&
+      // Inject Vite base path configuration BEFORE anything else - MUST BE FIRST!
+      // Find </title> or first <script> tag, whichever comes first
+      const titleMatch = html.match(/<\/title>/i);
+      const scriptMatch = html.match(/<script/i);
+      
+      let injectPosition = titleMatch ? titleMatch.index! + 8 : 
+                           (scriptMatch ? scriptMatch.index! : html.indexOf('<head>') + 6);
+      
+      const injectionScript = `
 <script>
-// CRITICAL: Set these FIRST, before any other scripts
-window.__vite_plugin_config__ = { base: '/apps/gsb/' };
-window.__GSB_EMBED_MODE__ = true;
-window.__GSB_BASE_PATH__ = '/apps/gsb';
-window.__GSB_DISABLE_SW__ = true;
-console.log('[GSB Inject] Variables set - embedMode:', window.__GSB_EMBED_MODE__, 'basePath:', window.__GSB_BASE_PATH__);
-</script>`
-      );
+// CRITICAL: Set these FIRST, before any other scripts or Vue app loads
+(function() {
+  window.__vite_plugin_config__ = { base: '/apps/gsb/' };
+  window.__GSB_EMBED_MODE__ = true;
+  window.__GSB_BASE_PATH__ = '/apps/gsb';
+  window.__GSB_DISABLE_SW__ = true;
+  console.log('[GSB Inject] ✅ Variables set IMMEDIATELY - embedMode:', window.__GSB_EMBED_MODE__, 'basePath:', window.__GSB_BASE_PATH__);
+  console.log('[GSB Inject] window location:', window.location.href);
+})();
+</script>`;
+      
+      html = html.slice(0, injectPosition) + injectionScript + html.slice(injectPosition);
       
       res.setHeader('Content-Type', 'text/html');
       res.setHeader('X-Frame-Options', 'ALLOW-FROM https://*.myshopify.com');
