@@ -101,6 +101,7 @@ watch(() => props.show, (show) => {
 }
 
 .panel-header {
+  position: relative; /* ✅ FIX: Establish stacking context */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -109,6 +110,7 @@ watch(() => props.show, (show) => {
   background: rgba(var(--v-theme-surface), 0.98);
   backdrop-filter: blur(8px);
   flex-shrink: 0;
+  z-index: 10; /* ✅ FIX: Above panel content */
 }
 
 .panel-title {
@@ -120,17 +122,23 @@ watch(() => props.show, (show) => {
 }
 
 .close-btn {
+  position: relative; /* ✅ FIX: Establish stacking context */
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
+  min-width: 32px; /* ✅ FIX: Prevent shrinking */
+  min-height: 32px; /* ✅ FIX: Prevent shrinking */
   border: none;
   border-radius: 6px;
   background: transparent;
   color: rgba(var(--v-theme-on-surface), 0.6);
   cursor: pointer;
   transition: all 0.2s;
+  z-index: 1000; /* ✅ FIX: ALWAYS on top */
+  pointer-events: auto !important; /* ✅ FIX: Force clickable */
+  flex-shrink: 0; /* ✅ FIX: Never compress */
 }
 
 .close-btn:hover {

@@ -895,8 +895,9 @@ function changeMode(mode: "dtf" | "gang") {
 
     <!-- ✅ DOM 2: Left Side Panels (OUTSIDE left-pane, z-index: 200) -->
     <EditorSidePanel
+      v-if="activePanelLeft === 'product'"
       title="Product & Surfaces"
-      :show="activePanelLeft === 'product'"
+      :show="true"
       side="left"
       :width="380"
       @close="activePanelLeft = null"
@@ -905,8 +906,9 @@ function changeMode(mode: "dtf" | "gang") {
     </EditorSidePanel>
 
     <EditorSidePanel
+      v-if="activePanelLeft === 'assets'"
       title="Asset Library"
-      :show="activePanelLeft === 'assets'"
+      :show="true"
       side="left"
       :width="380"
       @close="activePanelLeft = null"
@@ -915,8 +917,9 @@ function changeMode(mode: "dtf" | "gang") {
     </EditorSidePanel>
 
     <EditorSidePanel
+      v-if="activePanelLeft === 'layers'"
       title="Layers"
-      :show="activePanelLeft === 'layers'"
+      :show="true"
       side="left"
       :width="340"
       @close="activePanelLeft = null"
@@ -925,9 +928,9 @@ function changeMode(mode: "dtf" | "gang") {
     </EditorSidePanel>
 
     <EditorSidePanel
-      v-if="isGangMode"
+      v-if="isGangMode && activePanelLeft === 'gang'"
       title="Gang Sheet Queue"
-      :show="activePanelLeft === 'gang'"
+      :show="true"
       side="left"
       :width="360"
       @close="activePanelLeft = null"
@@ -937,9 +940,9 @@ function changeMode(mode: "dtf" | "gang") {
 
     <!-- ✅ DOM 2: Right Side Panels (OUTSIDE right-pane, z-index: 200) -->
     <EditorSidePanel
-      v-if="hasTemplate"
+      v-if="hasTemplate && activePanelRight === 'template'"
       title="Template Checklist"
-      :show="activePanelRight === 'template'"
+      :show="true"
       side="right"
       :width="380"
       @close="activePanelRight = null"
@@ -999,8 +1002,9 @@ function changeMode(mode: "dtf" | "gang") {
       </EditorSidePanel>
 
       <EditorSidePanel
+        v-if="activePanelRight === 'properties'"
         title="Properties"
-        :show="activePanelRight === 'properties'"
+        :show="true"
         side="right"
         :width="360"
         @close="activePanelRight = null"
@@ -1014,9 +1018,9 @@ function changeMode(mode: "dtf" | "gang") {
       </EditorSidePanel>
 
       <EditorSidePanel
-        v-if="qualityAnalysis"
+        v-if="qualityAnalysis && activePanelRight === 'quality'"
         title="Quality Analysis"
-        :show="activePanelRight === 'quality'"
+        :show="true"
         side="right"
         :width="360"
         @close="activePanelRight = null"
@@ -1043,9 +1047,9 @@ function changeMode(mode: "dtf" | "gang") {
       </EditorSidePanel>
 
       <EditorSidePanel
-        v-if="suggestions.length > 0"
+        v-if="suggestions.length > 0 && activePanelRight === 'suggestions'"
         title="Smart Suggestions"
-        :show="activePanelRight === 'suggestions'"
+        :show="true"
         side="right"
         :width="380"
         @close="activePanelRight = null"
