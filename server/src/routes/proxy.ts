@@ -426,10 +426,29 @@ proxyRouter.post("/cart", async (req, res, next) => {
         });
       }
       
+      // Anonymous users need a default tenant
+      let effectiveTenantId = tenantId;
+      if (!effectiveTenantId) {
+        // Get first tenant as default for anonymous designs
+        const defaultTenant = await prisma.tenant.findFirst({
+          orderBy: { createdAt: 'asc' },
+        });
+        
+        if (!defaultTenant) {
+          console.error('[proxy/cart] No tenant found in database!');
+          return res.status(500).json({ 
+            error: 'System misconfiguration - please contact support.' 
+          });
+        }
+        
+        effectiveTenantId = defaultTenant.id;
+        console.log('[proxy/cart] Using default tenant for anonymous user:', effectiveTenantId);
+      }
+      
       // Create design first (to get ID)
       design = await prisma.designDocument.create({
         data: {
-          tenantId: tenantId || undefined,
+          tenantId: effectiveTenantId,
           status: SUBMITTED_STATUS,
           submittedAt: new Date(),
           previewUrl: payload.previewUrl,
