@@ -177,6 +177,7 @@ watch(() => props.show, (show) => {
   .side-panel {
     /* On tablet: slightly narrower */
     max-width: 340px !important;
+    top: 120px !important; /* ✅ Same as left-pane on tablet */
   }
 }
 
@@ -184,6 +185,7 @@ watch(() => props.show, (show) => {
   .side-panel {
     /* On desktop: use provided width */
     max-width: 420px;
+    top: 120px !important; /* ✅ Same as left-pane on desktop */
   }
 }
 

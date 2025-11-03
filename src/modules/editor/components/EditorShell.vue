@@ -1460,6 +1460,8 @@ button.primary:not(:disabled):hover {
     width: 56px !important;
     min-width: 56px !important;
     max-width: 56px !important;
+    padding: 0 !important; /* ✅ NO PADDING on mobile too */
+    margin: 0 !important;
   }
   
   .center-pane {
@@ -1485,11 +1487,19 @@ button.primary:not(:disabled):hover {
   .left-pane,
   .right-pane {
     top: 120px !important; /* ✅ Same as desktop */
+    padding: 0 !important;
+    margin: 0 !important;
   }
 }
 
 /* 💻 DESKTOP (≥ 1024px) */
 @media (min-width: 1024px) {
+  .left-pane,
+  .right-pane {
+    padding: 0 !important; /* ✅ NO PADDING on desktop */
+    margin: 0 !important;
+  }
+  
   /* Fade out old toggle buttons on desktop (we have IconToolbar) */
   .ghost.icon {
     opacity: 0.5;
@@ -1506,9 +1516,15 @@ button.primary:not(:disabled):hover {
 
 /* 🖥️ LARGE DESKTOP (≥ 1440px) */
 @media (min-width: 1440px) {
+  .left-pane,
+  .right-pane {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
   .center-pane {
-    margin-left: 60px;
-    margin-right: 60px;
+    margin-left: calc(var(--left-toolbar-width, 60px) + var(--left-panel-width, 0px));
+    margin-right: calc(var(--right-toolbar-width, 60px) + var(--right-panel-width, 0px));
   }
 }
 
@@ -2051,14 +2067,35 @@ body.gsb-modal-mode .right-pane {
   z-index: 150 !important; /* ✅ Below panels (200), above content */
   pointer-events: auto !important; /* ✅ Always clickable */
   position: fixed !important;
+  padding: 0 !important; /* ✅ NO PADDING in iframe */
+  margin: 0 !important;
+  top: 120px !important; /* ✅ Below area-toolbar */
 }
 
 body.gsb-modal-mode .left-pane {
   left: 0 !important;
+  width: 60px !important;
 }
 
 body.gsb-modal-mode .right-pane {
   right: 0 !important;
+  width: 60px !important;
+}
+
+/* Ensure side-panels are aligned in iframe */
+body.gsb-modal-mode .side-panel,
+iframe .side-panel {
+  top: 120px !important; /* ✅ Below area-toolbar */
+}
+
+body.gsb-modal-mode .side-panel.side-left,
+iframe .side-panel.side-left {
+  left: 60px !important; /* ✅ Next to left-pane, yapışık */
+}
+
+body.gsb-modal-mode .side-panel.side-right,
+iframe .side-panel.side-right {
+  right: 60px !important; /* ✅ Next to right-pane, yapışık */
 }
 </style>
 
