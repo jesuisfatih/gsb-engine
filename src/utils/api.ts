@@ -63,19 +63,18 @@ function resolveTenantId(): string | undefined {
   return stored ?? undefined
 }
 
-// Detect if running in Shopify App Proxy iframe
+// Detect if running in Shopify App Proxy iframe - SHOPIFY STANDARD WAY
 function isShopifyAppProxy(): boolean {
   if (typeof window === 'undefined') return false;
-  const embedMode = (window as any).__GSB_EMBED_MODE__;
-  const basePath = (window as any).__GSB_BASE_PATH__;
-  return Boolean(embedMode && basePath);
+  // Check if URL path starts with /apps/gsb (Shopify App Proxy pattern)
+  const pathname = window.location.pathname;
+  return pathname.startsWith('/apps/gsb');
 }
 
-// Get API base URL
+// Get API base URL - SHOPIFY STANDARD WAY
 function getApiBase(): string {
   if (isShopifyAppProxy()) {
-    const basePath = (window as any).__GSB_BASE_PATH__ || '/apps/gsb';
-    return `${basePath}/api`;
+    return '/apps/gsb/api';
   }
   return '/api';
 }

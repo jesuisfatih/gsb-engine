@@ -273,10 +273,11 @@ onMounted(async () => {
     console.log("[editor] 🔍 Attempting variant-based loading:", shopifyVariant);
     
     try {
-      // Detect Shopify App Proxy context
-      const apiBase = (window as any).__GSB_EMBED_MODE__ && (window as any).__GSB_BASE_PATH__ 
-        ? `${(window as any).__GSB_BASE_PATH__}/api` 
-        : '/api';
+      // Detect Shopify App Proxy context - SHOPIFY STANDARD WAY
+      const isProxy = window.location.pathname.startsWith('/apps/gsb');
+      const apiBase = isProxy ? '/apps/gsb/api' : '/api';
+      
+      console.log("[editor] Proxy mode:", isProxy, "| API Base:", apiBase, "| Pathname:", window.location.pathname);
       
       const response = await fetch(`${apiBase}/embed/catalog/mappings/${encodeURIComponent(shopifyVariant)}`);
       

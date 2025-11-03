@@ -1558,14 +1558,12 @@ export const useEditorStore = defineStore("editor", {
       // For anonymous users, send design snapshot
       const designSnapshot = !sessionStore.isAuthenticated ? this.serializeSnapshot() : undefined;
 
-      // Determine correct API base URL for Shopify App Proxy
-      const isShopifyProxy = typeof window !== 'undefined' && (window as any).__GSB_EMBED_MODE__;
-      const apiBase = isShopifyProxy && (window as any).__GSB_BASE_PATH__ 
-        ? `${(window as any).__GSB_BASE_PATH__}/api` 
-        : '/api';
+      // Determine correct API base URL for Shopify App Proxy - SHOPIFY STANDARD WAY
+      const isShopifyProxy = typeof window !== 'undefined' && window.location.pathname.startsWith('/apps/gsb');
+      const apiBase = isShopifyProxy ? '/apps/gsb/api' : '/api';
       const cartUrl = `${apiBase}/proxy/cart`;
       
-      console.log('[checkout] API Base:', apiBase, '| Full URL:', cartUrl, '| Shopify Proxy:', isShopifyProxy);
+      console.log('[checkout] Pathname:', window.location.pathname, '| Proxy:', isShopifyProxy, '| API Base:', apiBase, '| Full URL:', cartUrl);
 
       // Use native fetch for reliability
       const fetchResponse = await fetch(cartUrl, {
