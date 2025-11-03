@@ -26,9 +26,21 @@ const uploadUrlSchema = z.object({
  */
 uploadRouter.post("/base64", async (req, res, next) => {
   try {
-    const { tenantId } = req.context;
+    let { tenantId } = req.context;
+    
+    // ✅ ANONYMOUS USER FIX: Get default tenant if no auth
     if (!tenantId) {
-      return res.status(400).json({ error: "Missing tenant context" });
+      const { prisma } = req.context;
+      const defaultTenant = await prisma.tenant.findFirst({
+        orderBy: { createdAt: 'asc' },
+      });
+      
+      if (!defaultTenant) {
+        return res.status(500).json({ error: "No tenant configured" });
+      }
+      
+      tenantId = defaultTenant.id;
+      console.log('[upload] Using default tenant for anonymous user:', tenantId);
     }
 
     const payload = base64ImageSchema.parse(req.body);
@@ -76,9 +88,21 @@ uploadRouter.post("/base64", async (req, res, next) => {
  */
 uploadRouter.post("/url", async (req, res, next) => {
   try {
-    const { tenantId } = req.context;
+    let { tenantId } = req.context;
+    
+    // ✅ ANONYMOUS USER FIX: Get default tenant if no auth
     if (!tenantId) {
-      return res.status(400).json({ error: "Missing tenant context" });
+      const { prisma } = req.context;
+      const defaultTenant = await prisma.tenant.findFirst({
+        orderBy: { createdAt: 'asc' },
+      });
+      
+      if (!defaultTenant) {
+        return res.status(500).json({ error: "No tenant configured" });
+      }
+      
+      tenantId = defaultTenant.id;
+      console.log('[upload] Using default tenant for anonymous user:', tenantId);
     }
 
     const payload = uploadUrlSchema.parse(req.body);

@@ -559,7 +559,13 @@ proxyRouter.post("/cart", async (req, res, next) => {
       }
     }
 
-    const previewUrl = payload.previewUrl ?? design.previewUrl ?? undefined;
+    // ✅ Convert relative URLs to absolute for cart display
+    let previewUrl = payload.previewUrl ?? design.previewUrl ?? undefined;
+    if (previewUrl && previewUrl.startsWith('/uploads/')) {
+      const baseUrl = process.env.PUBLIC_URL || 'https://app.gsb-engine.dev';
+      previewUrl = `${baseUrl}${previewUrl}`;
+      console.log('[proxy/cart] ✅ Converted relative URL to absolute:', previewUrl);
+    }
 
     const previewAsset = previewUrl ?? design.previewUrl ?? `https://cdn.gsb.dev/mockups/${design.id}.png`;
     
@@ -611,8 +617,8 @@ proxyRouter.post("/cart", async (req, res, next) => {
       setProp("_Preview", `<img src="${design.thumbnailUrl}" width="100" height="100" alt="Design Preview" />`);
     }
     
-    // Raw URLs for other uses
-    setProp("_GSB_Preview_URL", design.thumbnailUrl || design.previewUrl);
+    // Raw URLs for other uses (use absolute previewUrl)
+    setProp("_GSB_Preview_URL", design.thumbnailUrl || previewUrl || design.previewUrl);
     setProp("_GSB_Edit_URL", design.editUrl);
     setProp("_GSB_Print_Ready_URL", design.printReadyUrl);
     
@@ -621,7 +627,9 @@ proxyRouter.post("/cart", async (req, res, next) => {
     setProp("Product", payload.productTitle);
     setProp("Surface ID", payload.surfaceId);
     setProp("Technique", payload.technique);
-    setProp("Preview URL", design.previewUrl && design.previewUrl.length < 1800 ? design.previewUrl : undefined);
+    // ✅ Use absolute URL if available (short), skip if too long (>255 chars)
+    const finalPreviewUrl = previewUrl || design.previewUrl;
+    setProp("Preview URL", finalPreviewUrl && finalPreviewUrl.length < 255 ? finalPreviewUrl : undefined);
     if (payload.sheetWidthMm && payload.sheetHeightMm) {
       const width = Math.round(payload.sheetWidthMm);
       const height = Math.round(payload.sheetHeightMm);

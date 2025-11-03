@@ -1,19 +1,19 @@
-import { saveAs } from "file-saver";
-import { defineStore } from "pinia";
-import type Konva from "konva";
-import { loadHTMLImageFromURL } from "../utils/imageLoader";
-import { autoPack } from "../engine/packer";
-import { PRODUCTS } from "../data/products";
-import { pxToMm, mmToPx } from "../utils/units";
-import { validateDesign } from "../engine/validate";
-import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
 import { useSessionStore } from "@/modules/auth/stores/sessionStore";
-import { useEditorModeStore } from "./editorModeStore";
-import { FONT_LIBRARY } from "../constants/fonts";
-import { $api } from "@/utils/api";
-import { fetchPricingConfigs, fetchPricingQuote, type PricingQuote } from "../services/pricingService";
+import { useCatalogStore } from "@/modules/catalog/store/catalogStore";
 import type { TemplateDefinition } from "@/modules/templates/types";
-import { isInIframe, notifyDesignComplete, requestModalClose } from "@/utils/iframeMessaging";
+import { $api } from "@/utils/api";
+import { isInIframe, notifyDesignComplete } from "@/utils/iframeMessaging";
+import { saveAs } from "file-saver";
+import type Konva from "konva";
+import { defineStore } from "pinia";
+import { FONT_LIBRARY } from "../constants/fonts";
+import { PRODUCTS } from "../data/products";
+import { autoPack } from "../engine/packer";
+import { validateDesign } from "../engine/validate";
+import { fetchPricingConfigs, fetchPricingQuote, type PricingQuote } from "../services/pricingService";
+import { loadHTMLImageFromURL } from "../utils/imageLoader";
+import { mmToPx, pxToMm } from "../utils/units";
+import { useEditorModeStore } from "./editorModeStore";
 
 import type {
   CircleItem,
@@ -22,12 +22,12 @@ import type {
   LineItem,
   NormalizedFrame,
   PathItem,
-  RectItem,
-  TextItem,
   PrintTech,
   ProductDefinition,
   ProductSurface,
+  RectItem,
   TemplatePlaceholder,
+  TextItem,
 } from "../types";
 
 type DesignStatusType = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "ARCHIVED";
@@ -1527,10 +1527,40 @@ export const useEditorStore = defineStore("editor", {
     async checkoutWithDesign(options?: { returnUrl?: string }) {
       const previewDataUrl = this.capturePreview({ pixelRatio: 1, mimeType: "image/png" }) ?? undefined;
       
+      // ✅ CRITICAL: Upload preview image to get public URL (not dataURL!)
+      let previewPublicUrl: string | undefined = undefined;
+      if (previewDataUrl && previewDataUrl.startsWith('data:image')) {
+        try {
+          console.log('[checkout] 📤 Uploading preview image...');
+          
+          const uploadResponse = await fetch('/api/upload/base64', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              filename: `design-${Date.now()}.png`,
+              mimeType: 'image/png',
+              data: previewDataUrl,
+              folder: 'designs',
+            }),
+          });
+          
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json();
+            previewPublicUrl = uploadData.data?.url;
+            console.log('[checkout] ✅ Preview uploaded:', previewPublicUrl);
+          } else {
+            console.warn('[checkout] ⚠️ Preview upload failed, using dataURL fallback');
+          }
+        } catch (uploadError) {
+          console.warn('[checkout] ⚠️ Preview upload error:', uploadError);
+        }
+      }
+      
       // For authenticated users, use existing submit flow
       const sessionStore = useSessionStore();
       if (sessionStore.isAuthenticated) {
-        await this.submitDesign({ previewUrl: previewDataUrl });
+        await this.submitDesign({ previewUrl: previewPublicUrl || previewDataUrl });
       }
 
       const catalog = useCatalogStore();
@@ -1600,7 +1630,7 @@ export const useEditorStore = defineStore("editor", {
         variantId: variantIdSafe,
         technique: this.printTech || 'dtf',
         surfaceId: this.surfaceId || undefined,
-        previewUrl: previewDataUrl,
+        previewUrl: previewPublicUrl || previewDataUrl, // ✅ Use uploaded URL (short) or fallback to dataURL
         sheetWidthMm: Number(sheetWidthMm) || 0,
         sheetHeightMm: Number(sheetHeightMm) || 0,
         printAreaIn2: Number(stats.areaIn2) || 0,
@@ -1652,10 +1682,12 @@ export const useEditorStore = defineStore("editor", {
         const isGangMode = modeStore.activeMode === 'gang';
         
         // Enhanced line item properties with preview and metadata
+        // ✅ Use short URL instead of long dataURL for Shopify line item properties (255 char limit)
+        const previewUrlForCart = previewPublicUrl || '';
         const enhancedProperties = {
           ...lineItemProperties,
           '_design_id': this.designId || '',
-          '_preview_image': previewDataUrl || '',
+          '_preview_url': previewUrlForCart, // ✅ Short URL (not dataURL!)
           '_mode': isGangMode ? 'gang' : 'dtf',
           '_sheet_dimensions': `${Math.round(sheetWidthMm)}mm × ${Math.round(sheetHeightMm)}mm`,
           '_item_count': String(this.items.length),
@@ -1670,7 +1702,7 @@ export const useEditorStore = defineStore("editor", {
             designId: this.designId || '',
             variantId: variantId || '',
             properties: enhancedProperties,
-            previewUrl: previewDataUrl,
+            previewUrl: previewUrlForCart || previewDataUrl, // ✅ Use uploaded URL
             checkoutUrl: checkoutUrl,
             mode: isGangMode ? 'gang' : 'dtf',
             metadata: {
@@ -1736,7 +1768,7 @@ export const useEditorStore = defineStore("editor", {
             designId: this.designId || '',
             variantId: variantId || '',
             properties: enhancedProperties,
-            previewUrl: previewDataUrl,
+            previewUrl: previewUrlForCart || previewDataUrl, // ✅ Use uploaded URL
             checkoutUrl: '/cart',
             mode: isGangMode ? 'gang' : 'dtf',
             metadata: {
@@ -1763,7 +1795,7 @@ export const useEditorStore = defineStore("editor", {
             designId: this.designId || '',
             variantId: variantId || '',
             properties: enhancedProperties,
-            previewUrl: previewDataUrl,
+            previewUrl: previewUrlForCart || previewDataUrl, // ✅ Use uploaded URL
             checkoutUrl: '',
             mode: isGangMode ? 'gang' : 'dtf',
             metadata: {
