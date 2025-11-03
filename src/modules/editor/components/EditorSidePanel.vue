@@ -73,12 +73,12 @@ watch(() => props.show, (show) => {
 <style scoped>
 .side-panel {
   position: fixed;
-  top: 60px; /* Below topbar (EditorTopbar height) */
+  top: 120px; /* ✅ CHANGED: Below EditorTopbar (60px) + area-toolbar (~60px) */
   bottom: 0;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  z-index: 200; /* ✅ CRITICAL: Above center-pane (z-index: 10) and toolbars (z-index: 100) */
+  z-index: 200; /* ✅ CRITICAL: Above center-pane (z-index: 10) and toolbars (z-index: 150) */
   display: flex;
   flex-direction: column;
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -86,6 +86,8 @@ watch(() => props.show, (show) => {
   pointer-events: auto; /* Ensure clickable */
   box-sizing: border-box;
   contain: layout style; /* ✅ CSS Containment */
+  margin: 0;
+  padding: 0;
 }
 
 .side-panel.side-left {
@@ -167,6 +169,7 @@ watch(() => props.show, (show) => {
     /* On mobile: full width panel */
     width: calc(100vw - 60px) !important;
     max-width: 380px;
+    top: 110px !important; /* ✅ Same as left-pane on mobile */
   }
 }
 

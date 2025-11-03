@@ -53,14 +53,15 @@ function handleItemClick(item: ToolbarItem) {
 </template>
 
 <style scoped>
-/* ✅ RESPONSIVE: Icon toolbar (FILLS parent 100%) */
+/* ✅ RESPONSIVE: Icon toolbar (FILLS parent 100%, NO PADDING) */
 .icon-toolbar {
   display: flex;
   flex-direction: column;
   align-items: center; /* ✅ Horizontal center */
   justify-content: flex-start; /* ✅ Top aligned */
   gap: 4px;
-  padding: 8px 0; /* ✅ No horizontal padding - let parent handle it */
+  padding: 0; /* ✅ NO PADDING - completely clean */
+  margin: 0;
   background: transparent; /* ✅ Parent (left-pane) has background */
   border: none; /* ✅ Parent (left-pane) has borders */
   width: 100%; /* ✅ CRITICAL: Fill parent completely */
@@ -68,7 +69,6 @@ function handleItemClick(item: ToolbarItem) {
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
-  margin: 0;
   position: relative;
 }
 

@@ -836,7 +836,27 @@ function changeMode(mode: "dtf" | "gang") {
       </div>
     </header>
 
-    <!-- ✅ Layer 2: Main Content (FIRST in DOM, lowest z-index) -->
+    <!-- ✅ DOM 1: Left Icon Toolbar (FIRST - lowest in stack visually) -->
+    <aside class="left-pane">
+      <EditorIconToolbar
+        :items="leftToolbarItems"
+        :active-item="activePanelLeft"
+        side="left"
+        @select="handleLeftPanelSelect"
+      />
+    </aside>
+
+    <!-- ✅ DOM 1: Right Icon Toolbar (FIRST - lowest in stack visually) -->
+    <aside class="right-pane">
+      <EditorIconToolbar
+        :items="rightToolbarItems"
+        :active-item="activePanelRight"
+        side="right"
+        @select="handleRightPanelSelect"
+      />
+    </aside>
+
+    <!-- ✅ DOM 2: Main Content (tool-strip + stage-region) -->
     <section class="center-pane" :class="{ 'tool-hidden': !showToolbarStrip }">
       <div class="tool-strip">
         <EditorToolbar />
@@ -873,27 +893,7 @@ function changeMode(mode: "dtf" | "gang") {
       </div>
     </section>
 
-    <!-- ✅ Layer 3: Left Icon Toolbar (ONLY toolbar, NO panels inside) -->
-    <aside class="left-pane">
-      <EditorIconToolbar
-        :items="leftToolbarItems"
-        :active-item="activePanelLeft"
-        side="left"
-        @select="handleLeftPanelSelect"
-      />
-    </aside>
-
-    <!-- ✅ Layer 3: Right Icon Toolbar (ONLY toolbar, NO panels inside) -->
-    <aside class="right-pane">
-      <EditorIconToolbar
-        :items="rightToolbarItems"
-        :active-item="activePanelRight"
-        side="right"
-        @select="handleRightPanelSelect"
-      />
-    </aside>
-
-    <!-- ✅ Layer 4: Left Side Panels (OUTSIDE left-pane, highest z-index) -->
+    <!-- ✅ DOM 2: Left Side Panels (OUTSIDE left-pane, z-index: 200) -->
     <EditorSidePanel
       title="Product & Surfaces"
       :show="activePanelLeft === 'product'"
@@ -935,7 +935,7 @@ function changeMode(mode: "dtf" | "gang") {
       <GangSheetSidebar />
     </EditorSidePanel>
 
-    <!-- ✅ Layer 4: Right Side Panels (OUTSIDE right-pane, highest z-index) -->
+    <!-- ✅ DOM 2: Right Side Panels (OUTSIDE right-pane, z-index: 200) -->
     <EditorSidePanel
       v-if="hasTemplate"
       title="Template Checklist"
@@ -1401,15 +1401,17 @@ button.primary:not(:disabled):hover {
 .left-pane {
   position: fixed;
   left: 0 !important; /* ✅ CRITICAL: Always at left edge */
-  top: 60px; /* Below EditorTopbar */
+  top: 120px; /* ✅ CHANGED: Below EditorTopbar (60px) + area-toolbar (~60px) */
   bottom: 0;
   width: 60px;
   min-width: 60px;
   max-width: 60px;
+  padding: 0; /* ✅ NO PADDING - child handles spacing */
+  margin: 0;
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   z-index: 150; /* ✅ Above center-pane, BELOW side-panels (200) */
-  overflow: visible; /* ✅ CHANGED: Let child (EditorIconToolbar) handle overflow */
+  overflow: visible; /* ✅ Child (EditorIconToolbar) handles overflow */
   box-sizing: border-box;
   pointer-events: auto;
   display: flex; /* ✅ Flex container */
@@ -1419,15 +1421,17 @@ button.primary:not(:disabled):hover {
 .right-pane {
   position: fixed;
   right: 0 !important; /* ✅ CRITICAL: Always at right edge */
-  top: 60px; /* Below EditorTopbar */
+  top: 120px; /* ✅ CHANGED: Below EditorTopbar (60px) + area-toolbar (~60px) */
   bottom: 0;
   width: 60px;
   min-width: 60px;
   max-width: 60px;
+  padding: 0; /* ✅ NO PADDING - child handles spacing */
+  margin: 0;
   background: rgb(var(--v-theme-surface));
   border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   z-index: 150; /* ✅ Above center-pane, BELOW side-panels (200) */
-  overflow: visible; /* ✅ CHANGED: Let child (EditorIconToolbar) handle overflow */
+  overflow: visible; /* ✅ Child (EditorIconToolbar) handles overflow */
   box-sizing: border-box;
   pointer-events: auto;
   display: flex; /* ✅ Flex container */
@@ -1452,7 +1456,7 @@ button.primary:not(:disabled):hover {
   
   .left-pane,
   .right-pane {
-    top: 50px !important; /* Shorter topbar on mobile */
+    top: 110px !important; /* ✅ area-toolbar daha küçük mobile'da */
     width: 56px !important;
     min-width: 56px !important;
     max-width: 56px !important;
@@ -1480,7 +1484,7 @@ button.primary:not(:disabled):hover {
 @media (min-width: 768px) and (max-width: 1023px) {
   .left-pane,
   .right-pane {
-    top: 55px !important;
+    top: 120px !important; /* ✅ Same as desktop */
   }
 }
 
