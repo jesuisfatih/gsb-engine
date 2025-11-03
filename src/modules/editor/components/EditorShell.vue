@@ -1553,6 +1553,10 @@ button.primary:not(:disabled):hover {
   flex: 1; /* Take remaining space */
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
               margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* ✅ VISUAL: Clear boundary so tool-strip looks "inside" */
+  padding: 12px;
+  background: rgba(var(--v-theme-surface), 0.5);
+  border-radius: 8px;
 }
 
 .center-pane.tool-hidden {
@@ -1571,6 +1575,8 @@ button.primary:not(:disabled):hover {
   justify-content: center;
   padding: 10px 6px;
   box-shadow: var(--panel-glow);
+  z-index: 5; /* ✅ Below side-panels (z-index: 200) */
+  position: relative;
 }
 
 .tool-strip :deep(.v-toolbar) {
@@ -1592,6 +1598,8 @@ button.primary:not(:disabled):hover {
   margin: 0 auto;
   width: 100%;
   max-width: 100%;
+  z-index: 1; /* ✅ Below tool-strip (z-index: 5) and side-panels (z-index: 200) */
+  position: relative;
 }
 
 .stage-region.gang-scene {
@@ -2006,12 +2014,27 @@ body.gsb-modal-mode .side-panel,
 iframe .side-panel {
   z-index: 2147483640 !important; /* High z-index, below topbar */
   position: fixed !important;
+  pointer-events: auto !important; /* ✅ CRITICAL: Always clickable */
 }
 
 /* Ensure center-pane stays below panels */
 body.gsb-modal-mode .center-pane,
 iframe .center-pane {
   z-index: 10 !important;
+  position: relative !important;
+}
+
+/* Ensure tool-strip stays below panels */
+body.gsb-modal-mode .tool-strip,
+iframe .tool-strip {
+  z-index: 5 !important;
+  position: relative !important;
+}
+
+/* Ensure stage-region stays at bottom */
+body.gsb-modal-mode .stage-region,
+iframe .stage-region {
+  z-index: 1 !important;
   position: relative !important;
 }
 
