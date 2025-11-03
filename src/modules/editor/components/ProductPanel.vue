@@ -229,7 +229,6 @@ const surfaceMetrics = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow: auto;
   border-radius: 18px;
   background: var(--surface-card);
   border: 1px solid var(--divider);
