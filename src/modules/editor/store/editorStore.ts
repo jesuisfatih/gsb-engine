@@ -1624,18 +1624,19 @@ export const useEditorStore = defineStore("editor", {
       }
       
       // Normal flow: redirect to checkout
-      if (checkoutUrl) {
+      if (checkoutUrl && typeof checkoutUrl === 'string') {
         const absolute = checkoutUrl.startsWith("http")
           ? checkoutUrl
           : `${window.location.origin}${checkoutUrl.startsWith("/") ? checkoutUrl : `/${checkoutUrl}`}`;
         
-        console.log('[checkout] Redirecting to:', absolute);
+        console.log('[checkout] ✅ Redirecting to cart:', absolute);
         window.location.href = absolute;
+        return checkoutUrl;
       } else {
-        console.error('[checkout] No checkout URL received from backend');
-        throw new Error('No checkout URL received');
+        console.error('[checkout] ❌ No valid checkout URL:', checkoutUrl);
+        console.error('[checkout] Response data:', response.data);
+        throw new Error('No checkout URL received from backend');
       }
-      return checkoutUrl;
     },
     applySnapshot(snapshot: {
       items: LayerItem[];
