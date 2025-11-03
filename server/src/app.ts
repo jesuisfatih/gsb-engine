@@ -12,6 +12,7 @@ import { healthRouter } from "./routes/health";
 import { embedRouter } from "./routes/embed";
 import { proxyRouter } from "./routes/proxy";
 import { designsRouter } from "./routes/designs";
+import { uploadRouter } from "./routes/upload";
 
 export function createApp() {
   const app = express();
@@ -56,6 +57,8 @@ export function createApp() {
   app.use("/apps/gsb/api/proxy", proxyRouter);
   // Mount designs router for public thumbnail/preview endpoints (no auth required)
   app.use("/apps/gsb/api/designs", designsRouter);
+  // ✅ FIX: Mount upload router for public image uploads (anonymous users)
+  app.use("/apps/gsb/api/upload", uploadRouter);
   app.use("/apps/gsb", proxyRouter);
 
   console.log('[app] ✅ Routes registered (simplified)');

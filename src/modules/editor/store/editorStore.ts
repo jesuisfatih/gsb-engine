@@ -1533,7 +1533,14 @@ export const useEditorStore = defineStore("editor", {
         try {
           console.log('[checkout] 📤 Uploading preview image...');
           
-          const uploadResponse = await fetch('/api/upload/base64', {
+          // ✅ FIX: Determine correct API base URL (same logic as cart endpoint)
+          const isShopifyProxy = typeof window !== 'undefined' && window.location.pathname.startsWith('/apps/gsb');
+          const apiBase = isShopifyProxy ? '/apps/gsb/api' : '/api';
+          const uploadUrl = `${apiBase}/upload/base64`;
+          
+          console.log('[checkout] 🔗 Upload URL:', uploadUrl, '| Proxy:', isShopifyProxy);
+          
+          const uploadResponse = await fetch(uploadUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -1550,7 +1557,9 @@ export const useEditorStore = defineStore("editor", {
             previewPublicUrl = uploadData.data?.url;
             console.log('[checkout] ✅ Preview uploaded:', previewPublicUrl);
           } else {
-            console.warn('[checkout] ⚠️ Preview upload failed, using dataURL fallback');
+            const errorText = await uploadResponse.text().catch(() => '');
+            console.warn('[checkout] ⚠️ Preview upload failed:', uploadResponse.status, errorText);
+            console.warn('[checkout] Using dataURL fallback');
           }
         } catch (uploadError) {
           console.warn('[checkout] ⚠️ Preview upload error:', uploadError);
