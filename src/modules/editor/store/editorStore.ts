@@ -1558,7 +1558,7 @@ export const useEditorStore = defineStore("editor", {
       // For anonymous users, send design snapshot
       const designSnapshot = !sessionStore.isAuthenticated ? this.serializeSnapshot() : undefined;
 
-      const response = await $api<{ data: { checkoutUrl?: string; lineItem?: Record<string, unknown>; designId?: string } }>("/proxy/cart", {
+      const response = await $api<{ data: { checkoutUrl?: string; lineItem?: Record<string, unknown>; designId?: string } }>("/api/proxy/cart", {
         method: "POST",
         body: {
           designId: this.designId,
