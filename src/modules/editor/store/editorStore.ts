@@ -393,6 +393,11 @@ export const useEditorStore = defineStore("editor", {
     activeTemplateId: null as string | null,
     templateAppliedAt: null as number | null,
     isApplyingTemplate: false,
+    
+    /* Shopify context for checkout */
+    shopifyProductGid: null as string | null,
+    shopifyVariantId: null as string | null,
+    shopifyReturnUrl: null as string | null,
 
     /* Undo/redo */
     _history: [] as LayerItem[][],
@@ -1530,21 +1535,32 @@ export const useEditorStore = defineStore("editor", {
       const catalog = useCatalogStore();
       const product = this.activeProduct;
       
-      // Safe variantIdFor with fallback
-      let variantId: string | null = null;
-      try {
-        if (catalog && typeof catalog.variantIdFor === 'function') {
-          variantId = catalog.variantIdFor({
-            productSlug: this.productSlug,
-            surfaceId: this.surfaceId,
-            color: this.color,
-            material: undefined,
-          }) ?? null;
+      // Use stored Shopify context (from URL params) or try to get from catalog
+      let variantId = this.shopifyVariantId;  // Priority: stored context
+      let productGid = this.shopifyProductGid;  // Priority: stored context
+      
+      // Fallback: try catalog mapping
+      if (!variantId) {
+        try {
+          if (catalog && typeof catalog.variantIdFor === 'function') {
+            variantId = catalog.variantIdFor({
+              productSlug: this.productSlug,
+              surfaceId: this.surfaceId,
+              color: this.color,
+              material: undefined,
+            }) ?? null;
+          }
+        } catch (error) {
+          console.warn('[checkout] variantIdFor failed', error);
         }
-      } catch (error) {
-        console.warn('[checkout] variantIdFor failed, using fallback', error);
       }
-      const productGid = product?.shopifyProductId ?? product?.slug ?? this.productSlug;
+      
+      // Fallback: use product data or construct GID
+      if (!productGid) {
+        productGid = product?.shopifyProductId ?? null;
+      }
+      
+      console.log('[checkout] Shopify IDs:', { productGid, variantId, fromContext: !!this.shopifyVariantId });
       const sheetWidthMm = pxToMm(this.sheetWpx, this.ppi);
       const sheetHeightMm = pxToMm(this.sheetHpx, this.ppi);
       const stats = this.analysis.stats;
