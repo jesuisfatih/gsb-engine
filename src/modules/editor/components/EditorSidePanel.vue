@@ -69,8 +69,10 @@ watch(() => props.show, (show) => {
   display: flex;
   flex-direction: column;
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  overflow: hidden; /* ✅ Panel içeriği taşmasın */
   pointer-events: auto; /* Ensure clickable */
+  box-sizing: border-box;
+  contain: layout style; /* ✅ CSS Containment */
 }
 
 .side-panel.side-left {

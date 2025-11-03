@@ -1401,7 +1401,7 @@ button.primary:not(:disabled):hover {
   overflow: hidden;
 }
 
-/* ✅ NEW: Canva-style icon toolbars (fixed position, 60px, RESPONSIVE) */
+/* ✅ NEW: Canva-style icon toolbars (STRICT 60px containment) */
 .left-pane {
   position: fixed;
   left: 0;
@@ -1413,8 +1413,9 @@ button.primary:not(:disabled):hover {
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   z-index: 100; /* Above canvas, below panels (z-index: 150) */
-  overflow: visible; /* Allow slide-in panels to overflow */
+  overflow: hidden; /* ✅ CRITICAL: No overflow, strict containment */
   box-sizing: border-box;
+  contain: strict; /* ✅ CSS Containment Level 3 - full isolation */
 }
 
 .right-pane {
@@ -1428,8 +1429,9 @@ button.primary:not(:disabled):hover {
   background: rgb(var(--v-theme-surface));
   border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   z-index: 100; /* Above canvas, below panels (z-index: 150) */
-  overflow: visible; /* Allow slide-in panels to overflow */
+  overflow: hidden; /* ✅ CRITICAL: No overflow, strict containment */
   box-sizing: border-box;
+  contain: strict; /* ✅ CSS Containment Level 3 - full isolation */
 }
 
 /* ✅ HIDE: Old toggle button labels (desktop only) */

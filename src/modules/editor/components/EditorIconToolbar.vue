@@ -53,22 +53,23 @@ function handleItemClick(item: ToolbarItem) {
 </template>
 
 <style scoped>
-/* ✅ RESPONSIVE: Icon toolbar (60px fixed width) */
+/* ✅ RESPONSIVE: Icon toolbar (60px STRICT containment) */
 .icon-toolbar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 8px 6px;
+  gap: 4px;
+  padding: 6px 4px; /* ✅ Daha dar padding */
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   width: 60px;
-  min-width: 60px; /* ✅ Prevent shrinking */
-  max-width: 60px; /* ✅ Prevent growing */
+  min-width: 60px;
+  max-width: 60px;
   height: 100%;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: hidden; /* ✅ CRITICAL: No horizontal overflow */
   box-sizing: border-box;
+  contain: layout style; /* ✅ CSS Containment - keeps content inside */
 }
 
 .icon-toolbar[data-side="right"] {
@@ -81,10 +82,10 @@ function handleItemClick(item: ToolbarItem) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px; /* ✅ Fit within 60px container */
-  height: 48px;
-  min-width: 48px;
-  max-width: 48px;
+  width: 52px; /* ✅ 60px - 8px padding = 52px max */
+  height: 52px;
+  min-width: 52px;
+  max-width: 52px;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -93,12 +94,13 @@ function handleItemClick(item: ToolbarItem) {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   box-sizing: border-box;
+  overflow: hidden; /* ✅ Clip any overflow */
 }
 
-/* ✅ Icon size: %40 daha büyük (20px → 28px) */
+/* ✅ Icon size: Optimal size (28px → 24px, %15 küçültüldü) */
 .toolbar-item :deep(svg) {
-  width: 28px !important;
-  height: 28px !important;
+  width: 24px !important;
+  height: 24px !important;
 }
 
 .toolbar-item:hover:not(.disabled) {
@@ -120,21 +122,25 @@ function handleItemClick(item: ToolbarItem) {
 
 .item-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
   background: rgb(var(--v-theme-error));
   color: rgb(var(--v-theme-on-error));
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  max-width: 24px; /* ✅ Badge de taşmasın */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* Custom scrollbar */
