@@ -225,10 +225,11 @@ const surfaceMetrics = computed(() => {
 
 <style scoped>
 .section-body {
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px;
+  overflow: auto;
   border-radius: 18px;
   background: var(--surface-card);
   border: 1px solid var(--divider);
