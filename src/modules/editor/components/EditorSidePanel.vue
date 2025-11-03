@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { X } from 'lucide-vue-next';
 
 interface Props {
@@ -18,24 +18,27 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const panelStyle = computed(() => ({
-  width: `${props.width}px`,
-  [props.side]: '60px', // Position next to icon toolbar (60px wide)
-}));
-
-const transformValue = computed(() => {
-  if (!props.show) {
-    return props.side === 'left' ? 'translateX(-100%)' : 'translateX(100%)';
-  }
-  return 'translateX(0)';
+const panelStyle = computed(() => {
+  // Calculate position based on show state
+  const offset = props.show ? '60px' : `-${props.width}px`;
+  
+  return {
+    width: `${props.width}px`,
+    [props.side]: offset, // Show: next to toolbar (60px), Hide: off-screen
+  };
 });
+
+// 🐛 DEBUG: Panel visibility
+watch(() => props.show, (show) => {
+  console.log(`[EditorSidePanel] "${props.title}" ${props.side}:`, show ? 'VISIBLE' : 'HIDDEN', panelStyle.value);
+}, { immediate: true });
 </script>
 
 <template>
   <div 
     class="side-panel" 
     :class="{ show, [`side-${side}`]: true }"
-    :style="{ ...panelStyle, transform: transformValue }"
+    :style="panelStyle"
   >
     <div class="panel-header">
       <h3 class="panel-title">{{ title }}</h3>
@@ -57,16 +60,17 @@ const transformValue = computed(() => {
 <style scoped>
 .side-panel {
   position: fixed;
-  top: 120px; /* Below topbar + toolbar */
+  top: 60px; /* Below topbar (EditorTopbar height) */
   bottom: 0;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
-  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 150; /* Above toolbars (z-index: 50) and canvas */
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  pointer-events: auto; /* Ensure clickable */
 }
 
 .side-panel.side-left {

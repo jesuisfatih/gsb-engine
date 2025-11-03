@@ -507,6 +507,11 @@ const activePanelLeft = ref<string | null>('product'); // Default: Product panel
 const activePanelRight = ref<string | null>(null); // Default: Kapalı
 const showToolbarStrip = ref(true);
 
+// 🐛 DEBUG: Panel visibility
+watch([activePanelLeft, activePanelRight], ([left, right]) => {
+  console.log('[EditorShell] Panel states:', { left, right });
+}, { immediate: true });
+
 // Legacy compatibility (eski toggle sistemini koruyorum)
 const showLeftPane = computed(() => activePanelLeft.value !== null);
 const showRightPane = computed(() => activePanelRight.value !== null);
@@ -1395,22 +1400,24 @@ button.primary:not(:disabled):hover {
 .left-pane {
   position: fixed;
   left: 0;
-  top: 120px; /* Below topbar */
+  top: 60px; /* Below EditorTopbar */
   bottom: 0;
   width: 60px;
   background: rgb(var(--v-theme-surface));
-  z-index: 50;
+  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  z-index: 100; /* Above canvas, below panels (z-index: 150) */
   overflow: visible; /* Allow slide-in panels to overflow */
 }
 
 .right-pane {
   position: fixed;
   right: 0;
-  top: 120px; /* Below topbar */
+  top: 60px; /* Below EditorTopbar */
   bottom: 0;
   width: 60px;
   background: rgb(var(--v-theme-surface));
-  z-index: 50;
+  border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  z-index: 100; /* Above canvas, below panels (z-index: 150) */
   overflow: visible; /* Allow slide-in panels to overflow */
 }
 
@@ -1889,5 +1896,28 @@ details[open] .accordion-toggle svg {
 }
 </style>
 
+<style>
+/* ✅ CRITICAL: Iframe/Shopify modal CSS overrides (global, unscoped) */
+body.gsb-modal-mode,
+iframe.gsb-editor-iframe {
+  /* Ensure panels are visible in iframe */
+  isolation: isolate;
+}
+
+/* Force panels above everything in iframe context */
+body.gsb-modal-mode .side-panel,
+iframe .side-panel {
+  z-index: 2147483647 !important; /* Maximum z-index */
+  position: fixed !important;
+}
+
+/* Prevent Shopify theme CSS from hiding panels */
+body.gsb-modal-mode .left-pane,
+body.gsb-modal-mode .right-pane {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+</style>
 
 
