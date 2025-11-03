@@ -1555,8 +1555,16 @@ export const useEditorStore = defineStore("editor", {
       if (safeMarginMm) lineItemProperties["Safe Margin (mm)"] = String(safeMarginMm);
       if (this.activeSurface?.name) lineItemProperties["Surface Label"] = this.activeSurface.name;
 
-      // For anonymous users, send design snapshot
-      const designSnapshot = !sessionStore.isAuthenticated ? this.serializeSnapshot() : undefined;
+      // For anonymous users, send design snapshot - FIX: toRaw to remove Vue Proxy
+      const rawSnapshot = !sessionStore.isAuthenticated ? this.serializeSnapshot() : undefined;
+      const designSnapshot = rawSnapshot ? JSON.parse(JSON.stringify(rawSnapshot)) : undefined;
+
+      // variantId güvenli kontrolü
+      const variantIdSafe = typeof variantId === 'string' && variantId ? variantId : null;
+      
+      if (!variantIdSafe) {
+        console.warn('[checkout] ⚠️ variantId missing - using null', { variantId, catalog: !!catalog });
+      }
 
       // Determine correct API base URL for Shopify App Proxy - SHOPIFY STANDARD WAY
       const isShopifyProxy = typeof window !== 'undefined' && window.location.pathname.startsWith('/apps/gsb');
@@ -1565,6 +1573,28 @@ export const useEditorStore = defineStore("editor", {
       
       console.log('[checkout] Pathname:', window.location.pathname, '| Proxy:', isShopifyProxy, '| API Base:', apiBase, '| Full URL:', cartUrl);
 
+      // Build payload with safe type conversions
+      const requestBody = {
+        designId: this.designId || undefined,
+        designSnapshot,
+        productGid: String(productGid || this.productSlug),
+        productTitle: product?.title ? String(product.title) : undefined,
+        quantity: Number(this.quantity) || 1,
+        variantId: variantIdSafe,
+        technique: this.printTech || 'dtf',
+        surfaceId: this.surfaceId || undefined,
+        previewUrl: previewDataUrl,
+        sheetWidthMm: Number(sheetWidthMm) || 0,
+        sheetHeightMm: Number(sheetHeightMm) || 0,
+        printAreaIn2: Number(stats.areaIn2) || 0,
+        colorCount: Number(stats.colorCount) || 0,
+        dpiFloor: Number(stats.lowestImageDpi) || 72,
+        lineItemProperties,
+        returnUrl: options?.returnUrl ?? (typeof window !== "undefined" ? window.location.href : undefined),
+      };
+      
+      console.log('[checkout] Request body:', requestBody);
+
       // Use native fetch for reliability
       const fetchResponse = await fetch(cartUrl, {
         method: "POST",
@@ -1572,32 +1602,20 @@ export const useEditorStore = defineStore("editor", {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({
-          designId: this.designId,
-          designSnapshot,
-          productGid,
-          productTitle: product?.title ? String(product.title) : undefined,
-          quantity: this.quantity,
-          variantId: variantId ?? undefined,
-          technique: this.printTech,
-          surfaceId: this.surfaceId,
-          previewUrl: previewDataUrl,
-          sheetWidthMm,
-          sheetHeightMm,
-          printAreaIn2: stats.areaIn2,
-          colorCount: stats.colorCount,
-          dpiFloor: stats.lowestImageDpi,
-          lineItemProperties,
-          returnUrl: options?.returnUrl ?? (typeof window !== "undefined" ? window.location.href : undefined),
-        }),
+        body: JSON.stringify(requestBody),
       });
       
+      // Read response text for detailed error messages
+      const responseText = await fetchResponse.text().catch(() => '');
+      
       if (!fetchResponse.ok) {
-        console.error('[checkout] ❌ HTTP Error:', fetchResponse.status, fetchResponse.statusText);
-        throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
+        console.error('[checkout] ❌ Request:', requestBody);
+        console.error('[checkout] ❌ Response:', responseText);
+        console.error('[checkout] ❌ Status:', fetchResponse.status, fetchResponse.statusText);
+        throw new Error(`HTTP ${fetchResponse.status}: ${responseText || fetchResponse.statusText}`);
       }
       
-      const response = await fetchResponse.json() as { data: { checkoutUrl?: string; lineItem?: Record<string, unknown>; designId?: string } };
+      const response = JSON.parse(responseText) as { data: { checkoutUrl?: string; lineItem?: Record<string, unknown>; designId?: string } };
 
       // Update designId from backend response
       if (response.data?.designId) {
