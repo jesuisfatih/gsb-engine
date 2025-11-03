@@ -263,7 +263,12 @@ onMounted(async () => {
   const material = route.query.material as string | undefined;
   const technique = route.query.technique as string | undefined;
   const shopifyProduct = route.query.shopifyProduct as string | undefined;
-  const shopifyVariant = route.query.shopifyVariant as string | undefined;
+  const shopifyVariantRaw = route.query.shopifyVariant as string | undefined;
+  
+  // Convert numeric variant ID to Shopify GID format
+  const shopifyVariant = shopifyVariantRaw && !shopifyVariantRaw.startsWith('gid://')
+    ? `gid://shopify/ProductVariant/${shopifyVariantRaw}`
+    : shopifyVariantRaw;
 
   console.log("[editor] URL params:", { productSlug, surfaceId, color, material, technique, shopifyProduct, shopifyVariant });
 
