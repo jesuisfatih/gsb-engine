@@ -313,14 +313,15 @@ onMounted(async () => {
           
           console.log("[editor] ✅ Product auto-loaded from variant:", mapping.productSlug, mapping.surfaceId);
           
-          // Store Shopify context for checkout
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem('gsb-shopify-context', JSON.stringify({
-              variantId: shopifyVariant,
-              productGid: shopifyProduct || mapping.shopifyProductId,
-              returnUrl: route.query.returnTo as string | undefined,
-            }));
-          }
+          // Store Shopify context in editor store for checkout
+          editorStore.shopifyVariantId = shopifyVariant || null;
+          editorStore.shopifyProductGid = shopifyProduct || mapping.shopifyProductId || null;
+          editorStore.shopifyReturnUrl = route.query.returnTo as string | undefined || null;
+          
+          console.log("[editor] ✅ Shopify context saved to store:", {
+            variantId: editorStore.shopifyVariantId,
+            productGid: editorStore.shopifyProductGid,
+          });
           
           // Skip manual product loading below
           productSlug = undefined as any; // Prevent duplicate loading
@@ -393,18 +394,16 @@ onMounted(async () => {
       }
     }
     
-    // Store Shopify context for checkout (save to localStorage for now)
+    // Store Shopify context for checkout
     if (shopifyProduct || shopifyVariant) {
-      const shopifyContext = {
-        productGid: shopifyProduct,
-        variantId: shopifyVariant,
-        returnUrl: route.query.returnTo as string | undefined,
-      };
-      console.log("[editor] Storing Shopify context:", shopifyContext);
-      // Store in localStorage for checkout
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('gsb-shopify-context', JSON.stringify(shopifyContext));
-      }
+      editorStore.shopifyVariantId = shopifyVariant || null;
+      editorStore.shopifyProductGid = shopifyProduct || null;
+      editorStore.shopifyReturnUrl = route.query.returnTo as string | undefined || null;
+      
+      console.log("[editor] ✅ Shopify context saved:", {
+        variantId: editorStore.shopifyVariantId,
+        productGid: editorStore.shopifyProductGid,
+      });
     }
   }
 
