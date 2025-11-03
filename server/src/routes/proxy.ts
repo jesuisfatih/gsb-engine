@@ -379,15 +379,17 @@ proxyRouter.post("/cart", async (req, res, next) => {
     const validationResult = checkoutSchema.safeParse(req.body);
     
     if (!validationResult.success) {
-      console.error('[proxy/cart] ❌ Validation failed:', validationResult.error.errors);
+      console.error('[proxy/cart] ❌ Validation failed:');
+      console.error('Issues:', validationResult.error.issues);
+      console.error('Full error:', JSON.stringify(validationResult.error, null, 2));
       return res.status(422).json({ 
         error: 'Validation failed', 
-        details: validationResult.error.errors 
+        details: validationResult.error.issues 
       });
     }
     
     const payload = validationResult.data;
-    console.log('[proxy/cart] ✅ Validation passed, payload:', payload);
+    console.log('[proxy/cart] ✅ Validation passed! Keys:', Object.keys(payload));
     
     const { prisma, tenantId } = req.context;
 
