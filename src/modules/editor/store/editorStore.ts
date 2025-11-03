@@ -1576,7 +1576,7 @@ export const useEditorStore = defineStore("editor", {
           designId: this.designId,
           designSnapshot,
           productGid,
-          productTitle: product?.title,
+          productTitle: product?.title ? String(product.title) : undefined,
           quantity: this.quantity,
           variantId: variantId ?? undefined,
           technique: this.printTech,
