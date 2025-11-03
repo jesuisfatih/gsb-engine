@@ -18,6 +18,8 @@ import StageCanvas from "./StageCanvas.vue";
 import AssetPanel from "./AssetPanel.vue";
 import GangSheetSidebar from "./GangSheetSidebar.vue";
 import AutoBuildPanel from "./AutoBuildPanel.vue";
+import EditorIconToolbar from "./EditorIconToolbar.vue"; // ✅ NEW
+import EditorSidePanel from "./EditorSidePanel.vue"; // ✅ NEW
 import { useEditorModeStore } from "../store/editorModeStore";
 import { useEditorStore } from "../store/editorStore";
 import { useGangSheetStore } from "../store/gangSheetStore";
@@ -500,9 +502,14 @@ const designStatusLabel = computed(() => {
   }
 });
 
-const showLeftPane = ref(true);
+// ✅ NEW: Canva-style panel system
+const activePanelLeft = ref<string | null>('product'); // Default: Product panel açık
+const activePanelRight = ref<string | null>(null); // Default: Kapalı
 const showToolbarStrip = ref(true);
-const showRightPane = ref(true);
+
+// Legacy compatibility (eski toggle sistemini koruyorum)
+const showLeftPane = computed(() => activePanelLeft.value !== null);
+const showRightPane = computed(() => activePanelRight.value !== null);
 
 const leftWidth = ref(440);
 const rightWidth = ref(360);
@@ -527,15 +534,38 @@ const paneStyle = computed(() => ({
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
+// ✅ NEW: Canva-style toolbar items
+const leftToolbarItems = computed(() => [
+  { id: 'product', icon: Package, label: 'Product & Surfaces' },
+  { id: 'assets', icon: FolderOpen, label: 'Asset Library' },
+  { id: 'layers', icon: Layers, label: 'Layers' },
+  ...(isGangMode.value ? [{ id: 'gang', icon: Grid3x3, label: 'Gang Sheet Queue' }] : []),
+]);
+
+const rightToolbarItems = computed(() => [
+  { id: 'properties', icon: Settings, label: 'Properties' },
+  { id: 'quality', icon: Star, label: 'Quality Analysis', badge: qualityAnalysis.value ? '!' : undefined },
+  { id: 'suggestions', icon: Lightbulb, label: 'Smart Suggestions', badge: suggestions.value.length || undefined },
+  ...(hasTemplate.value ? [{ id: 'template', icon: ClipboardList, label: 'Template Checklist' }] : []),
+]);
+
+function handleLeftPanelSelect(panelId: string) {
+  activePanelLeft.value = activePanelLeft.value === panelId ? null : panelId;
+}
+
+function handleRightPanelSelect(panelId: string) {
+  activePanelRight.value = activePanelRight.value === panelId ? null : panelId;
+}
+
 function togglePane(which: "left" | "tool" | "right") {
   if (resizing.value) {
     resizing.value = null;
     window.removeEventListener("pointermove", handleResize);
     window.removeEventListener("pointerup", stopResize);
   }
-  if (which === "left") showLeftPane.value = !showLeftPane.value;
+  if (which === "left") activePanelLeft.value = activePanelLeft.value ? null : 'product';
   if (which === "tool") showToolbarStrip.value = !showToolbarStrip.value;
-  if (which === "right") showRightPane.value = !showRightPane.value;
+  if (which === "right") activePanelRight.value = activePanelRight.value ? null : 'properties';
 }
 
 function toggleDarkMode() {
@@ -796,66 +826,60 @@ function changeMode(mode: "dtf" | "gang") {
       </div>
     </header>
 
+    <!-- ✅ NEW: Canva-style Left Icon Toolbar -->
     <aside class="left-pane">
-      <VExpansionPanels multiple :model-value="[0, 1, 2, 3]">
-        <VExpansionPanel>
-          <VExpansionPanelTitle>
-            <div class="d-flex align-center gap-2">
-              <Package :size="18" />
-              <span>Product & Surfaces</span>
-            </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText>
-            <ProductPanel />
-          </VExpansionPanelText>
-        </VExpansionPanel>
+      <EditorIconToolbar
+        :items="leftToolbarItems"
+        :active-item="activePanelLeft"
+        side="left"
+        @select="handleLeftPanelSelect"
+      />
+      
+      <!-- Slide-in panels for left toolbar -->
+      <EditorSidePanel
+        title="Product & Surfaces"
+        :show="activePanelLeft === 'product'"
+        side="left"
+        :width="380"
+        @close="activePanelLeft = null"
+      >
+        <ProductPanel />
+      </EditorSidePanel>
 
-        <VExpansionPanel>
-          <VExpansionPanelTitle>
-            <div class="d-flex align-center gap-2">
-              <FolderOpen :size="18" />
-              <span>Asset Library</span>
-            </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText>
-            <AssetPanel />
-          </VExpansionPanelText>
-        </VExpansionPanel>
+      <EditorSidePanel
+        title="Asset Library"
+        :show="activePanelLeft === 'assets'"
+        side="left"
+        :width="380"
+        @close="activePanelLeft = null"
+      >
+        <AssetPanel />
+      </EditorSidePanel>
 
-        <VExpansionPanel>
-          <VExpansionPanelTitle>
-            <div class="d-flex align-center gap-2">
-              <Layers :size="18" />
-              <span>Layers</span>
-            </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText>
-            <LayersPanel />
-          </VExpansionPanelText>
-        </VExpansionPanel>
+      <EditorSidePanel
+        title="Layers"
+        :show="activePanelLeft === 'layers'"
+        side="left"
+        :width="340"
+        @close="activePanelLeft = null"
+      >
+        <LayersPanel />
+      </EditorSidePanel>
 
-        <VExpansionPanel v-if="isGangMode">
-          <VExpansionPanelTitle>
-            <div class="d-flex align-center gap-2">
-              <Grid3x3 :size="18" />
-              <span>Gang Sheet Queue</span>
-            </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText>
-            <GangSheetSidebar />
-          </VExpansionPanelText>
-        </VExpansionPanel>
-      </VExpansionPanels>
+      <EditorSidePanel
+        v-if="isGangMode"
+        title="Gang Sheet Queue"
+        :show="activePanelLeft === 'gang'"
+        side="left"
+        :width="360"
+        @close="activePanelLeft = null"
+      >
+        <GangSheetSidebar />
+      </EditorSidePanel>
     </aside>
 
-    <div
-      class="resize-handle left"
-      role="separator"
-      aria-orientation="vertical"
-      @pointerdown="startResize('left', $event)"
-    >
-      <div class="grip" />
-    </div>
+    <!-- ✅ Resize handle removed - panels are now fixed width -->
+
 
     <section class="center-pane" :class="{ 'tool-hidden': !showToolbarStrip }">
       <div class="tool-strip">
@@ -893,34 +917,27 @@ function changeMode(mode: "dtf" | "gang") {
       </div>
     </section>
 
-    <div
-      class="resize-handle right"
-      role="separator"
-      aria-orientation="vertical"
-      @pointerdown="startResize('right', $event)"
-    >
-      <div class="grip" />
-    </div>
+    <!-- ✅ Resize handle removed - panels are now fixed width -->
 
+    <!-- ✅ NEW: Canva-style Right Icon Toolbar -->
     <aside class="right-pane">
-      <VExpansionPanels multiple :model-value="hasTemplate ? [0, 1, 2] : [1, 2]">
-        <VExpansionPanel v-if="hasTemplate">
-          <VExpansionPanelTitle>
-            <div class="d-flex align-center justify-space-between w-100">
-              <div class="d-flex align-center gap-2">
-                <ClipboardList :size="18" />
-                <span>Template Checklist</span>
-              </div>
-              <VChip 
-                :color="templateStatus === 'ready' ? 'success' : templateStatus === 'missing' ? 'error' : 'warning'" 
-                size="small" 
-                variant="tonal"
-              >
-                {{ templateStatusLabel }}
-              </VChip>
-            </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText>
+      <EditorIconToolbar
+        :items="rightToolbarItems"
+        :active-item="activePanelRight"
+        side="right"
+        @select="handleRightPanelSelect"
+      />
+      
+      <!-- Slide-in panels for right toolbar -->
+      <EditorSidePanel
+        v-if="hasTemplate"
+        title="Template Checklist"
+        :show="activePanelRight === 'template'"
+        side="right"
+        :width="380"
+        @close="activePanelRight = null"
+      >
+        <VExpansionPanelText>
           <div class="template-section">
           <div v-if="!hasTemplate" class="template-empty">
             <p>No template applied. Load a preset from the library to unlock guided placeholders.</p>
@@ -976,103 +993,81 @@ function changeMode(mode: "dtf" | "gang") {
           </VExpansionPanelText>
         </VExpansionPanel>
 
-        <VExpansionPanel>
-          <VExpansionPanelTitle>
-            <div class="d-flex align-center gap-2">
-              <Settings :size="18" />
-              <span>Properties</span>
-            </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText>
-            <PropertiesPanel />
-          </VExpansionPanelText>
-        </VExpansionPanel>
+      <EditorSidePanel
+        title="Properties"
+        :show="activePanelRight === 'properties'"
+        side="right"
+        :width="360"
+        @close="activePanelRight = null"
+      >
+        <PropertiesPanel />
+        
+        <!-- 3D Mockup Preview inside Properties -->
+        <div style="margin-top: 20px;">
+          <MockupPreview3D />
+        </div>
+      </EditorSidePanel>
 
-      <!-- 3D Mockup Preview (replaces old MockupPreview) -->
-      <MockupPreview3D />
-
-        <!-- OPTION C: Quality Analysis Panel -->
-        <VExpansionPanel v-if="qualityAnalysis">
-          <VExpansionPanelTitle>
-            <div class="d-flex align-center gap-2">
-              <Star :size="18" />
-              <span>Quality Analysis</span>
+      <EditorSidePanel
+        v-if="qualityAnalysis"
+        title="Quality Analysis"
+        :show="activePanelRight === 'quality'"
+        side="right"
+        :width="360"
+        @close="activePanelRight = null"
+      >
+        <div style="padding: 12px; font-size: 13px;">
+          <div v-if="qualityAnalysis.score" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-weight: 500;">Overall Quality</span>
+              <span style="font-weight: 600; color: #10b981;">{{ qualityAnalysis.score.toFixed(0) }}%</span>
             </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText>
-          <div style="padding: 12px; font-size: 13px;">
-            <div v-if="qualityAnalysis.score" style="margin-bottom: 12px;">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span style="font-weight: 500;">Overall Quality</span>
-                <span style="font-weight: 600; color: #10b981;">{{ qualityAnalysis.score.toFixed(0) }}%</span>
-              </div>
-              <div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
-                <div :style="{
-                  width: qualityAnalysis.score + '%',
-                  height: '100%',
-                  background: qualityAnalysis.score >= 80 ? '#10b981' : qualityAnalysis.score >= 60 ? '#f59e0b' : '#ef4444',
-                  transition: 'width 0.3s'
-                }"></div>
-              </div>
-            </div>
-            <div v-for="issue in qualityAnalysis.issues" :key="issue.type" style="margin-bottom: 8px; padding: 8px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 12px;">
-              <strong>{{ issue.type }}:</strong> {{ issue.message }}
+            <div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+              <div :style="{
+                width: qualityAnalysis.score + '%',
+                height: '100%',
+                background: qualityAnalysis.score >= 80 ? '#10b981' : qualityAnalysis.score >= 60 ? '#f59e0b' : '#ef4444',
+                transition: 'width 0.3s'
+              }"></div>
             </div>
           </div>
-          </VExpansionPanelText>
-        </VExpansionPanel>
+          <div v-for="issue in qualityAnalysis.issues" :key="issue.type" style="margin-bottom: 8px; padding: 8px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 12px;">
+            <strong>{{ issue.type }}:</strong> {{ issue.message }}
+          </div>
+        </div>
+      </EditorSidePanel>
 
-        <!-- OPTION C: Smart Suggestions Panel -->
-        <VExpansionPanel v-if="suggestions.length > 0">
-          <VExpansionPanelTitle>
-            <div class="d-flex align-center gap-2">
-              <Lightbulb :size="18" />
-              <span>Smart Suggestions</span>
+      <EditorSidePanel
+        v-if="suggestions.length > 0"
+        title="Smart Suggestions"
+        :show="activePanelRight === 'suggestions'"
+        side="right"
+        :width="380"
+        @close="activePanelRight = null"
+      >
+        <div style="padding: 0 12px 12px;">
+          <div v-for="(sug, idx) in suggestions" :key="idx" style="margin-bottom: 8px; padding: 10px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; transition: all 0.2s; border: 1px solid transparent;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
+              <div style="font-size: 13px; font-weight: 500; color: #065f46;">{{ sug.title }}</div>
+              <button
+                @click="applySuggestion(sug)"
+                style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
+              >
+                Apply
+              </button>
             </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText>
-            <div style="padding: 0 12px 12px;">
-              <div v-for="(sug, idx) in suggestions" :key="idx" style="margin-bottom: 8px; padding: 10px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; transition: all 0.2s; border: 1px solid transparent;" :style="{'&:hover': {background: '#dcfce7', borderColor: '#10b981'}}">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
-                  <div style="font-size: 13px; font-weight: 500; color: #065f46;">{{ sug.title }}</div>
-                  <button
-                    @click="applySuggestion(sug)"
-                    style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
-                    :style="{'&:hover': {background: '#059669'}}"
-                  >
-                    Apply
-                  </button>
-                </div>
-                <div style="font-size: 12px; color: #6b7280; margin-bottom: 6px;">{{ sug.description }}</div>
-                <div style="display: flex; gap: 12px; font-size: 11px;">
-                  <span v-if="sug.savings" style="color: #10b981; font-weight: 600;">
-                    💰 Save {{ sug.savings.toFixed(2) }}%
-                  </span>
-                  <span v-if="sug.impact" style="color: #6b7280;">
-                    Impact: {{ sug.impact }}
-                  </span>
-                </div>
-              </div>
+            <div style="font-size: 12px; color: #6b7280; margin-bottom: 6px;">{{ sug.description }}</div>
+            <div style="display: flex; gap: 12px; font-size: 11px;">
+              <span v-if="sug.savings" style="color: #10b981; font-weight: 600;">
+                💰 Save {{ sug.savings.toFixed(2) }}%
+              </span>
+              <span v-if="sug.impact" style="color: #6b7280;">
+                Impact: {{ sug.impact }}
+              </span>
             </div>
-          </VExpansionPanelText>
-        </VExpansionPanel>
-
-        <!-- Auto Build Panel -->
-        <VExpansionPanel v-if="isGangMode">
-          <VExpansionPanelTitle>
-            <div class="d-flex align-center gap-2">
-              <Boxes :size="18" />
-              <span>Auto Build</span>
-            </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText>
-            <AutoBuildPanel />
-          </VExpansionPanelText>
-        </VExpansionPanel>
-      </VExpansionPanels>
-
-      <!-- Batch Operations Panel -->
-      <BatchOperationsPanel />
+          </div>
+        </div>
+      </EditorSidePanel>
     </aside>
 
     <div v-if="autosaveError" class="autosave-error">
