@@ -49,6 +49,8 @@ export function createApp() {
   app.use("/api/health", healthRouter);
   app.use("/api/embed", embedRouter);
   app.use("/api/proxy", proxyRouter);
+  // ✅ FIX: Upload endpoint for anonymous users (no auth required)
+  app.use("/api/upload", uploadRouter);
   app.use("/api", requireAuthMiddleware, createApiRouter());
 
   // App Proxy routes (for Shopify storefront)
