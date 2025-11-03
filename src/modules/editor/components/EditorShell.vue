@@ -1802,21 +1802,6 @@ details[open] .accordion-toggle svg {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 320px;
-  overflow: auto;
-}
-
-.section-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.section-body::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.32);
-  border-radius: 999px;
-}
-
-.section-body::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .autosave-error {
