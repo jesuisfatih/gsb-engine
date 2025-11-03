@@ -1093,6 +1093,7 @@ function changeMode(mode: "dtf" | "gang") {
 </template>
 
 <style scoped>
+/* ✅ NEW: Simplified Flexbox layout for Canva-style UI */
 .editor-root {
   --panel-bg: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%);
   --divider: rgba(209, 213, 219, 0.6);
@@ -1103,22 +1104,18 @@ function changeMode(mode: "dtf" | "gang") {
   --text-muted: #6b7280;
   --editor-accent: #6366f1;
   --panel-glow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  display: grid;
-  grid-template-columns: var(--left-width, 360px) var(--left-handle-width, 12px) minmax(0, 1fr) var(--right-handle-width, 12px) var(--right-width, 360px);
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 0;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: var(--panel-bg);
   color: var(--text-primary);
   padding: 0;
   box-sizing: border-box;
   border-radius: 0;
+  overflow: hidden;
 }
 
-/* EditorTopbar takes full width */
-.editor-root > :first-child {
-  grid-column: 1 / -1;
-}
+/* ✅ Topbar is flex item, takes full width automatically */
 
 .v-theme--dark .editor-root {
   --panel-bg: linear-gradient(180deg, #1f2937 0%, #111827 100%);
@@ -1132,25 +1129,9 @@ function changeMode(mode: "dtf" | "gang") {
   --panel-glow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.editor-root.is-left-collapsed {
-  --left-width: 0px;
-  --left-handle-width: 0px;
-}
-
-.editor-root.is-right-collapsed {
-  --right-width: 0px;
-  --right-handle-width: 0px;
-}
-
-.editor-root.is-left-collapsed .left-pane,
-.editor-root.is-right-collapsed .right-pane,
-.editor-root.is-left-collapsed .resize-handle.left,
-.editor-root.is-right-collapsed .resize-handle.right {
-  display: none;
-}
+/* ✅ Collapsed state not needed - panels are always visible as icon toolbars */
 
 .area-toolbar {
-  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: auto 1fr minmax(0, 320px) auto;
   align-items: center;
@@ -1412,22 +1393,32 @@ button.primary:not(:disabled):hover {
   overflow: hidden;
 }
 
+/* ✅ NEW: Canva-style icon toolbars (fixed position, 60px) */
 .left-pane {
-  grid-column: 1;
-  grid-row: 2;
-  overflow: auto;
+  position: fixed;
+  left: 0;
+  top: 120px; /* Below topbar */
+  bottom: 0;
+  width: 60px;
+  background: rgb(var(--v-theme-surface));
+  z-index: 50;
+  overflow: visible; /* Allow slide-in panels to overflow */
 }
 
 .right-pane {
-  grid-column: 5;
-  grid-row: 2;
-  overflow: auto;
+  position: fixed;
+  right: 0;
+  top: 120px; /* Below topbar */
+  bottom: 0;
+  width: 60px;
+  background: rgb(var(--v-theme-surface));
+  z-index: 50;
+  overflow: visible; /* Allow slide-in panels to overflow */
 }
 
+/* ✅ HIDDEN: Resize handles not needed with fixed toolbars */
 .resize-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: none !important; /* Hidden - panels are now fixed width */
   grid-row: 2;
   cursor: col-resize;
   user-select: none;
@@ -1455,14 +1446,17 @@ button.primary:not(:disabled):hover {
   box-shadow: 0 0 12px rgba(76, 29, 149, 0.35);
 }
 
+/* ✅ NEW: Center pane with margins for toolbars */
 .center-pane {
-  grid-column: 3;
-  grid-row: 2;
+  position: relative;
   display: grid;
   grid-template-columns: 82px minmax(0, 1fr);
   gap: 12px;
   min-width: 0;
   min-height: 0;
+  margin-left: 60px; /* Left toolbar */
+  margin-right: 60px; /* Right toolbar */
+  flex: 1; /* Take remaining space */
 }
 
 .center-pane.tool-hidden {
