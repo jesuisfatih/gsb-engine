@@ -1558,9 +1558,23 @@ export const useEditorStore = defineStore("editor", {
       // For anonymous users, send design snapshot
       const designSnapshot = !sessionStore.isAuthenticated ? this.serializeSnapshot() : undefined;
 
-      const response = await $api<{ data: { checkoutUrl?: string; lineItem?: Record<string, unknown>; designId?: string } }>("/api/proxy/cart", {
+      // Determine correct API base URL for Shopify App Proxy
+      const isShopifyProxy = typeof window !== 'undefined' && (window as any).__GSB_EMBED_MODE__;
+      const apiBase = isShopifyProxy && (window as any).__GSB_BASE_PATH__ 
+        ? `${(window as any).__GSB_BASE_PATH__}/api` 
+        : '/api';
+      const cartUrl = `${apiBase}/proxy/cart`;
+      
+      console.log('[checkout] API Base:', apiBase, '| Full URL:', cartUrl, '| Shopify Proxy:', isShopifyProxy);
+
+      // Use native fetch for reliability
+      const fetchResponse = await fetch(cartUrl, {
         method: "POST",
-        body: {
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
           designId: this.designId,
           designSnapshot,
           productGid,
@@ -1577,8 +1591,15 @@ export const useEditorStore = defineStore("editor", {
           dpiFloor: stats.lowestImageDpi,
           lineItemProperties,
           returnUrl: options?.returnUrl ?? (typeof window !== "undefined" ? window.location.href : undefined),
-        },
+        }),
       });
+      
+      if (!fetchResponse.ok) {
+        console.error('[checkout] ❌ HTTP Error:', fetchResponse.status, fetchResponse.statusText);
+        throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
+      }
+      
+      const response = await fetchResponse.json() as { data: { checkoutUrl?: string; lineItem?: Record<string, unknown>; designId?: string } };
 
       // Update designId from backend response
       if (response.data?.designId) {
