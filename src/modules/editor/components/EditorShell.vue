@@ -257,7 +257,7 @@ onMounted(async () => {
   }
 
   // Check for URL params to auto-load product/surface
-  const productSlug = route.query.product as string | undefined;
+  let productSlug = route.query.product as string | undefined;
   const surfaceId = route.query.surface as string | undefined;
   const color = route.query.color as string | undefined;
   const material = route.query.material as string | undefined;
