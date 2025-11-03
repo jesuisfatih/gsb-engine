@@ -375,8 +375,19 @@ proxyRouter.post("/cart", async (req, res, next) => {
   try {
     console.log('[proxy/cart] Received request body:', JSON.stringify(req.body, null, 2));
     
-    const payload = checkoutSchema.parse(req.body);
-    console.log('[proxy/cart] Validation passed, payload:', payload);
+    // Validate with detailed error logging
+    const validationResult = checkoutSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      console.error('[proxy/cart] ❌ Validation failed:', validationResult.error.errors);
+      return res.status(422).json({ 
+        error: 'Validation failed', 
+        details: validationResult.error.errors 
+      });
+    }
+    
+    const payload = validationResult.data;
+    console.log('[proxy/cart] ✅ Validation passed, payload:', payload);
     
     const { prisma, tenantId } = req.context;
 
