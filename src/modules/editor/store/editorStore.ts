@@ -1559,11 +1559,11 @@ export const useEditorStore = defineStore("editor", {
       const rawSnapshot = !sessionStore.isAuthenticated ? this.serializeSnapshot() : undefined;
       const designSnapshot = rawSnapshot ? JSON.parse(JSON.stringify(rawSnapshot)) : undefined;
 
-      // variantId güvenli kontrolü
-      const variantIdSafe = typeof variantId === 'string' && variantId ? variantId : null;
+      // variantId güvenli kontrolü - Zod null kabul etmez, undefined kullan
+      const variantIdSafe = typeof variantId === 'string' && variantId ? variantId : undefined;
       
       if (!variantIdSafe) {
-        console.warn('[checkout] ⚠️ variantId missing - using null', { variantId, catalog: !!catalog });
+        console.warn('[checkout] ⚠️ variantId missing - using undefined', { variantId, catalog: !!catalog });
       }
 
       // Determine correct API base URL for Shopify App Proxy - SHOPIFY STANDARD WAY
