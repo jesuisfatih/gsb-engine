@@ -836,61 +836,7 @@ function changeMode(mode: "dtf" | "gang") {
       </div>
     </header>
 
-    <!-- ✅ NEW: Canva-style Left Icon Toolbar -->
-    <aside class="left-pane">
-      <EditorIconToolbar
-        :items="leftToolbarItems"
-        :active-item="activePanelLeft"
-        side="left"
-        @select="handleLeftPanelSelect"
-      />
-      
-      <!-- Slide-in panels for left toolbar -->
-      <EditorSidePanel
-        title="Product & Surfaces"
-        :show="activePanelLeft === 'product'"
-        side="left"
-        :width="380"
-        @close="activePanelLeft = null"
-      >
-        <ProductPanel />
-      </EditorSidePanel>
-
-      <EditorSidePanel
-        title="Asset Library"
-        :show="activePanelLeft === 'assets'"
-        side="left"
-        :width="380"
-        @close="activePanelLeft = null"
-      >
-        <AssetPanel />
-      </EditorSidePanel>
-
-      <EditorSidePanel
-        title="Layers"
-        :show="activePanelLeft === 'layers'"
-        side="left"
-        :width="340"
-        @close="activePanelLeft = null"
-      >
-        <LayersPanel />
-      </EditorSidePanel>
-
-      <EditorSidePanel
-        v-if="isGangMode"
-        title="Gang Sheet Queue"
-        :show="activePanelLeft === 'gang'"
-        side="left"
-        :width="360"
-        @close="activePanelLeft = null"
-      >
-        <GangSheetSidebar />
-      </EditorSidePanel>
-    </aside>
-
-    <!-- ✅ Resize handle removed - panels are now fixed width -->
-
-
+    <!-- ✅ Layer 2: Main Content (FIRST in DOM, lowest z-index) -->
     <section class="center-pane" :class="{ 'tool-hidden': !showToolbarStrip }">
       <div class="tool-strip">
         <EditorToolbar />
@@ -927,9 +873,17 @@ function changeMode(mode: "dtf" | "gang") {
       </div>
     </section>
 
-    <!-- ✅ Resize handle removed - panels are now fixed width -->
+    <!-- ✅ Layer 3: Left Icon Toolbar (ONLY toolbar, NO panels inside) -->
+    <aside class="left-pane">
+      <EditorIconToolbar
+        :items="leftToolbarItems"
+        :active-item="activePanelLeft"
+        side="left"
+        @select="handleLeftPanelSelect"
+      />
+    </aside>
 
-    <!-- ✅ NEW: Canva-style Right Icon Toolbar -->
+    <!-- ✅ Layer 3: Right Icon Toolbar (ONLY toolbar, NO panels inside) -->
     <aside class="right-pane">
       <EditorIconToolbar
         :items="rightToolbarItems"
@@ -937,16 +891,59 @@ function changeMode(mode: "dtf" | "gang") {
         side="right"
         @select="handleRightPanelSelect"
       />
-      
-      <!-- Slide-in panels for right toolbar -->
-      <EditorSidePanel
-        v-if="hasTemplate"
-        title="Template Checklist"
-        :show="activePanelRight === 'template'"
-        side="right"
-        :width="380"
-        @close="activePanelRight = null"
-      >
+    </aside>
+
+    <!-- ✅ Layer 4: Left Side Panels (OUTSIDE left-pane, highest z-index) -->
+    <EditorSidePanel
+      title="Product & Surfaces"
+      :show="activePanelLeft === 'product'"
+      side="left"
+      :width="380"
+      @close="activePanelLeft = null"
+    >
+      <ProductPanel />
+    </EditorSidePanel>
+
+    <EditorSidePanel
+      title="Asset Library"
+      :show="activePanelLeft === 'assets'"
+      side="left"
+      :width="380"
+      @close="activePanelLeft = null"
+    >
+      <AssetPanel />
+    </EditorSidePanel>
+
+    <EditorSidePanel
+      title="Layers"
+      :show="activePanelLeft === 'layers'"
+      side="left"
+      :width="340"
+      @close="activePanelLeft = null"
+    >
+      <LayersPanel />
+    </EditorSidePanel>
+
+    <EditorSidePanel
+      v-if="isGangMode"
+      title="Gang Sheet Queue"
+      :show="activePanelLeft === 'gang'"
+      side="left"
+      :width="360"
+      @close="activePanelLeft = null"
+    >
+      <GangSheetSidebar />
+    </EditorSidePanel>
+
+    <!-- ✅ Layer 4: Right Side Panels (OUTSIDE right-pane, highest z-index) -->
+    <EditorSidePanel
+      v-if="hasTemplate"
+      title="Template Checklist"
+      :show="activePanelRight === 'template'"
+      side="right"
+      :width="380"
+      @close="activePanelRight = null"
+    >
         <div class="template-section">
           <div v-if="!hasTemplate" class="template-empty">
             <p>No template applied. Load a preset from the library to unlock guided placeholders.</p>
@@ -1076,7 +1073,6 @@ function changeMode(mode: "dtf" | "gang") {
           </div>
         </div>
       </EditorSidePanel>
-    </aside>
 
     <div v-if="autosaveError" class="autosave-error">
       Autosave failed: {{ autosaveError }}
