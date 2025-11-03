@@ -95,6 +95,12 @@ function handleItemClick(item: ToolbarItem) {
   box-sizing: border-box;
 }
 
+/* ✅ Icon size: %40 daha büyük (20px → 28px) */
+.toolbar-item :deep(svg) {
+  width: 28px !important;
+  height: 28px !important;
+}
+
 .toolbar-item:hover:not(.disabled) {
   background: rgba(var(--v-theme-primary), 0.08);
   color: rgb(var(--v-theme-primary));

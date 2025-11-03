@@ -535,6 +535,11 @@ const paneStyle = computed(() => ({
   "--right-width": showRightPane.value ? `${rightWidth.value}px` : "0px",
   "--left-handle-width": showLeftPane.value ? "12px" : "0px",
   "--right-handle-width": showRightPane.value ? "12px" : "0px",
+  // ✅ NEW: Dynamic panel widths for tool-strip movement
+  "--left-panel-width": activePanelLeft.value ? "380px" : "0px",
+  "--right-panel-width": activePanelRight.value ? "360px" : "0px",
+  "--left-toolbar-width": "60px",
+  "--right-toolbar-width": "60px",
 }));
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -1438,6 +1443,11 @@ button.primary:not(:disabled):hover {
 
 /* 📱 MOBILE (< 768px) */
 @media (max-width: 767px) {
+  :root {
+    --left-toolbar-width: 56px;
+    --right-toolbar-width: 56px;
+  }
+  
   .left-pane,
   .right-pane {
     top: 50px !important; /* Shorter topbar on mobile */
@@ -1447,8 +1457,15 @@ button.primary:not(:disabled):hover {
   }
   
   .center-pane {
-    margin-left: 56px !important;
-    margin-right: 56px !important;
+    /* ✅ DYNAMIC: Still respects panel state */
+    margin-left: calc(var(--left-toolbar-width, 56px) + var(--left-panel-width, 0px)) !important;
+    margin-right: calc(var(--right-toolbar-width, 56px) + var(--right-panel-width, 0px)) !important;
+  }
+  
+  /* Tool-strip: narrower on mobile */
+  .tool-strip {
+    width: 70px;
+    padding: 8px 4px;
   }
   
   /* Keep old toggle buttons visible on mobile */
@@ -1519,7 +1536,7 @@ button.primary:not(:disabled):hover {
   box-shadow: 0 0 12px rgba(76, 29, 149, 0.35);
 }
 
-/* ✅ NEW: Center pane with margins for toolbars */
+/* ✅ NEW: Center pane with DYNAMIC margins (panel-aware) */
 .center-pane {
   position: relative;
   display: grid;
@@ -1527,9 +1544,12 @@ button.primary:not(:disabled):hover {
   gap: 12px;
   min-width: 0;
   min-height: 0;
-  margin-left: 60px; /* Left toolbar */
-  margin-right: 60px; /* Right toolbar */
+  /* ✅ DYNAMIC: Moves with panels */
+  margin-left: calc(var(--left-toolbar-width, 60px) + var(--left-panel-width, 0px));
+  margin-right: calc(var(--right-toolbar-width, 60px) + var(--right-panel-width, 0px));
   flex: 1; /* Take remaining space */
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .center-pane.tool-hidden {
@@ -1565,10 +1585,16 @@ button.primary:not(:disabled):hover {
   border: 1px solid var(--divider);
   box-shadow: var(--panel-glow);
   min-height: 0;
+  /* ✅ CENTER: tam ortada, responsive */
+  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
 }
 
 .stage-region.gang-scene {
   background: linear-gradient(180deg, rgba(129, 140, 248, 0.22) 0%, rgba(255, 255, 255, 0.94) 100%);
+  /* Gang mode: larger canvas area */
+  max-width: 1600px;
 }
 
 .stage-headline {
